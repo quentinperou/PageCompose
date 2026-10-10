@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/PageCompose.App/PageCompose.App.csproj" />
+    <Project Path="src/PageCompose.Core/PageCompose.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PageCompose.Core.Tests/PageCompose.Core.Tests.csproj" />
+  </Folder>
+</Solution>

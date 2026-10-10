@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Icon of the PageCompose preset files (.PageCompose), 256 px design. Written by scripts/make-icons.ps1: change the design there. -->
+  <defs>
+    <linearGradient id="gradient" gradientUnits="userSpaceOnUse" x1="36" y1="8" x2="185.92" y2="267.67">
+      <stop offset="0" stop-color="#2CC5B5" />
+      <stop offset="1" stop-color="#1660C9" />
+    </linearGradient>
+  </defs>
+  <path d="M36,22 A14,14 0 0 1 50,8 L160,8 L220,68 L220,234 A14,14 0 0 1 206,248 L50,248 A14,14 0 0 1 36,234 Z" fill="url(#gradient)" />
+  <path d="M160,8 L160,57.5 A10.5,10.5 0 0 0 170.5,68 L220,68 Z" fill="#FFFFFF" fill-opacity="0.43" />
+  <g fill="#FFFFFF">
+    <rect x="64" y="92" width="60" height="40" rx="8" />
+    <rect x="132" y="92" width="60" height="40" rx="8" />
+    <rect x="64" y="144" width="60" height="40" rx="8" />
+    <rect x="132" y="144" width="60" height="40" rx="8" />
+    <rect x="64" y="196" width="60" height="40" rx="8" />
+    <rect x="132" y="196" width="60" height="40" rx="8" />
+  </g>
+</svg>

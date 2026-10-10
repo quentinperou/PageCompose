@@ -1,0 +1,26 @@
+<Window x:Class="PageCompose.App.PresetNameWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PageCompose.App"
+        Title="{local:Tr PresetNameTitle}"
+        Width="420" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Foreground="{DynamicResource TextFillColorPrimaryBrush}" Background="{DynamicResource ApplicationBackgroundBrush}">
+
+  <StackPanel Margin="24,20,24,24">
+    <TextBlock Text="{local:Tr PresetNameLabel}" Margin="0,0,0,6" />
+    <!-- A name, not a number: no arrows, "." stays a dot. -->
+    <TextBox x:Name="NameBox" local:NumericInput.Step="0" TextWrapping="NoWrap" TextChanged="NameBox_TextChanged"
+             AutomationProperties.Name="{local:Tr PresetNameLabel}" />
+    <TextBlock x:Name="ReplaceText" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0" Visibility="Collapsed"
+               Foreground="{DynamicResource SystemFillColorCautionBrush}" />
+    <TextBlock Text="{local:Tr PresetNameHint}" FontSize="12" TextWrapping="Wrap" Margin="0,6,0,0"
+               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+      <Button x:Name="SaveButton" Content="{local:Tr PresetSaveButton}" Style="{DynamicResource AccentButtonStyle}" MinWidth="96"
+              IsDefault="True" IsEnabled="False" Click="Save_Click" />
+      <Button Content="{local:Tr Cancel}" MinWidth="96" Margin="8,0,0,0" IsCancel="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

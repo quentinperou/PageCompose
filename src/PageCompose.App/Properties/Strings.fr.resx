@@ -1,0 +1,779 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- French translation of Strings.resx: same keys, same {0} placeholders (checked by the tests). -->
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089</value></resheader>
+  <data name="AppTitle" xml:space="preserve">
+    <value>PageCompose</value>
+  </data>
+  <data name="AppSubtitle" xml:space="preserve">
+    <value>Mise en page et imposition PDF</value>
+  </data>
+  <data name="SettingsTooltip" xml:space="preserve">
+    <value>Paramètres</value>
+  </data>
+  <data name="ModeRepeat" xml:space="preserve">
+    <value>Répétition</value>
+  </data>
+  <data name="ModeCompose" xml:space="preserve">
+    <value>Composition</value>
+  </data>
+  <data name="ModeRepeatHint" xml:space="preserve">
+    <value>Un même visuel répété sur toute la feuille.</value>
+  </data>
+  <data name="ModeComposeHint" xml:space="preserve">
+    <value>Plusieurs visuels différents sur la même feuille, chacun avec son nombre d'exemplaires.</value>
+  </data>
+  <data name="SectionVisual" xml:space="preserve">
+    <value>1. Visuel</value>
+  </data>
+  <data name="SectionVisuals" xml:space="preserve">
+    <value>1. Visuels</value>
+  </data>
+  <data name="DropVisual" xml:space="preserve">
+    <value>Glissez un visuel ici ou cliquez pour choisir</value>
+  </data>
+  <data name="FileTypes" xml:space="preserve">
+    <value>JPG, PNG ou PDF</value>
+  </data>
+  <data name="ClearAll" xml:space="preserve">
+    <value>Tout retirer</value>
+  </data>
+  <data name="DropVisualsEmpty" xml:space="preserve">
+    <value>Glissez vos visuels ici ou cliquez pour choisir</value>
+  </data>
+  <data name="DropVisualsAdd" xml:space="preserve">
+    <value>Ajouter des visuels</value>
+  </data>
+  <data name="DropVisualsHint" xml:space="preserve">
+    <value>Plusieurs fichiers ou un dossier entier</value>
+  </data>
+  <data name="RemoveVisualTooltip" xml:space="preserve">
+    <value>Retirer ce visuel</value>
+  </data>
+  <data name="CopiesLabel" xml:space="preserve">
+    <value>Exemplaires</value>
+  </data>
+  <data name="CopiesTooltip" xml:space="preserve">
+    <value>Nombre d'exemplaires</value>
+  </data>
+  <data name="LessCopyTooltip" xml:space="preserve">
+    <value>Un exemplaire de moins</value>
+  </data>
+  <data name="MoreCopyTooltip" xml:space="preserve">
+    <value>Un exemplaire de plus</value>
+  </data>
+  <data name="DuplexTitle" xml:space="preserve">
+    <value>Recto verso (verso commun)</value>
+  </data>
+  <data name="DropVerso" xml:space="preserve">
+    <value>Glissez le verso ici ou cliquez pour choisir</value>
+  </data>
+  <data name="DropVersoHint" xml:space="preserve">
+    <value>Imprimé au dos de chaque visuel</value>
+  </data>
+  <data name="FlipTitle" xml:space="preserve">
+    <value>Retournement de la feuille</value>
+  </data>
+  <data name="FlipLongEdge" xml:space="preserve">
+    <value>Bord long</value>
+  </data>
+  <data name="FlipShortEdge" xml:space="preserve">
+    <value>Bord court</value>
+  </data>
+  <data name="RotateVerso" xml:space="preserve">
+    <value>Retourner le verso (180°)</value>
+  </data>
+  <data name="DuplexHint" xml:space="preserve">
+    <value>Le PDF alterne recto et verso. Les traits de coupe sont sur le recto.</value>
+  </data>
+  <data name="SectionFormat" xml:space="preserve">
+    <value>2. Format du visuel</value>
+  </data>
+  <data name="WidthMm" xml:space="preserve">
+    <value>Largeur (mm)</value>
+  </data>
+  <data name="HeightMm" xml:space="preserve">
+    <value>Hauteur (mm)</value>
+  </data>
+  <data name="Format_BusinessCard" xml:space="preserve">
+    <value>Carte de visite 85 × 55</value>
+  </data>
+  <data name="Format_Photo9x13" xml:space="preserve">
+    <value>Photo 9 × 13</value>
+  </data>
+  <data name="Format_Photo10x15" xml:space="preserve">
+    <value>Photo 10 × 15</value>
+  </data>
+  <data name="Format_Photo13x18" xml:space="preserve">
+    <value>Photo 13 × 18</value>
+  </data>
+  <data name="Format_Photo15x20" xml:space="preserve">
+    <value>Photo 15 × 20</value>
+  </data>
+  <data name="Format_Photo20x30" xml:space="preserve">
+    <value>Photo 20 × 30</value>
+  </data>
+  <data name="Format_Square10" xml:space="preserve">
+    <value>Carré 10 × 10</value>
+  </data>
+  <data name="Format_Square15" xml:space="preserve">
+    <value>Carré 15 × 15</value>
+  </data>
+  <data name="Format_Square10Border" xml:space="preserve">
+    <value>Carré 10 × 10, marge blanche 5 mm</value>
+  </data>
+  <data name="Format_Polaroid" xml:space="preserve">
+    <value>Polaroid classique (88 × 107)</value>
+  </data>
+  <data name="Format_InstaxMini" xml:space="preserve">
+    <value>Instax Mini (54 × 86)</value>
+  </data>
+  <data name="Format_InstaxSquare" xml:space="preserve">
+    <value>Instax Square (72 × 86)</value>
+  </data>
+  <data name="Format_InstaxWide" xml:space="preserve">
+    <value>Instax Wide (108 × 86)</value>
+  </data>
+  <data name="WhiteMargins" xml:space="preserve">
+    <value>Marges blanches (mm)</value>
+  </data>
+  <data name="MarginTop" xml:space="preserve">
+    <value>Haut</value>
+  </data>
+  <data name="MarginBottom" xml:space="preserve">
+    <value>Bas</value>
+  </data>
+  <data name="MarginLeft" xml:space="preserve">
+    <value>Gauche</value>
+  </data>
+  <data name="MarginRight" xml:space="preserve">
+    <value>Droite</value>
+  </data>
+  <data name="MarginsHint" xml:space="preserve">
+    <value>Bande blanche autour de l'image, comprise dans le format fini. Les formats Polaroid et Instax la règlent d'eux-mêmes.</value>
+  </data>
+  <data name="VersoMargins" xml:space="preserve">
+    <value>Marges blanches aussi au verso</value>
+  </data>
+  <data name="MarginsTooLarge" xml:space="preserve">
+    <value>Marges trop grandes</value>
+  </data>
+  <data name="MarginsTooLargeDetails" xml:space="preserve">
+    <value>Les marges blanches doivent laisser au moins {0} mm d'image en largeur et en hauteur.</value>
+  </data>
+  <data name="Format_PostcardA6" xml:space="preserve">
+    <value>Carte postale A6 (105 × 148)</value>
+  </data>
+  <data name="Format_FlyerDL" xml:space="preserve">
+    <value>Flyer DL (99 × 210)</value>
+  </data>
+  <data name="Format_FlyerA5" xml:space="preserve">
+    <value>Flyer A5 (148 × 210)</value>
+  </data>
+  <data name="Format_A4" xml:space="preserve">
+    <value>A4 (210 × 297)</value>
+  </data>
+  <data name="FormatCustom" xml:space="preserve">
+    <value>Personnalisé…</value>
+  </data>
+  <data name="SectionSheet" xml:space="preserve">
+    <value>3. Feuille</value>
+  </data>
+  <data name="Sheet_SRA3" xml:space="preserve">
+    <value>SRA3 (320 × 450)</value>
+  </data>
+  <data name="Sheet_A3" xml:space="preserve">
+    <value>A3 (297 × 420)</value>
+  </data>
+  <data name="Sheet_A4" xml:space="preserve">
+    <value>A4 (210 × 297)</value>
+  </data>
+  <data name="Sheet_Lab10x15" xml:space="preserve">
+    <value>Tirage labo 10 × 15 (sans marge)</value>
+  </data>
+  <data name="Sheet_Lab20x30" xml:space="preserve">
+    <value>Tirage labo 20 × 30 (sans marge)</value>
+  </data>
+  <data name="Sheet_Lab30x45" xml:space="preserve">
+    <value>Tirage labo 30 × 45 (sans marge)</value>
+  </data>
+  <data name="SheetCustom" xml:space="preserve">
+    <value>Personnalisée…</value>
+  </data>
+  <data name="SheetMargin" xml:space="preserve">
+    <value>Marge non imprimable</value>
+  </data>
+  <data name="NoticeWithoutCropMarks" xml:space="preserve">
+    <value>Sans traits de coupe : {0} par feuille.</value>
+  </data>
+  <data name="InvalidSheet" xml:space="preserve">
+    <value>Feuille invalide</value>
+  </data>
+  <data name="InvalidSheetDetails" xml:space="preserve">
+    <value>Indiquez une largeur et une hauteur de feuille entre {0} et {1} mm.</value>
+  </data>
+  <data name="SectionCutting" xml:space="preserve">
+    <value>4. Coupe et remplissage</value>
+  </data>
+  <data name="CropMarks" xml:space="preserve">
+    <value>Traits de coupe</value>
+  </data>
+  <data name="CutLines" xml:space="preserve">
+    <value>Lignes de coupe continues (entre tous les visuels)</value>
+  </data>
+  <data name="Bleed" xml:space="preserve">
+    <value>Fond perdu</value>
+  </data>
+  <data name="BleedMm" xml:space="preserve">
+    <value>Fond perdu (mm)</value>
+  </data>
+  <data name="Millimetres" xml:space="preserve">
+    <value>mm</value>
+  </data>
+  <data name="Spacing" xml:space="preserve">
+    <value>Espace entre les visuels</value>
+  </data>
+  <data name="SpacingMm" xml:space="preserve">
+    <value>Espace entre les visuels (mm)</value>
+  </data>
+  <data name="BleedHint" xml:space="preserve">
+    <value>Sans fond perdu ni espace, les visuels se touchent : une seule coupe entre deux visuels (montage le plus dense).</value>
+  </data>
+  <data name="FitTitle" xml:space="preserve">
+    <value>Le visuel dans sa case</value>
+  </data>
+  <data name="FitFill" xml:space="preserve">
+    <value>Remplir la case (recadrer si besoin)</value>
+  </data>
+  <data name="FitFit" xml:space="preserve">
+    <value>Ajuster (image entière, sans recadrage)</value>
+  </data>
+  <data name="SectionQuantity" xml:space="preserve">
+    <value>5. Quantité</value>
+  </data>
+  <data name="Quantity" xml:space="preserve">
+    <value>Quantité</value>
+  </data>
+  <data name="UnitItems" xml:space="preserve">
+    <value>visuels</value>
+  </data>
+  <data name="UnitSheets" xml:space="preserve">
+    <value>feuilles</value>
+  </data>
+  <data name="ComposeCopiesHint" xml:space="preserve">
+    <value>Le nombre d'exemplaires se règle sur chaque visuel (section 1).</value>
+  </data>
+  <data name="CompleteLastSheet" xml:space="preserve">
+    <value>Compléter la dernière feuille en répétant les visuels</value>
+  </data>
+  <data name="ExportButton" xml:space="preserve">
+    <value>Exporter en PDF</value>
+  </data>
+  <data name="ExportJpegButton" xml:space="preserve">
+    <value>Exporter en JPG</value>
+  </data>
+  <data name="ExportJpegTooltip" xml:space="preserve">
+    <value>Une image JPG 300 dpi par face de feuille (pour un labo, par exemple).</value>
+  </data>
+  <data name="ExportJpegDialogTitle" xml:space="preserve">
+    <value>Exporter en JPG</value>
+  </data>
+  <data name="JpegFilter" xml:space="preserve">
+    <value>Images JPG (*.jpg)|*.jpg</value>
+  </data>
+  <data name="JpegPageFront" xml:space="preserve">
+    <value>{0}-f{1}</value>
+  </data>
+  <data name="JpegPageBack" xml:space="preserve">
+    <value>{0}-f{1}-verso</value>
+  </data>
+  <data name="JpegSavedOne" xml:space="preserve">
+    <value>Image JPG enregistrée</value>
+  </data>
+  <data name="JpegSavedMany" xml:space="preserve">
+    <value>{0} images JPG enregistrées</value>
+  </data>
+  <data name="ToastPdfSaved" xml:space="preserve">
+    <value>PDF enregistré</value>
+  </data>
+  <data name="ToastPdfDetail" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="ToastInFolder" xml:space="preserve">
+    <value>dans le dossier « {0} »</value>
+  </data>
+  <data name="ToastOpen" xml:space="preserve">
+    <value>Ouvrir</value>
+  </data>
+  <data name="ToastShowInFolder" xml:space="preserve">
+    <value>Afficher dans le dossier</value>
+  </data>
+  <data name="FlattenPdf" xml:space="preserve">
+    <value>Aplatir le PDF (feuilles en image 300 dpi)</value>
+  </data>
+  <data name="FlattenPdfTooltip" xml:space="preserve">
+    <value>Chaque face devient une seule image : rien à interpréter pour l'imprimante (transparences, polices, couleurs des PDF importés). Les textes et les traits passent en 300 dpi.</value>
+  </data>
+  <data name="Exporting" xml:space="preserve">
+    <value>Export en cours…</value>
+  </data>
+  <data name="ExportingPage" xml:space="preserve">
+    <value>Page {0} sur {1}</value>
+  </data>
+  <data name="ExportDialogTitle" xml:space="preserve">
+    <value>Exporter en PDF</value>
+  </data>
+  <data name="PdfFilter" xml:space="preserve">
+    <value>Documents PDF (*.pdf)|*.pdf</value>
+  </data>
+  <data name="ExportFailed" xml:space="preserve">
+    <value>Impossible d'enregistrer l'export :
+
+{0}
+
+Le fichier est peut-être ouvert dans un autre logiciel.</value>
+  </data>
+  <data name="FileNameRepeat" xml:space="preserve">
+    <value>{0}_{1}_{2}_{3}-par-feuille_{4}f</value>
+  </data>
+  <data name="FileNameCompose" xml:space="preserve">
+    <value>composition_{0}-visuels_{1}_{2}_{3}f</value>
+  </data>
+  <data name="PdfTitleCompose" xml:space="preserve">
+    <value>Composition</value>
+  </data>
+  <data name="PreviousSheetTooltip" xml:space="preserve">
+    <value>Feuille précédente</value>
+  </data>
+  <data name="NextSheetTooltip" xml:space="preserve">
+    <value>Feuille suivante</value>
+  </data>
+  <data name="RotateRight" xml:space="preserve">
+    <value>Pivoter à droite</value>
+  </data>
+  <data name="RotateLeft" xml:space="preserve">
+    <value>Pivoter à gauche</value>
+  </data>
+  <data name="RotateHalf" xml:space="preserve">
+    <value>Retourner (180°)</value>
+  </data>
+  <data name="ZoomInTooltip" xml:space="preserve">
+    <value>Zoom avant (Ctrl +)</value>
+  </data>
+  <data name="ZoomOutTooltip" xml:space="preserve">
+    <value>Zoom arrière (Ctrl -)</value>
+  </data>
+  <data name="ZoomFitTooltip" xml:space="preserve">
+    <value>Ajuster à la fenêtre (Ctrl 0)</value>
+  </data>
+  <data name="ZoomTooltip" xml:space="preserve">
+    <value>Pourcentage de la taille réelle. Ctrl + molette pour zoomer, glisser pour se déplacer, double clic pour zoomer ou ajuster.</value>
+  </data>
+  <data name="ZoomPercent" xml:space="preserve">
+    <value>{0} %</value>
+  </data>
+  <data name="SheetPosition" xml:space="preserve">
+    <value>Feuille {0} / {1}</value>
+  </data>
+  <data name="SideFront" xml:space="preserve">
+    <value>Recto</value>
+  </data>
+  <data name="SideBack" xml:space="preserve">
+    <value>Verso</value>
+  </data>
+  <data name="DropOverlayTitle" xml:space="preserve">
+    <value>Déposez vos visuels</value>
+  </data>
+  <data name="DropOverlayHint" xml:space="preserve">
+    <value>Ils seront ajoutés à la mise en page</value>
+  </data>
+  <data name="PreviewHint" xml:space="preserve">
+    <value>L'aperçu est le rendu du PDF exporté.</value>
+  </data>
+  <data name="PreviewHintMargin" xml:space="preserve">
+    <value>Bande rouge : zone non imprimable de l'imprimante ({0} mm). L'aperçu est le rendu du PDF exporté.</value>
+  </data>
+  <data name="PerSheet" xml:space="preserve">
+    <value>{0} par feuille</value>
+  </data>
+  <data name="DetailsRotated" xml:space="preserve">
+    <value> · format pivoté</value>
+  </data>
+  <data name="DetailsBleed" xml:space="preserve">
+    <value> · fond perdu {0} mm</value>
+  </data>
+  <data name="DetailsEdgeToEdge" xml:space="preserve">
+    <value> · bord à bord</value>
+  </data>
+  <data name="DetailsSpacing" xml:space="preserve">
+    <value> · espace de {0} mm</value>
+  </data>
+  <data name="DetailsMargins" xml:space="preserve">
+    <value> · marges blanches</value>
+  </data>
+  <data name="DetailsCutLines" xml:space="preserve">
+    <value> · lignes de coupe</value>
+  </data>
+  <data name="DetailsCropMarks" xml:space="preserve">
+    <value> · traits de coupe</value>
+  </data>
+  <data name="InvalidSize" xml:space="preserve">
+    <value>Format invalide</value>
+  </data>
+  <data name="InvalidSizeDetails" xml:space="preserve">
+    <value>Indiquez une largeur et une hauteur d'au moins 5 mm.</value>
+  </data>
+  <data name="DoesNotFit" xml:space="preserve">
+    <value>Ne tient pas sur la feuille</value>
+  </data>
+  <data name="DoesNotFitDetails" xml:space="preserve">
+    <value>{0} ne rentre pas sur une feuille {1}.</value>
+  </data>
+  <data name="DoesNotFitNotice" xml:space="preserve">
+    <value>Le format ne tient pas dans la zone imprimable de cette feuille. Choisissez une feuille plus grande.</value>
+  </data>
+  <data name="SheetsOne" xml:space="preserve">
+    <value>{0} feuille</value>
+  </data>
+  <data name="SheetsMany" xml:space="preserve">
+    <value>{0} feuilles</value>
+  </data>
+  <data name="VisualsOne" xml:space="preserve">
+    <value>{0} visuel</value>
+  </data>
+  <data name="VisualsMany" xml:space="preserve">
+    <value>{0} visuels</value>
+  </data>
+  <data name="PrintsOne" xml:space="preserve">
+    <value>{0} impression</value>
+  </data>
+  <data name="PrintsMany" xml:space="preserve">
+    <value>{0} impressions</value>
+  </data>
+  <data name="EmptyCellsOne" xml:space="preserve">
+    <value>{0} case vide</value>
+  </data>
+  <data name="EmptyCellsMany" xml:space="preserve">
+    <value>{0} cases vides</value>
+  </data>
+  <data name="PlanExtra" xml:space="preserve">
+    <value> (dont {0} en plus pour compléter)</value>
+  </data>
+  <data name="NoticeAddVisual" xml:space="preserve">
+    <value>Glissez un visuel (ou cliquez dans la zone « Visuel ») pour voir l'aperçu réel et exporter le PDF.</value>
+  </data>
+  <data name="NoticeAddVisuals" xml:space="preserve">
+    <value>Glissez vos visuels (plusieurs fichiers ou un dossier) pour composer la feuille.</value>
+  </data>
+  <data name="NoticeDpiCritical" xml:space="preserve">
+    <value>Résolution trop faible : {0}. Minimum conseillé : {1} dpi, l'impression sera floue.</value>
+  </data>
+  <data name="NoticeDpiLow" xml:space="preserve">
+    <value>Résolution limite : {0}. Conseillé : {1} dpi ou plus.</value>
+  </data>
+  <data name="NoticeCropped" xml:space="preserve">
+    <value>Proportions différentes du format, recadrage de : {0}. Vérifiez l'aperçu ou passez en mode « Ajuster ».</value>
+  </data>
+  <data name="NoticeOwnBleed" xml:space="preserve">
+    <value>{0} : PDF avec fond perdu intégré ({1} mm), calé à 100 % sur sa zone de coupe.</value>
+  </data>
+  <data name="NoticeOwnBleedTooSmall" xml:space="preserve">
+    <value>{0} : son fond perdu ({1} mm) est plus petit que celui du montage ({2} mm), risque de liseré blanc à la coupe.</value>
+  </data>
+  <data name="NoticeNoBack" xml:space="preserve">
+    <value>Recto verso coché, mais aucun verso choisi : le PDF sera recto seul.</value>
+  </data>
+  <data name="NoticePreviewFailed" xml:space="preserve">
+    <value>Aperçu impossible : {0}</value>
+  </data>
+  <data name="ListAndMore" xml:space="preserve">
+    <value>{0} et {1} autre(s)</value>
+  </data>
+  <data name="QualityDpi" xml:space="preserve">
+    <value>{0} dpi</value>
+  </data>
+  <data name="QualityPdf" xml:space="preserve">
+    <value>PDF</value>
+  </data>
+  <data name="DescribeImage" xml:space="preserve">
+    <value>{0} · {1} × {2} px</value>
+  </data>
+  <data name="DescribePdf" xml:space="preserve">
+    <value>PDF · {0} × {1} mm</value>
+  </data>
+  <data name="DescribeTrim" xml:space="preserve">
+    <value> · coupe {0} × {1}</value>
+  </data>
+  <data name="FilesSwitchedToCompose" xml:space="preserve">
+    <value>{0} visuels déposés : passage en mode composition.</value>
+  </data>
+  <data name="FilesDuplicates" xml:space="preserve">
+    <value>{0} fichier(s) déjà dans la liste, ignoré(s).</value>
+  </data>
+  <data name="FilesMoreErrors" xml:space="preserve">
+    <value>(+{0} autres fichiers illisibles)</value>
+  </data>
+  <data name="LoadNotFound" xml:space="preserve">
+    <value>Fichier introuvable : {0}</value>
+  </data>
+  <data name="LoadUnsupported" xml:space="preserve">
+    <value>Format non pris en charge ({0}). Utilisez un JPG, PNG ou PDF.</value>
+  </data>
+  <data name="LoadNoPages" xml:space="preserve">
+    <value>« {0} » ne contient aucune page.</value>
+  </data>
+  <data name="LoadUnreadable" xml:space="preserve">
+    <value>Impossible de lire « {0} » : {1}</value>
+  </data>
+  <data name="LoadPdfDamaged" xml:space="preserve">
+    <value>Impossible de lire « {0} » : PDF endommagé, ou protégé par un mot de passe.</value>
+  </data>
+  <data name="SettingsPresets" xml:space="preserve">
+    <value>Préréglages</value>
+  </data>
+  <data name="SettingsPresetsDescription" xml:space="preserve">
+    <value>Exportez-les dans un fichier pour les copier sur un autre PC ou les sauvegarder. Un double clic sur ce fichier les importe.</value>
+  </data>
+  <data name="PresetsExport" xml:space="preserve">
+    <value>Exporter</value>
+  </data>
+  <data name="PresetsImport" xml:space="preserve">
+    <value>Importer</value>
+  </data>
+  <data name="PresetsCountOne" xml:space="preserve">
+    <value>1 préréglage enregistré</value>
+  </data>
+  <data name="PresetsCountMany" xml:space="preserve">
+    <value>{0} préréglages enregistrés</value>
+  </data>
+  <data name="PresetsExportTitle" xml:space="preserve">
+    <value>Exporter les préréglages</value>
+  </data>
+  <data name="PresetsImportTitle" xml:space="preserve">
+    <value>Importer des préréglages</value>
+  </data>
+  <data name="PresetsFilter" xml:space="preserve">
+    <value>Préréglages PageCompose (*.PageCompose)|*.PageCompose</value>
+  </data>
+  <data name="PresetsOpenFilter" xml:space="preserve">
+    <value>Préréglages PageCompose (*.PageCompose, *.json)|*.PageCompose;*.json</value>
+  </data>
+  <data name="PresetApplied" xml:space="preserve">
+    <value>« {0} » est appliqué.</value>
+  </data>
+  <data name="PresetsImportedFrom" xml:space="preserve">
+    <value>Depuis « {0} », dans la liste des préréglages.</value>
+  </data>
+  <data name="PresetsExportWhich" xml:space="preserve">
+    <value>Préréglages à exporter</value>
+  </data>
+  <data name="PresetsExportAll" xml:space="preserve">
+    <value>Tous les préréglages ({0})</value>
+  </data>
+  <data name="PresetsExported" xml:space="preserve">
+    <value>Tous les préréglages ({0}) exportés dans « {1} ».</value>
+  </data>
+  <data name="PresetExported" xml:space="preserve">
+    <value>« {0} » exporté dans « {1} ».</value>
+  </data>
+  <data name="PresetMissing" xml:space="preserve">
+    <value>Ce préréglage n'existe plus.</value>
+  </data>
+  <data name="PresetsImportedOne" xml:space="preserve">
+    <value>1 préréglage importé</value>
+  </data>
+  <data name="PresetsImportedMany" xml:space="preserve">
+    <value>{0} préréglages importés</value>
+  </data>
+  <data name="PresetsReplacedOne" xml:space="preserve">
+    <value>, dont 1 qui remplace celui du même nom.</value>
+  </data>
+  <data name="PresetsReplacedMany" xml:space="preserve">
+    <value>, dont {0} qui remplacent ceux du même nom.</value>
+  </data>
+  <data name="PresetsNotAFile" xml:space="preserve">
+    <value>Ce fichier ne contient pas de préréglages PageCompose.</value>
+  </data>
+  <data name="PresetsFileFailed" xml:space="preserve">
+    <value>Fichier inaccessible : {0}</value>
+  </data>
+  <data name="Presets" xml:space="preserve">
+    <value>Préréglage</value>
+  </data>
+  <data name="PresetNone" xml:space="preserve">
+    <value>Aucun préréglage</value>
+  </data>
+  <data name="PresetSave" xml:space="preserve">
+    <value>Enregistrer les réglages actuels comme préréglage</value>
+  </data>
+  <data name="PresetDelete" xml:space="preserve">
+    <value>Supprimer ce préréglage</value>
+  </data>
+  <data name="PresetDeleteConfirm" xml:space="preserve">
+    <value>Supprimer le préréglage « {0} » ?</value>
+  </data>
+  <data name="PresetNameTitle" xml:space="preserve">
+    <value>Enregistrer le préréglage</value>
+  </data>
+  <data name="PresetNameLabel" xml:space="preserve">
+    <value>Nom du préréglage</value>
+  </data>
+  <data name="PresetNameHint" xml:space="preserve">
+    <value>Il garde les réglages (mode, format, feuille, coupe, recto verso, export), pas les fichiers ni la quantité.</value>
+  </data>
+  <data name="PresetReplaces" xml:space="preserve">
+    <value>Le préréglage « {0} » sera remplacé.</value>
+  </data>
+  <data name="PresetSaveButton" xml:space="preserve">
+    <value>Enregistrer</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Annuler</value>
+  </data>
+  <data name="PageOf" xml:space="preserve">
+    <value>Page {0} sur {1}</value>
+  </data>
+  <data name="PagePicker" xml:space="preserve">
+    <value>Page du PDF</value>
+  </data>
+  <data name="PdfPage2AsBack" xml:space="preserve">
+    <value>« {0} » a 2 pages : la page 2 sert de verso.</value>
+  </data>
+  <data name="PdfConverted" xml:space="preserve">
+    <value>« {0} » n'est pas un PDF standard : il a été converti en image {1} dpi.</value>
+  </data>
+  <data name="OpenVisualTitle" xml:space="preserve">
+    <value>Choisir le visuel</value>
+  </data>
+  <data name="OpenVisualsTitle" xml:space="preserve">
+    <value>Ajouter des visuels</value>
+  </data>
+  <data name="OpenBackTitle" xml:space="preserve">
+    <value>Choisir le verso</value>
+  </data>
+  <data name="VisualsFilter" xml:space="preserve">
+    <value>Visuels (*.jpg;*.jpeg;*.png;*.pdf)|*.jpg;*.jpeg;*.png;*.pdf</value>
+  </data>
+  <data name="UnexpectedError" xml:space="preserve">
+    <value>Une erreur inattendue s'est produite :
+
+{0}</value>
+  </data>
+  <data name="SettingsTitle" xml:space="preserve">
+    <value>Paramètres</value>
+  </data>
+  <data name="SettingsLanguage" xml:space="preserve">
+    <value>Langue</value>
+  </data>
+  <data name="SettingsLanguageDescription" xml:space="preserve">
+    <value>Langue de l'application. La changer recharge la fenêtre.</value>
+  </data>
+  <data name="LanguageSystem" xml:space="preserve">
+    <value>Langue du système (automatique)</value>
+  </data>
+  <data name="SettingsTheme" xml:space="preserve">
+    <value>Thème</value>
+  </data>
+  <data name="SettingsThemeDescription" xml:space="preserve">
+    <value>Apparence claire ou sombre. Le mode automatique suit celui de Windows.</value>
+  </data>
+  <data name="ThemeSystem" xml:space="preserve">
+    <value>Thème du système (automatique)</value>
+  </data>
+  <data name="ThemeLight" xml:space="preserve">
+    <value>Clair</value>
+  </data>
+  <data name="ThemeDark" xml:space="preserve">
+    <value>Sombre</value>
+  </data>
+  <data name="SettingsAbout" xml:space="preserve">
+    <value>À propos</value>
+  </data>
+  <data name="AboutVersion" xml:space="preserve">
+    <value>Version {0} · licence MIT</value>
+  </data>
+  <data name="AboutDevelopedBy" xml:space="preserve">
+    <value>Développé par </value>
+  </data>
+  <data name="AboutSourceCode" xml:space="preserve">
+    <value>Code source sur GitHub</value>
+  </data>
+  <data name="Close" xml:space="preserve">
+    <value>Fermer</value>
+  </data>
+  <data name="UpdatesTitle" xml:space="preserve">
+    <value>Mises à jour</value>
+  </data>
+  <data name="UpdateStatusIdle" xml:space="preserve">
+    <value>Version {0}</value>
+  </data>
+  <data name="UpdateStatusChecking" xml:space="preserve">
+    <value>Recherche de mises à jour…</value>
+  </data>
+  <data name="UpdateStatusUpToDate" xml:space="preserve">
+    <value>Version {0} · l'application est à jour.</value>
+  </data>
+  <data name="UpdateStatusAvailable" xml:space="preserve">
+    <value>Version {0} · la version {1} est disponible.</value>
+  </data>
+  <data name="UpdateStatusFailed" xml:space="preserve">
+    <value>Version {0} · impossible de rechercher les mises à jour : {1}</value>
+  </data>
+  <data name="UpdateCheck" xml:space="preserve">
+    <value>Rechercher des mises à jour</value>
+  </data>
+  <data name="UpdateInstall" xml:space="preserve">
+    <value>Mettre à jour</value>
+  </data>
+  <data name="UpdateWhatsNew" xml:space="preserve">
+    <value>Nouveautés</value>
+  </data>
+  <data name="UpdateAvailableBar" xml:space="preserve">
+    <value>La version {0} est disponible.</value>
+  </data>
+  <data name="UpdateDownloading" xml:space="preserve">
+    <value>Téléchargement de la mise à jour…</value>
+  </data>
+  <data name="UpdateStarting" xml:space="preserve">
+    <value>Installation… acceptez la demande de Windows pour continuer.</value>
+  </data>
+  <data name="UpdateCancelled" xml:space="preserve">
+    <value>La mise à jour n'a pas été installée.</value>
+  </data>
+  <data name="ErrorUpdate" xml:space="preserve">
+    <value>La mise à jour a échoué : {0}</value>
+  </data>
+  <data name="ErrorUpdateOffline" xml:space="preserve">
+    <value>GitHub est injoignable (pas de connexion Internet ?).</value>
+  </data>
+  <data name="ErrorUpdateRateLimited" xml:space="preserve">
+    <value>GitHub limite le nombre de vérifications, réessayez dans un moment.</value>
+  </data>
+  <data name="ErrorUpdateNoRepository" xml:space="preserve">
+    <value>aucune version n'est encore publiée sur GitHub.</value>
+  </data>
+  <data name="ErrorUpdateIntegrity" xml:space="preserve">
+    <value>le fichier téléchargé est endommagé, réessayez.</value>
+  </data>
+  <data name="UpdateCheckAtStartup" xml:space="preserve">
+    <value>Rechercher les mises à jour au démarrage</value>
+  </data>
+  <data name="UpdateCheckAtStartupDescription" xml:space="preserve">
+    <value>Interroge GitHub à chaque lancement de l'application pour connaître la dernière version.</value>
+  </data>
+  <data name="UpdateChannel" xml:space="preserve">
+    <value>Canal de mise à jour</value>
+  </data>
+  <data name="UpdateChannelDescription" xml:space="preserve">
+    <value>Les versions bêta reçoivent les nouveautés en avance, mais peuvent être moins stables. En revenant au canal stable, vous gardez la bêta jusqu'à la version stable suivante.</value>
+  </data>
+  <data name="UpdateChannelStable" xml:space="preserve">
+    <value>Stable</value>
+  </data>
+  <data name="UpdateChannelBeta" xml:space="preserve">
+    <value>Bêta</value>
+  </data>
+</root>

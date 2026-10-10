@@ -1,0 +1,245 @@
+using PageCompose.Core.Layout;
+using PageCompose.Core.Pdf;
+using PageCompose.Core.Visuals;
+using PdfSharp.Pdf;
+using PdfSharp.Pdf.Advanced;
+using PdfSharp.Pdf.Content;
+using PdfSharp.Pdf.Content.Objects;
+using PdfSharp.Pdf.IO;
+
+namespace PageCompose.Core.Tests;
+
+public sealed class ImpositionPdfWriterTests : IDisposable
+{
+    private readonly TestFiles _files = new();
+
+    private static SheetLayout CardsOnSra3(bool marks = true) =>
+        LayoutEngine.Compute(new LayoutOptions(SheetFormats.Sra3, ItemFormats.BusinessCard.Size, 2, marks));
+
+    [Fact]
+    public void One_page_per_sheet_at_the_exact_sheet_size()
+    {
+        var jpg = VisualLoader.Load(_files.Jpeg(1063, 650));
+
+        using var doc = WriteAndOpen(ImpositionJob.Repeat(CardsOnSra3(), jpg, 3));
+
+        Assert.Equal(3, doc.PageCount);
+        foreach (var page in doc.Pages)
+        {
+            Assert.Equal(320, page.Width.Millimeter, 2);
+            Assert.Equal(450, page.Height.Millimeter, 2);
+        }
+    }
+
+    [Fact]
+    public void Jpeg_is_stored_once_and_not_recompressed()
+    {
+        var path = _files.Jpeg(1063, 650);
+        var jpg = VisualLoader.Load(path);
+
+        using var doc = WriteAndOpen(ImpositionJob.Repeat(CardsOnSra3(), jpg, 10));
+
+        var images = ImageXObjects(doc);
+        var image = Assert.Single(images);
+        Assert.Equal("/DCTDecode", image.Elements.GetName("/Filter"));
+        Assert.Equal(new FileInfo(path).Length, image.Stream.Length);
+    }
+
+    [Fact]
+    public void Verso_adds_an_alternating_page_and_a_second_image()
+    {
+        var recto = VisualLoader.Load(_files.Jpeg(1063, 650, name: "recto.jpg"));
+        var verso = VisualLoader.Load(_files.Jpeg(650, 1063, name: "verso.jpg"));
+
+        using var doc = WriteAndOpen(ImpositionJob.Repeat(CardsOnSra3(), recto, 2, verso));
+
+        Assert.Equal(4, doc.PageCount);
+        Assert.Equal(2, ImageXObjects(doc).Count);
+    }
+
+    [Fact]
+    public void Png_and_pdf_sources_are_supported()
+    {
+        var png = VisualLoader.Load(_files.Png(600, 400));
+        var pdf = VisualLoader.Load(_files.Pdf(91, 61, trimInsetMm: 3));
+
+        using var fromPng = WriteAndOpen(ImpositionJob.Repeat(CardsOnSra3(), png, 1));
+        using var fromPdf1 = WriteAndOpen(ImpositionJob.Repeat(CardsOnSra3(false), pdf, 1));
+        using var fromPdf5 = WriteAndOpen(ImpositionJob.Repeat(CardsOnSra3(false), pdf, 5));
+
+        Assert.Single(ImageXObjects(fromPng));
+        Assert.Equal(5, fromPdf5.PageCount);
+        // The source page is imported once, whatever the number of sheets.
+        Assert.NotEmpty(XObjects(fromPdf1, "/Form"));
+        Assert.Equal(XObjects(fromPdf1, "/Form").Count, XObjects(fromPdf5, "/Form").Count);
+    }
+
+    [Fact]
+    public void Two_page_pdf_gives_the_front_and_the_back()
+    {
+        var path = _files.Pdf(85, 55, name: "carte.pdf", pages: 2);
+        var front = VisualLoader.Load(path);
+        var back = VisualLoader.Load(path, 2);
+
+        using var frontOnly = WriteAndOpen(ImpositionJob.Repeat(CardsOnSra3(false), front, 1));
+        using var both = WriteAndOpen(ImpositionJob.Repeat(CardsOnSra3(false), front, 1, back));
+
+        Assert.Equal(2, both.PageCount);
+        // Page 2 of the file is imported as well: one more form than with the front only.
+        Assert.True(XObjects(both, "/Form").Count > XObjects(frontOnly, "/Form").Count);
+    }
+
+    [Fact]
+    public void Empty_layout_is_refused()
+    {
+        var jpg = VisualLoader.Load(_files.Jpeg(100, 100));
+        var empty = LayoutEngine.Compute(new LayoutOptions(SheetFormats.A4, ItemFormats.A4.Size));
+
+        Assert.Throws<InvalidOperationException>(() =>
+            ImpositionPdfWriter.Write(ImpositionJob.Repeat(empty, jpg, 1), Stream.Null));
+    }
+
+    [Fact]
+    public void Several_visuals_share_the_sheets_and_each_image_is_stored_once()
+    {
+        var a = VisualLoader.Load(_files.Jpeg(1063, 650, name: "a.jpg"));
+        var b = VisualLoader.Load(_files.Jpeg(1000, 640, name: "b.jpg")); // content differs from a: PDFsharp merges identical images
+        var c = VisualLoader.Load(_files.Png(600, 400, name: "c.png"));
+        var layout = CardsOnSra3();
+        var plan = SheetFiller.Fill([new(a, 30), new(b, 10), new(c, 1)], layout.PerSheet, completeLastSheet: false);
+
+        using var doc = WriteAndOpen(new ImpositionJob(layout, plan.Sheets));
+
+        Assert.Equal(2, doc.PageCount);          // 41 cards at 21 per sheet
+        Assert.Equal(3, ImageXObjects(doc).Count);
+    }
+
+    [Fact]
+    public void Verso_is_only_printed_behind_filled_cells()
+    {
+        var recto = VisualLoader.Load(_files.Jpeg(1063, 650, name: "recto.jpg"));
+        var verso = VisualLoader.Load(_files.Jpeg(1063, 650, name: "verso.jpg"));
+        var layout = CardsOnSra3();
+        var plan = SheetFiller.Fill([new(recto, 3)], layout.PerSheet, completeLastSheet: false);
+
+        var path = _files.Path("partiel.pdf");
+        ImpositionPdfWriter.Write(new ImpositionJob(layout, plan.Sheets, verso), path);
+        using var doc = PdfReader.Open(path, PdfDocumentOpenMode.Import);
+
+        Assert.Equal(2, doc.PageCount);
+        // The back only draws 3 cells: its content is much shorter than a full page.
+        Assert.True(ContentLength(doc.Pages[1]) < ContentLength(doc.Pages[0]));
+    }
+
+    [Fact]
+    public void Cut_lines_are_drawn_on_the_front_only()
+    {
+        var recto = VisualLoader.Load(_files.Jpeg(1063, 650, name: "recto.jpg"));
+        var verso = VisualLoader.Load(_files.Jpeg(1000, 640, name: "verso.jpg"));
+        var job = ImpositionJob.Repeat(CardsOnSra3(marks: false), recto, 1, verso);
+
+        using var plain = WriteAndOpen(job);
+        using var lined = WriteAndOpen(job with { CutLines = true });
+
+        Assert.True(ContentLength(lined.Pages[0]) > ContentLength(plain.Pages[0]));
+        Assert.Equal(ContentLength(plain.Pages[1]), ContentLength(lined.Pages[1]));
+    }
+
+    [Fact]
+    public void A_space_wider_than_the_bleed_is_painted_white_on_both_sides()
+    {
+        var card = VisualLoader.Load(_files.Jpeg(1063, 650, name: "recto.jpg"));
+        var verso = VisualLoader.Load(_files.Jpeg(1000, 640, name: "verso.jpg"));
+        var spaced = LayoutEngine.Compute(new LayoutOptions(SheetFormats.Sra3, ItemFormats.BusinessCard.Size, 0, true, 0.1));
+        var bled = LayoutEngine.Compute(new LayoutOptions(SheetFormats.Sra3, ItemFormats.BusinessCard.Size, 2, true, 3));
+
+        using var doc = WriteAndOpen(ImpositionJob.Repeat(spaced, card, 1, verso));
+        using var covered = WriteAndOpen(ImpositionJob.Repeat(bled, card, 1));
+
+        // One band between two columns, one between two rows (Windows would round a 0.1 mm space away).
+        int bands = spaced.Columns - 1 + spaced.Rows - 1;
+        Assert.Equal(bands, WhiteRectangles(doc.Pages[0]));
+        Assert.Equal(bands, WhiteRectangles(doc.Pages[1]));
+        // 3 mm between visuals with 2 mm of bleed: the bleeds fill the whole space.
+        Assert.Equal(0, WhiteRectangles(covered.Pages[0]));
+    }
+
+    [Fact]
+    public void Flat_pdf_has_one_picture_per_page_covering_the_sheet()
+    {
+        var front = _files.Jpeg(945, 1329, name: "front.jpg");
+        var back = _files.Jpeg(944, 1328, name: "back.jpg"); // differs from the front: PDFsharp merges identical images
+        var path = _files.Path("flat.pdf");
+
+        using (var fs = File.Create(path))
+            FlatPdfWriter.Write([front, back], SheetFormats.Sra3.Size, fs);
+        using var doc = PdfReader.Open(path, PdfDocumentOpenMode.Import);
+
+        Assert.Equal(2, doc.PageCount);
+        Assert.All(doc.Pages.Cast<PdfPage>(), p =>
+        {
+            Assert.Equal(320, p.Width.Millimeter, 2);
+            Assert.Equal(450, p.Height.Millimeter, 2);
+        });
+        var images = ImageXObjects(doc);
+        Assert.Equal(2, images.Count);
+        Assert.All(images, i => Assert.Equal("/DCTDecode", i.Elements.GetName("/Filter"))); // not recompressed
+        Assert.Throws<ArgumentException>(() => FlatPdfWriter.Write([], SheetFormats.Sra3.Size, Stream.Null));
+    }
+
+    [Fact]
+    public void Sheets_must_match_the_layout()
+    {
+        var jpg = VisualLoader.Load(_files.Jpeg(100, 100));
+        var layout = CardsOnSra3();
+
+        Assert.Throws<ArgumentException>(() =>
+            ImpositionPdfWriter.Write(new ImpositionJob(layout, [new VisualInfo?[3]]), Stream.Null));
+        Assert.Throws<ArgumentException>(() =>
+            ImpositionPdfWriter.Write(new ImpositionJob(layout, []), Stream.Null));
+    }
+
+    // Rectangles filled ("re" then "f") while the fill colour is white ("1 1 1 rg").
+    private static int WhiteRectangles(PdfPage page)
+    {
+        var ops = ContentReader.ReadContent(page).OfType<COperator>().ToList();
+        bool white = false;
+        int count = 0;
+        for (int i = 0; i < ops.Count; i++)
+        {
+            switch (ops[i].OpCode.Name)
+            {
+                case "rg":
+                    white = ops[i].Operands.Count == 3 && ops[i].Operands.All(o => o is CReal { Value: 1 } or CInteger { Value: 1 });
+                    break;
+                case "g" or "k" or "sc" or "scn":
+                    white = false;
+                    break;
+                case "re" when white && i + 1 < ops.Count && ops[i + 1].OpCode.Name is "f" or "f*":
+                    count++;
+                    break;
+            }
+        }
+        return count;
+    }
+
+    private static int ContentLength(PdfPage page) =>
+        page.Contents.Elements.Items.Sum(item => (item as PdfReference)?.Value is PdfDictionary d ? d.Stream?.Value.Length ?? 0 : 0);
+
+    private PdfDocument WriteAndOpen(ImpositionJob job)
+    {
+        var path = _files.Path($"sortie-{Guid.NewGuid():N}.pdf");
+        ImpositionPdfWriter.Write(job, path);
+        return PdfReader.Open(path, PdfDocumentOpenMode.Import);
+    }
+
+    private static List<PdfDictionary> ImageXObjects(PdfDocument doc) => XObjects(doc, "/Image");
+
+    private static List<PdfDictionary> XObjects(PdfDocument doc, string subtype) =>
+        doc.Internals.GetAllObjects()
+            .OfType<PdfDictionary>()
+            .Where(d => d.Elements.GetName("/Subtype") == subtype)
+            .ToList();
+
+    public void Dispose() => _files.Dispose();
+}

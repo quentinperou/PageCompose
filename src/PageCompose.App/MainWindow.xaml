@@ -1,0 +1,592 @@
+<Window x:Class="PageCompose.App.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PageCompose.App"
+        xmlns:vm="clr-namespace:PageCompose.App.ViewModels"
+        Title="{local:Tr AppTitle}" Icon="Assets/PageCompose.ico"
+        Width="1360" Height="900" MinWidth="1040" MinHeight="680" WindowStartupLocation="CenterScreen"
+        FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="14"
+        Foreground="{DynamicResource TextFillColorPrimaryBrush}" Background="{DynamicResource ApplicationBackgroundBrush}"
+        AllowDrop="True" DragEnter="Window_DragOver" DragOver="Window_DragOver" DragLeave="Window_DragLeave"
+        Drop="Window_Drop" Closing="Window_Closing" PreviewKeyDown="Window_PreviewKeyDown">
+
+    <Window.Resources>
+        <!-- Rounded thumbnail -->
+        <DataTemplate x:Key="Thumbnail" DataType="{x:Type vm:VisualItem}">
+            <Grid Width="48" Height="48">
+                <Border CornerRadius="4" Background="{DynamicResource ControlAltFillColorTertiaryBrush}" />
+                <Border CornerRadius="4">
+                    <Border.Background>
+                        <!-- The thumbnail is read upright (EXIF); the user's turn is applied here -->
+                        <ImageBrush ImageSource="{Binding Thumbnail}" Stretch="UniformToFill">
+                            <ImageBrush.RelativeTransform>
+                                <RotateTransform CenterX="0.5" CenterY="0.5" Angle="{Binding Rotation}" />
+                            </ImageBrush.RelativeTransform>
+                        </ImageBrush>
+                    </Border.Background>
+                </Border>
+            </Grid>
+        </DataTemplate>
+
+        <!-- Right click on a file line: turn the visual (a photo imported sideways) -->
+        <ContextMenu x:Key="VisualMenu" x:Shared="False">
+            <MenuItem Header="{local:Tr RotateRight}" Command="{Binding RotateRightCommand}">
+                <MenuItem.Icon>
+                    <TextBlock Text="&#xE7AD;" FontFamily="{StaticResource IconFont}" FontSize="16" />
+                </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="{local:Tr RotateLeft}" Command="{Binding RotateLeftCommand}">
+                <MenuItem.Icon>
+                    <TextBlock Text="&#xE7AD;" FontFamily="{StaticResource IconFont}" FontSize="16" RenderTransformOrigin="0.5,0.5">
+                        <TextBlock.RenderTransform>
+                            <ScaleTransform ScaleX="-1" />
+                        </TextBlock.RenderTransform>
+                    </TextBlock>
+                </MenuItem.Icon>
+            </MenuItem>
+            <MenuItem Header="{local:Tr RotateHalf}" Command="{Binding RotateHalfCommand}" />
+        </ContextMenu>
+
+        <!-- Page of a PDF of several pages: "Page 2 / 3" -->
+        <DataTemplate x:Key="PagePicker" DataType="{x:Type vm:VisualItem}">
+            <ComboBox ItemsSource="{Binding Pages}" SelectedItem="{Binding SelectedPage}" DisplayMemberPath="Name"
+                      HorizontalAlignment="Left" MinWidth="130" Margin="0,6,0,0" AutomationProperties.Name="{local:Tr PagePicker}"
+                      Visibility="{Binding HasPages, Converter={StaticResource BoolToVisibility}}" />
+        </DataTemplate>
+
+        <Style x:Key="QualityText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsLowQuality}" Value="True">
+                    <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                    <Setter Property="FontWeight" Value="SemiBold" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
+
+        <!-- Single visual (Repeat mode, back) -->
+        <DataTemplate x:Key="SingleRow" DataType="{x:Type vm:VisualItem}">
+            <Border Style="{StaticResource FileRow}" Margin="0" ContextMenu="{StaticResource VisualMenu}">
+                <DockPanel>
+                    <ContentControl DockPanel.Dock="Left" Content="{Binding}" ContentTemplate="{StaticResource Thumbnail}" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE711;" Command="{Binding RemoveCommand}"
+                            ToolTip="{local:Tr RemoveVisualTooltip}" AutomationProperties.Name="{local:Tr RemoveVisualTooltip}" VerticalAlignment="Center" />
+                    <StackPanel Margin="10,0,4,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Info.OriginalPath}" />
+                        <TextBlock Text="{Binding Details}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Quality}" Style="{StaticResource QualityText}" />
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PagePicker}" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </DataTemplate>
+
+        <!-- Visual of a composition, with its number of copies -->
+        <DataTemplate x:Key="ComposeRow" DataType="{x:Type vm:VisualItem}">
+            <Border Style="{StaticResource FileRow}" ContextMenu="{StaticResource VisualMenu}">
+                <DockPanel>
+                    <ContentControl DockPanel.Dock="Left" Content="{Binding}" ContentTemplate="{StaticResource Thumbnail}" />
+                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE711;" Command="{Binding RemoveCommand}"
+                            ToolTip="{local:Tr RemoveVisualTooltip}" AutomationProperties.Name="{local:Tr RemoveVisualTooltip}" VerticalAlignment="Center" />
+                    <!-- A little room between the buttons: their hover backgrounds would touch -->
+                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,4,0">
+                        <Button Style="{StaticResource IconButton}" Content="&#xE738;" Command="{Binding DecrementCommand}" Margin="0,0,4,0"
+                                ToolTip="{local:Tr LessCopyTooltip}" AutomationProperties.Name="{local:Tr LessCopyTooltip}" />
+                        <TextBox Width="54" MinWidth="54" TextAlignment="Center" AutomationProperties.Name="{local:Tr CopiesLabel}"
+                                 Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged, Delay=400}" ToolTip="{local:Tr CopiesTooltip}" />
+                        <Button Style="{StaticResource IconButton}" Content="&#xE710;" Command="{Binding IncrementCommand}" Margin="4,0,0,0"
+                                ToolTip="{local:Tr MoreCopyTooltip}" AutomationProperties.Name="{local:Tr MoreCopyTooltip}" />
+                    </StackPanel>
+                    <StackPanel Margin="10,0,4,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Info.OriginalPath}" />
+                        <TextBlock Text="{Binding Details}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Quality}" Style="{StaticResource QualityText}" />
+                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PagePicker}" />
+                    </StackPanel>
+                </DockPanel>
+            </Border>
+        </DataTemplate>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="430" />
+            <ColumnDefinition Width="*" />
+        </Grid.ColumnDefinitions>
+
+        <!-- ==================== Settings panel ==================== -->
+        <!-- On the window background (Mica on Windows 11, as the title bar): only the cards stand out. -->
+        <DockPanel Grid.Column="0">
+            <Border DockPanel.Dock="Bottom" Padding="20,14" BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="*" />
+                            <ColumnDefinition Width="8" />
+                            <ColumnDefinition Width="*" />
+                        </Grid.ColumnDefinitions>
+                        <Button Style="{StaticResource PrimaryButton}" Content="{local:Tr ExportButton}" IsEnabled="{Binding CanExport}" Click="Export_Click" />
+                        <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="{local:Tr ExportJpegButton}"
+                                IsEnabled="{Binding CanExport}" Click="ExportJpeg_Click" ToolTip="{local:Tr ExportJpegTooltip}" />
+                    </Grid>
+                    <CheckBox Content="{local:Tr FlattenPdf}" IsChecked="{Binding FlattenPdf}" Margin="0,8,0,0" ToolTip="{local:Tr FlattenPdfTooltip}" />
+                </StackPanel>
+            </Border>
+
+            <!-- Fixed above the settings that scroll: the title, the Settings button and the presets. -->
+            <Border DockPanel.Dock="Top" Padding="18,18,18,14" BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="0,0,0,1">
+                <StackPanel>
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE713;" FontSize="16" Width="36" Height="36"
+                                VerticalAlignment="Top" Click="Settings_Click"
+                                ToolTip="{local:Tr SettingsTooltip}" AutomationProperties.Name="{local:Tr SettingsTooltip}" />
+                        <StackPanel>
+                            <TextBlock Text="{local:Tr AppTitle}" FontSize="24" FontWeight="SemiBold" />
+                            <TextBlock Text="{local:Tr AppSubtitle}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,14" />
+                        </StackPanel>
+                    </DockPanel>
+
+                    <!-- Presets: the settings of a usual job (no files, no number of copies) -->
+                    <DockPanel>
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE74D;" FontSize="16" Width="34" Height="34"
+                                Click="DeletePreset_Click" IsEnabled="{Binding HasPreset}"
+                                ToolTip="{local:Tr PresetDelete}" AutomationProperties.Name="{local:Tr PresetDelete}" />
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE74E;" FontSize="16" Width="34" Height="34"
+                                Margin="6,0,2,0" Click="SavePreset_Click"
+                                ToolTip="{local:Tr PresetSave}" AutomationProperties.Name="{local:Tr PresetSave}" />
+                        <Grid>
+                            <ComboBox ItemsSource="{Binding Presets}" SelectedItem="{Binding SelectedPreset}" DisplayMemberPath="Name"
+                                      HorizontalAlignment="Stretch" DropDownOpened="Presets_DropDownOpened"
+                                      AutomationProperties.Name="{local:Tr Presets}" />
+                            <TextBlock Text="{local:Tr PresetNone}" IsHitTestVisible="False" Margin="12,0,32,0" VerticalAlignment="Center"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis"
+                                       Visibility="{Binding HasPreset, Converter={StaticResource InverseBoolToVisibility}}" />
+                        </Grid>
+                    </DockPanel>
+                </StackPanel>
+            </Border>
+
+            <!-- Not focusable: clicked after typing, it would show a keyboard focus frame around the whole column. -->
+            <ScrollViewer VerticalScrollBarVisibility="Auto" Focusable="False" FocusVisualStyle="{x:Null}">
+                <StackPanel Margin="18,14,18,6">
+                    <!-- Mode -->
+                    <Border Background="{DynamicResource ControlAltFillColorTertiaryBrush}" CornerRadius="6" Padding="3">
+                        <UniformGrid Columns="2">
+                            <RadioButton Style="{StaticResource SegmentItem}" GroupName="mode" Content="{local:Tr ModeRepeat}" IsChecked="{Binding IsRepeatMode}" />
+                            <RadioButton Style="{StaticResource SegmentItem}" GroupName="mode" Content="{local:Tr ModeCompose}" IsChecked="{Binding IsComposeMode}" />
+                        </UniformGrid>
+                    </Border>
+                    <TextBlock Style="{StaticResource Hint}" Margin="2,6,0,14" Text="{local:Tr ModeRepeatHint}"
+                               Visibility="{Binding IsRepeatMode, Converter={StaticResource BoolToVisibility}}" />
+                    <TextBlock Style="{StaticResource Hint}" Margin="2,6,0,14" Text="{local:Tr ModeComposeHint}"
+                               Visibility="{Binding IsComposeMode, Converter={StaticResource BoolToVisibility}}" />
+
+                    <!-- 1. Visual (Repeat) -->
+                    <Border Style="{StaticResource Card}" Visibility="{Binding IsRepeatMode, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionVisual}" />
+                            <Button Style="{StaticResource DropZoneButton}" Click="BrowseVisuals_Click" AutomationProperties.Name="{local:Tr DropVisual}"
+                                    Visibility="{Binding HasRepeatVisual, Converter={StaticResource InverseBoolToVisibility}}">
+                                <StackPanel>
+                                    <TextBlock Text="&#xE8B9;" FontFamily="{StaticResource IconFont}" FontSize="22" HorizontalAlignment="Center" Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    <TextBlock Text="{local:Tr DropVisual}" FontWeight="SemiBold" TextAlignment="Center" TextWrapping="Wrap" Margin="0,6,0,0" />
+                                    <TextBlock Text="{local:Tr FileTypes}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                            <ContentControl Content="{Binding RepeatVisual}" ContentTemplate="{StaticResource SingleRow}"
+                                            Visibility="{Binding HasRepeatVisual, Converter={StaticResource BoolToVisibility}}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 1. Visuals (Compose) -->
+                    <Border Style="{StaticResource Card}" Visibility="{Binding IsComposeMode, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <DockPanel>
+                                <Button DockPanel.Dock="Right" Content="{local:Tr ClearAll}" Command="{Binding ClearVisualsCommand}" Padding="10,3" Margin="0,-4,0,6"
+                                        Visibility="{Binding HasVisuals, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionVisuals}" />
+                            </DockPanel>
+                            <ItemsControl ItemsSource="{Binding Visuals}" ItemTemplate="{StaticResource ComposeRow}" />
+                            <Button Style="{StaticResource DropZoneButton}" Click="BrowseVisuals_Click" AutomationProperties.Name="{local:Tr DropVisualsAdd}">
+                                <StackPanel>
+                                    <TextBlock Text="&#xE710;" FontFamily="{StaticResource IconFont}" FontSize="18" HorizontalAlignment="Center" Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                                    <TextBlock Text="{Binding VisualsDropHint}" FontWeight="SemiBold" TextAlignment="Center" TextWrapping="Wrap" Margin="0,4,0,0" />
+                                    <TextBlock Text="{local:Tr DropVisualsHint}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" HorizontalAlignment="Center" />
+                                </StackPanel>
+                            </Button>
+                        </StackPanel>
+                    </Border>
+                    <TextBlock Style="{StaticResource Hint}" Text="{Binding FilesMessage}" Foreground="{DynamicResource SystemFillColorCautionBrush}" Margin="2,-6,0,12"
+                               Visibility="{Binding FilesMessage, Converter={StaticResource NullToCollapsed}}" />
+
+                    <!-- Back -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <CheckBox IsChecked="{Binding VersoEnabled}" AutomationProperties.Name="{local:Tr DuplexTitle}">
+                                <TextBlock Text="{local:Tr DuplexTitle}" FontWeight="SemiBold" />
+                            </CheckBox>
+                            <StackPanel Visibility="{Binding VersoEnabled, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0">
+                                <Button Style="{StaticResource DropZoneButton}" Click="BrowseVerso_Click" AutomationProperties.Name="{local:Tr DropVerso}"
+                                        DragOver="VersoZone_DragOver" Drop="VersoZone_Drop"
+                                        Visibility="{Binding HasVerso, Converter={StaticResource InverseBoolToVisibility}}">
+                                    <StackPanel>
+                                        <TextBlock Text="{local:Tr DropVerso}" FontWeight="SemiBold" TextAlignment="Center" TextWrapping="Wrap" />
+                                        <TextBlock Text="{local:Tr DropVersoHint}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" HorizontalAlignment="Center" />
+                                    </StackPanel>
+                                </Button>
+                                <ContentControl Content="{Binding Verso}" ContentTemplate="{StaticResource SingleRow}"
+                                                Visibility="{Binding HasVerso, Converter={StaticResource BoolToVisibility}}" />
+                                <TextBlock Style="{StaticResource Error}" Text="{Binding VersoError}"
+                                           Visibility="{Binding VersoError, Converter={StaticResource NullToCollapsed}}" />
+                                <TextBlock Text="{local:Tr FlipTitle}" Margin="0,10,0,2" />
+                                <WrapPanel>
+                                    <RadioButton GroupName="flip" Content="{local:Tr FlipLongEdge}" IsChecked="{Binding FlipLongEdge}" />
+                                    <RadioButton GroupName="flip" Content="{local:Tr FlipShortEdge}" IsChecked="{Binding FlipShortEdge}" />
+                                </WrapPanel>
+                                <CheckBox Content="{local:Tr RotateVerso}" IsChecked="{Binding RotateVerso180}" />
+                                <TextBlock Style="{StaticResource Hint}" Text="{local:Tr DuplexHint}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 2. Size -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionFormat}" />
+                            <ComboBox ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat}" DisplayMemberPath="Name"
+                                      HorizontalAlignment="Stretch" AutomationProperties.Name="{local:Tr SectionFormat}" />
+                            <Grid Margin="0,10,0,0" Visibility="{Binding IsCustomFormat, Converter={StaticResource BoolToVisibility}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="{local:Tr WidthMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBox AutomationProperties.Name="{local:Tr WidthMm}" Text="{Binding CustomWidth, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="{local:Tr HeightMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBox AutomationProperties.Name="{local:Tr HeightMm}" Text="{Binding CustomHeight, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                </StackPanel>
+                            </Grid>
+
+                            <!-- White margins inside each visual, side by side -->
+                            <CheckBox Content="{local:Tr WhiteMargins}" IsChecked="{Binding MarginsEnabled}" Margin="0,10,0,0" />
+                            <StackPanel Visibility="{Binding MarginsEnabled, Converter={StaticResource BoolToVisibility}}">
+                                <UniformGrid Columns="4" Margin="0,4,-8,0">
+                                    <StackPanel Margin="0,0,8,0">
+                                        <TextBlock Text="{local:Tr MarginTop}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                        <TextBox AutomationProperties.Name="{local:Tr MarginTop}" MinWidth="0" Text="{Binding MarginTop, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,8,0">
+                                        <TextBlock Text="{local:Tr MarginBottom}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                        <TextBox AutomationProperties.Name="{local:Tr MarginBottom}" MinWidth="0" Text="{Binding MarginBottom, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,8,0">
+                                        <TextBlock Text="{local:Tr MarginLeft}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                        <TextBox AutomationProperties.Name="{local:Tr MarginLeft}" MinWidth="0" Text="{Binding MarginLeft, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                    </StackPanel>
+                                    <StackPanel Margin="0,0,8,0">
+                                        <TextBlock Text="{local:Tr MarginRight}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                        <TextBox AutomationProperties.Name="{local:Tr MarginRight}" MinWidth="0" Text="{Binding MarginRight, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                    </StackPanel>
+                                </UniformGrid>
+                                <TextBlock Style="{StaticResource Hint}" Text="{local:Tr MarginsHint}" />
+                                <!-- Off: the back covers the whole cell, which hides the small front/back offset of duplex printing -->
+                                <CheckBox Content="{local:Tr VersoMargins}" IsChecked="{Binding VersoMargins}" Margin="0,6,0,0"
+                                          Visibility="{Binding VersoEnabled, Converter={StaticResource BoolToVisibility}}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 3. Sheet -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionSheet}" />
+                            <ComboBox ItemsSource="{Binding Sheets}" SelectedItem="{Binding SelectedSheet}" DisplayMemberPath="Name"
+                                      HorizontalAlignment="Stretch" AutomationProperties.Name="{local:Tr SectionSheet}" />
+                            <!-- Custom sheet: size and unprintable margin -->
+                            <Grid Margin="0,10,0,0" Visibility="{Binding IsCustomSheet, Converter={StaticResource BoolToVisibility}}">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="12" />
+                                    <ColumnDefinition Width="*" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <StackPanel>
+                                    <TextBlock Text="{local:Tr WidthMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBox AutomationProperties.Name="{local:Tr WidthMm}" Text="{Binding CustomSheetWidth, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                </StackPanel>
+                                <StackPanel Grid.Column="2">
+                                    <TextBlock Text="{local:Tr HeightMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBox AutomationProperties.Name="{local:Tr HeightMm}" Text="{Binding CustomSheetHeight, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                </StackPanel>
+                                <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,10,0,0">
+                                    <TextBlock Text="{local:Tr SheetMargin}" VerticalAlignment="Center" />
+                                    <TextBox AutomationProperties.Name="{local:Tr SheetMargin}" Width="64" Margin="12,0,6,0"
+                                             Text="{Binding CustomSheetMargin, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                    <TextBlock Text="{local:Tr Millimetres}" VerticalAlignment="Center" />
+                                </StackPanel>
+                            </Grid>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 4. Cutting -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionCutting}" />
+                            <CheckBox Content="{local:Tr CropMarks}" IsChecked="{Binding CropMarks}" />
+                            <CheckBox Content="{local:Tr CutLines}" IsChecked="{Binding CutLines}" />
+                            <!-- Bleed and spacing: values aligned in one column -->
+                            <Grid>
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
+                                </Grid.RowDefinitions>
+                                <CheckBox Content="{local:Tr Bleed}" IsChecked="{Binding BleedEnabled}" VerticalAlignment="Center" />
+                                <TextBox Grid.Column="1" AutomationProperties.Name="{local:Tr BleedMm}" Width="64" Margin="12,2,6,2" VerticalAlignment="Center"
+                                         Text="{Binding BleedMm, UpdateSourceTrigger=PropertyChanged, Delay=400}" IsEnabled="{Binding BleedEnabled}" />
+                                <TextBlock Grid.Column="2" Text="{local:Tr Millimetres}" VerticalAlignment="Center" />
+                                <CheckBox Grid.Row="1" Content="{local:Tr Spacing}" IsChecked="{Binding SpacingEnabled}" VerticalAlignment="Center" />
+                                <TextBox Grid.Row="1" Grid.Column="1" AutomationProperties.Name="{local:Tr SpacingMm}" Width="64" Margin="12,2,6,2" VerticalAlignment="Center"
+                                         Text="{Binding SpacingMm, UpdateSourceTrigger=PropertyChanged, Delay=400}" IsEnabled="{Binding SpacingEnabled}" />
+                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{local:Tr Millimetres}" VerticalAlignment="Center" />
+                            </Grid>
+                            <TextBlock Style="{StaticResource Hint}" Text="{local:Tr BleedHint}" />
+                            <TextBlock Text="{local:Tr FitTitle}" Margin="0,12,0,2" />
+                            <RadioButton GroupName="fit" Content="{local:Tr FitFill}" IsChecked="{Binding IsFill}" />
+                            <RadioButton GroupName="fit" Content="{local:Tr FitFit}" IsChecked="{Binding IsFit}" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- 5. Quantity -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionQuantity}" />
+                            <StackPanel Orientation="Horizontal" Visibility="{Binding IsRepeatMode, Converter={StaticResource BoolToVisibility}}">
+                                <TextBox AutomationProperties.Name="{local:Tr Quantity}" Width="90" local:NumericInput.Minimum="1"
+                                         Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                <RadioButton GroupName="unit" Content="{local:Tr UnitItems}" IsChecked="{Binding UnitItems}" Margin="14,0,14,0" VerticalAlignment="Center" />
+                                <RadioButton GroupName="unit" Content="{local:Tr UnitSheets}" IsChecked="{Binding UnitSheets}" VerticalAlignment="Center" />
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,6" Text="{local:Tr ComposeCopiesHint}"
+                                       Visibility="{Binding IsComposeMode, Converter={StaticResource BoolToVisibility}}" />
+                            <CheckBox Content="{local:Tr CompleteLastSheet}" IsChecked="{Binding CompleteLastSheet}" Margin="0,6,0,2"
+                                      Visibility="{Binding CanCompleteLastSheet, Converter={StaticResource BoolToVisibility}}" />
+                            <TextBlock Text="{Binding PlanText}" FontWeight="SemiBold" Foreground="{DynamicResource AccentFillColorDefaultBrush}" TextWrapping="Wrap" Margin="0,10,0,0" />
+                        </StackPanel>
+                    </Border>
+                </StackPanel>
+            </ScrollViewer>
+        </DockPanel>
+
+        <!-- ==================== Preview ==================== -->
+        <!-- The content layer of Windows 11 apps: a lighter surface with a rounded corner, beside the Mica column. -->
+        <Border Grid.Column="1" Background="{DynamicResource LayerFillColorDefaultBrush}"
+                BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1,1,0,0" CornerRadius="8,0,0,0" />
+        <Grid Grid.Column="1" Margin="28,22,28,18">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+
+            <!-- New version available (informational InfoBar), as in CropPdf -->
+            <Border x:Name="UpdateBar" Margin="0,-8,0,14" Padding="14,6,6,6" CornerRadius="4" BorderThickness="1"
+                    BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}"
+                    Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}" Visibility="Collapsed">
+                <DockPanel>
+                    <TextBlock DockPanel.Dock="Left" Text="&#xE896;" FontFamily="{StaticResource IconFont}" FontSize="16" VerticalAlignment="Center"
+                               Margin="0,0,12,0" Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                    <!-- Hidden rather than disabled while installing -->
+                    <Button x:Name="UpdateCloseButton" DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE711;"
+                            Click="CloseUpdate_Click" ToolTip="{local:Tr Close}" AutomationProperties.Name="{local:Tr Close}" />
+                    <StackPanel x:Name="UpdateActions" DockPanel.Dock="Right" Orientation="Horizontal" Margin="12,0,4,0">
+                        <Button Content="{local:Tr UpdateWhatsNew}" Margin="0,0,6,0" Click="UpdateNotes_Click" />
+                        <Button Content="{local:Tr UpdateInstall}" Style="{DynamicResource AccentButtonStyle}" Click="UpdateInstall_Click" />
+                    </StackPanel>
+                    <ProgressBar x:Name="UpdateProgress" DockPanel.Dock="Right" Width="180" Margin="12,0,10,0" Maximum="1"
+                                 VerticalAlignment="Center" Visibility="Collapsed" />
+                    <TextBlock x:Name="UpdateText" VerticalAlignment="Center" TextWrapping="Wrap" />
+                </DockPanel>
+            </Border>
+
+            <DockPanel Grid.Row="1">
+                <!-- Zoom: in % of the real size, as in PDF readers; "Fit" goes back to the whole sheet in view -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="16,0,0,0">
+                    <Button x:Name="ZoomOutButton" Style="{StaticResource IconButton}" FontSize="14" Content="&#xE71F;" Click="ZoomOut_Click"
+                            ToolTip="{local:Tr ZoomOutTooltip}" AutomationProperties.Name="{local:Tr ZoomOutTooltip}" />
+                    <TextBlock x:Name="ZoomText" VerticalAlignment="Center" MinWidth="48" TextAlignment="Center"
+                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" ToolTip="{local:Tr ZoomTooltip}" />
+                    <Button x:Name="ZoomInButton" Style="{StaticResource IconButton}" FontSize="14" Content="&#xE8A3;" Click="ZoomIn_Click"
+                            ToolTip="{local:Tr ZoomInTooltip}" AutomationProperties.Name="{local:Tr ZoomInTooltip}" />
+                    <Button x:Name="ZoomFitButton" Style="{StaticResource IconButton}" FontSize="14" Content="&#xE9A6;" Margin="4,0,0,0"
+                            Click="ZoomFit_Click" ToolTip="{local:Tr ZoomFitTooltip}" AutomationProperties.Name="{local:Tr ZoomFitTooltip}" />
+                </StackPanel>
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center"
+                            Visibility="{Binding HasSeveralSheets, Converter={StaticResource BoolToVisibility}}">
+                    <Button Style="{StaticResource IconButton}" Content="&#xE76B;" Command="{Binding PreviousSheetCommand}"
+                            ToolTip="{local:Tr PreviousSheetTooltip}" AutomationProperties.Name="{local:Tr PreviousSheetTooltip}" />
+                    <TextBlock Text="{Binding PreviewSheetLabel}" VerticalAlignment="Center" Margin="8,0" MinWidth="96" TextAlignment="Center" />
+                    <Button Style="{StaticResource IconButton}" Content="&#xE76C;" Command="{Binding NextSheetCommand}"
+                            ToolTip="{local:Tr NextSheetTooltip}" AutomationProperties.Name="{local:Tr NextSheetTooltip}" />
+                </StackPanel>
+                <StackPanel>
+                    <TextBlock Text="{Binding Headline}" FontSize="28" FontWeight="SemiBold" />
+                    <TextBlock Text="{Binding Details}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="14" />
+                </StackPanel>
+            </DockPanel>
+
+            <Grid Grid.Row="2" Margin="0,14,0,10">
+                <!-- Fitted: no scroll bars, the sheets fill the area (Viewbox). Zoomed: the sides are laid out larger
+                     inside the scroll viewer (MainWindow.xaml.cs, "Preview zoom"). -->
+                <ScrollViewer x:Name="PreviewScroll" HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Disabled"
+                              Focusable="False" PreviewMouseWheel="PreviewScroll_PreviewMouseWheel" SizeChanged="PreviewScroll_SizeChanged">
+                    <ItemsControl x:Name="PreviewSidesView" ItemsSource="{Binding PreviewSides}" Background="Transparent"
+                                  MouseLeftButtonDown="Preview_MouseLeftButtonDown" MouseMove="Preview_MouseMove"
+                                  MouseLeftButtonUp="Preview_MouseLeftButtonUp" LostMouseCapture="Preview_LostMouseCapture"
+                                  LayoutUpdated="PreviewSidesView_LayoutUpdated">
+                        <ItemsControl.ItemsPanel>
+                            <ItemsPanelTemplate>
+                                <UniformGrid Rows="1" />
+                            </ItemsPanelTemplate>
+                        </ItemsControl.ItemsPanel>
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate DataType="{x:Type vm:PreviewSide}">
+                                <DockPanel Margin="10,0">
+                                    <TextBlock DockPanel.Dock="Top" Text="{Binding Label}" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,6"
+                                               Visibility="{Binding ShowLabel, Converter={StaticResource BoolToVisibility}}" />
+                                    <Viewbox Stretch="Uniform">
+                                        <Grid Width="{Binding DataContext.SheetWidth, RelativeSource={RelativeSource AncestorType=Window}}"
+                                              Height="{Binding DataContext.SheetHeight, RelativeSource={RelativeSource AncestorType=Window}}" Margin="4">
+                                            <!-- The sheet is paper: white in both themes -->
+                                            <Border Background="White">
+                                                <Border.Effect>
+                                                    <DropShadowEffect BlurRadius="5" ShadowDepth="1" Opacity="0.22" />
+                                                </Border.Effect>
+                                            </Border>
+    
+                                            <!-- Cell outlines until the real preview is ready -->
+                                            <ItemsControl ItemsSource="{Binding DataContext.PlaceholderCells, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          Visibility="{Binding Image, Converter={StaticResource NullToVisible}}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <Canvas />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemContainerStyle>
+                                                    <Style TargetType="ContentPresenter">
+                                                        <Setter Property="Canvas.Left" Value="{Binding X}" />
+                                                        <Setter Property="Canvas.Top" Value="{Binding Y}" />
+                                                    </Style>
+                                                </ItemsControl.ItemContainerStyle>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate>
+                                                        <Rectangle Width="{Binding Width}" Height="{Binding Height}" Fill="#DCE8F5" Stroke="#7FA6CF" StrokeThickness="0.4" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+    
+                                            <Image Source="{Binding Image}" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality" />
+                                            <Path Data="{Binding DataContext.MarginGeometry, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                  Fill="#2EE63946" IsHitTestVisible="False" />
+                                        </Grid>
+                                    </Viewbox>
+                                </DockPanel>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+
+                <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"
+                             Visibility="{Binding IsPreviewBusy, Converter={StaticResource BoolToVisibility}}" />
+
+                <!-- Shown while files are dragged over the window -->
+                <Grid x:Name="DropOverlay" Visibility="Collapsed" IsHitTestVisible="False">
+                    <Rectangle RadiusX="12" RadiusY="12" Fill="{DynamicResource ApplicationBackgroundBrush}" Opacity="0.92" />
+                    <Rectangle RadiusX="12" RadiusY="12" Fill="{DynamicResource SubtleFillColorSecondaryBrush}"
+                               Stroke="{DynamicResource AccentFillColorDefaultBrush}" StrokeThickness="2" StrokeDashArray="6 4" />
+                    <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                        <TextBlock Text="&#xE8B9;" FontFamily="{StaticResource IconFont}" FontSize="44" HorizontalAlignment="Center" Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
+                        <TextBlock Text="{local:Tr DropOverlayTitle}" FontSize="22" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,10,0,0" />
+                        <TextBlock Text="{local:Tr DropOverlayHint}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" HorizontalAlignment="Center" />
+                    </StackPanel>
+                </Grid>
+            </Grid>
+
+            <StackPanel Grid.Row="3">
+                <ItemsControl ItemsSource="{Binding Notices}">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="{x:Type vm:Notice}">
+                            <!-- Windows 11 InfoBar colours -->
+                            <Border x:Name="Box" CornerRadius="6" Padding="12,7" Margin="0,3,0,0" BorderThickness="1"
+                                    Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                                <DockPanel>
+                                    <TextBlock x:Name="Glyph" Text="{Binding Icon}" FontFamily="{StaticResource IconFont}" FontSize="16" Margin="0,1,10,0"
+                                               VerticalAlignment="Top" Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                                </DockPanel>
+                            </Border>
+                            <DataTemplate.Triggers>
+                                <DataTrigger Binding="{Binding Level}" Value="{x:Static vm:NoticeLevel.Warning}">
+                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" />
+                                    <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding Level}" Value="{x:Static vm:NoticeLevel.Error}">
+                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+                                    <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                </DataTrigger>
+                            </DataTemplate.Triggers>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
+                <TextBlock Style="{StaticResource Hint}" Text="{Binding PreviewHint}" />
+            </StackPanel>
+
+            <!-- Export notification, as a Windows 11 toast: the progress, then the result for a few seconds -->
+            <Grid Grid.RowSpan="4" HorizontalAlignment="Right" VerticalAlignment="Bottom" Width="380" Margin="0,0,0,4"
+                  DataContext="{Binding Toast}" Visibility="{Binding IsVisible, Converter={StaticResource BoolToVisibility}}"
+                  MouseEnter="Toast_MouseEnter" MouseLeave="Toast_MouseLeave">
+                <!-- The shadow on a separate layer: an effect on the card itself would blur its text -->
+                <Border CornerRadius="8" Background="{DynamicResource FlyoutBackground}">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="18" ShadowDepth="4" Opacity="0.28" />
+                    </Border.Effect>
+                </Border>
+                <Border CornerRadius="8" BorderThickness="1" Padding="16,12,6,14"
+                        Background="{DynamicResource FlyoutBackground}" BorderBrush="{DynamicResource FlyoutBorderBrush}">
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Left" Text="&#xEC61;" FontFamily="{StaticResource IconFont}" FontSize="20" Margin="0,0,12,0"
+                                   VerticalAlignment="Top" Foreground="{DynamicResource SystemFillColorSuccessBrush}"
+                                   Visibility="{Binding IsDone, Converter={StaticResource BoolToVisibility}}" />
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE711;" VerticalAlignment="Top"
+                                Click="ToastClose_Click" ToolTip="{local:Tr Close}" AutomationProperties.Name="{local:Tr Close}" />
+                        <StackPanel Margin="0,0,4,0">
+                            <TextBlock Text="{Binding Title}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Detail}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}"
+                                       TextTrimming="CharacterEllipsis" Margin="0,2,0,0" />
+                            <ProgressBar IsIndeterminate="True" Margin="0,10,0,0"
+                                         Visibility="{Binding IsBusy, Converter={StaticResource BoolToVisibility}}" />
+                            <StackPanel Orientation="Horizontal" Margin="0,10,0,0"
+                                        Visibility="{Binding HasFiles, Converter={StaticResource BoolToVisibility}}">
+                                <Button Content="{local:Tr ToastOpen}" Style="{DynamicResource AccentButtonStyle}" Margin="0,0,8,0" Click="ToastOpen_Click" />
+                                <Button Content="{local:Tr ToastShowInFolder}" Click="ToastShowInFolder_Click" />
+                            </StackPanel>
+                        </StackPanel>
+                    </DockPanel>
+                </Border>
+            </Grid>
+        </Grid>
+    </Grid>
+</Window>

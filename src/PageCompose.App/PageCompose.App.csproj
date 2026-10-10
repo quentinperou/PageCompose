@@ -1,0 +1,33 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <!-- The Windows 10 2004 SDK projection gives access to Windows.Data.Pdf (built-in PDF renderer, used for the preview). -->
+    <TargetFramework>net10.0-windows10.0.19041.0</TargetFramework>
+    <SupportedOSPlatformVersion>10.0.19041.0</SupportedOSPlatformVersion>
+    <UseWPF>true</UseWPF>
+    <AssemblyName>PageCompose</AssemblyName>
+    <RootNamespace>PageCompose.App</RootNamespace>
+    <ApplicationIcon>Assets\PageCompose.ico</ApplicationIcon>
+    <ApplicationManifest>app.manifest</ApplicationManifest>
+    <Product>PageCompose</Product>
+    <SatelliteResourceLanguages>fr</SatelliteResourceLanguages>
+    <!-- Application.ThemeMode (light/dark Fluent theme) is still marked experimental in WPF .NET 10. -->
+    <NoWarn>$(NoWarn);WPF0001</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\PageCompose.ico" />
+    <Resource Include="Assets\PageCompose.png" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- WPF projects do not import System.IO implicitly. -->
+    <Using Include="System.IO" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\PageCompose.Core\PageCompose.Core.csproj" />
+  </ItemGroup>
+
+</Project>
