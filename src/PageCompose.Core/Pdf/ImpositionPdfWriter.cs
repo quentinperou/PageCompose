@@ -14,6 +14,10 @@ namespace PageCompose.Core.Pdf;
 /// </param>
 /// <param name="VersoMargins">The back keeps the white margins of the front (mirrored with the flip).</param>
 /// <param name="SheetLayouts">Layout of each sheet, when each has its own (mixed sizes); else every sheet uses <paramref name="Layout"/>.</param>
+/// <param name="Backs">
+/// The back of each cell, sheet by sheet, when visuals have their own (null in a cell: <paramref name="Verso"/>, the
+/// shared back, if any).
+/// </param>
 public sealed record ImpositionJob(
     SheetLayout Layout,
     IReadOnlyList<VisualInfo?[]> Sheets,
@@ -24,10 +28,18 @@ public sealed record ImpositionJob(
     string? Title = null,
     bool CutLines = false,
     bool VersoMargins = false,
-    IReadOnlyList<SheetLayout>? SheetLayouts = null)
+    IReadOnlyList<SheetLayout>? SheetLayouts = null,
+    IReadOnlyList<VisualInfo?[]>? Backs = null)
 {
     /// <summary>Layout of sheet <paramref name="index"/> (from 0).</summary>
     public SheetLayout LayoutOf(int index) => SheetLayouts?[index] ?? Layout;
+
+    /// <summary>The sheets have a back: a shared one, or the own back of some visuals.</summary>
+    public bool HasBack => Verso is not null || (Backs?.Any(sheet => sheet.Any(v => v is not null)) ?? false);
+
+    /// <summary>The back of a cell: its own, else the shared one (null: nothing behind it).</summary>
+    public VisualInfo? BackOf(int sheet, int cell) =>
+        Backs is { } backs && sheet < backs.Count && cell < backs[sheet].Length && backs[sheet][cell] is { } own ? own : Verso;
 
     /// <summary>The sheets of a mixed layout, as they are or only some of them (indices, from 0).</summary>
     public static ImpositionJob Mixed(MixedPlan plan, IEnumerable<int>? sheets = null)
@@ -74,6 +86,8 @@ public static class ImpositionPdfWriter
             throw new ArgumentException("Each sheet needs its own layout, with cells.", nameof(job));
         if (job.Sheets.Select((s, i) => s.Length != job.LayoutOf(i).PerSheet).Any(wrong => wrong))
             throw new ArgumentException("Each sheet must have as many cells as the layout.", nameof(job));
+        if (job.Backs is { } backs && (backs.Count != job.Sheets.Count || backs.Where((b, i) => b.Length != job.Sheets[i].Length).Any()))
+            throw new ArgumentException("The backs must match the sheets, cell by cell.", nameof(job));
 
         using var doc = new PdfDocument();
         var first = job.Sheets.SelectMany(s => s).FirstOrDefault(v => v is not null);
@@ -99,10 +113,10 @@ public static class ImpositionPdfWriter
                 var recto = layout.Cells.Select((cell, i) => (cell, visual: sheet[i])).ToList();
                 DrawSide(doc, layout, recto, ImageOf, job.Fit, SideOptions.Recto, job.CutLines);
 
-                if (job.Verso is { } verso)
+                if (job.HasBack)
                 {
-                    // The back is only printed behind cells that have a front.
-                    var back = recto.Select(r => (r.cell, visual: r.visual is null ? null : verso)).ToList();
+                    // The back is only printed behind cells that have a front: their own back, else the shared one.
+                    var back = recto.Select((r, i) => (r.cell, visual: r.visual is null ? null : job.BackOf(s, i))).ToList();
                     DrawSide(doc, layout, back, ImageOf, job.Fit, versoSide, cutLines: false);
                 }
             }

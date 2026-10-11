@@ -122,6 +122,44 @@
             </DockPanel>
         </DataTemplate>
 
+        <!-- Double-sided: the back of a line of the list. Its own (dropped, chosen, or found by the app: "auto"), else a
+             slot to drop one; meanwhile the shared back of the "Double-sided" card is printed behind it. -->
+        <DataTemplate x:Key="LineBack" DataType="{x:Type vm:VisualItem}">
+            <DockPanel>
+                <TextBlock DockPanel.Dock="Left" Width="48" Text="{local:Tr BackLabel}" FontSize="12" VerticalAlignment="Center"
+                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                <!-- A file dropped on the line's back replaces it -->
+                <Grid AllowDrop="True" DragOver="VersoZone_DragOver" Drop="LineBack_Drop" Background="Transparent">
+                    <DockPanel Visibility="{Binding HasBack, Converter={StaticResource BoolToVisibility}}">
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE711;" Command="{Binding Back.RemoveCommand}"
+                                ToolTip="{local:Tr RemoveBackTooltip}" AutomationProperties.Name="{local:Tr RemoveBackTooltip}" VerticalAlignment="Center" />
+                        <Border DockPanel.Dock="Right" CornerRadius="10" Padding="9,1,9,2" Margin="6,0,6,0" VerticalAlignment="Center"
+                                Background="{DynamicResource SystemFillColorSuccessBackgroundBrush}" ToolTip="{local:Tr LineBackAutoTooltip}"
+                                Visibility="{Binding IsBackAuto, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock Text="{local:Tr LineBackAuto}" FontSize="12" FontWeight="SemiBold" Foreground="{DynamicResource SystemFillColorSuccessBrush}" />
+                        </Border>
+                        <!-- Right click: turn it, centre it, as a front -->
+                        <DockPanel DataContext="{Binding Back}" ContextMenu="{StaticResource VisualMenu}" Background="Transparent">
+                            <Viewbox DockPanel.Dock="Left" Width="34" Height="34">
+                                <ContentControl Content="{Binding}" ContentTemplate="{StaticResource Thumbnail}" />
+                            </Viewbox>
+                            <StackPanel Margin="10,0,4,0" VerticalAlignment="Center">
+                                <TextBlock Text="{Binding NameWithPage}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Info.OriginalPath}" />
+                                <TextBlock Text="{Binding Quality}" Style="{StaticResource QualityText}"
+                                           Visibility="{Binding IsLowQuality, Converter={StaticResource BoolToVisibility}}" />
+                            </StackPanel>
+                        </DockPanel>
+                    </DockPanel>
+                    <Button Style="{StaticResource DropZoneButton}" Padding="10,7" HorizontalContentAlignment="Left" Click="LineBack_Click"
+                            AutomationProperties.Name="{local:Tr DropLineBack}"
+                            Visibility="{Binding HasBack, Converter={StaticResource InverseBoolToVisibility}}">
+                        <TextBlock Text="{local:Tr DropLineBack}" FontSize="13" TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </Button>
+                </Grid>
+            </DockPanel>
+        </DataTemplate>
+
         <!-- Visual of a composition, with its number of copies. In the Mixed mode, its size on a row of its own, across
              the whole line, so that long size names show in full (chosen by the author among three places). -->
         <DataTemplate x:Key="ComposeRow" DataType="{x:Type vm:VisualItem}">
@@ -149,6 +187,8 @@
                     </DockPanel>
                     <ContentControl Margin="0,6,0,0" Content="{Binding}" ContentTemplate="{StaticResource SizePicker}"
                                     Visibility="{Binding DataContext.IsMixedMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}" />
+                    <ContentControl Margin="0,8,0,0" Content="{Binding}" ContentTemplate="{StaticResource LineBack}"
+                                    Visibility="{Binding DataContext.VersoEnabled, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}" />
                 </StackPanel>
             </Border>
         </DataTemplate>
@@ -274,12 +314,16 @@
                                 <TextBlock Text="{local:Tr DuplexTitle}" FontWeight="SemiBold" />
                             </CheckBox>
                             <StackPanel Visibility="{Binding VersoEnabled, Converter={StaticResource BoolToVisibility}}" Margin="0,8,0,0">
+                                <!-- In the lists, each line may have its own back: this one is for the others -->
+                                <TextBlock Text="{local:Tr SharedBackCaption}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" Margin="0,0,0,6"
+                                           Visibility="{Binding HasVisualList, Converter={StaticResource BoolToVisibility}}" />
                                 <Button Style="{StaticResource DropZoneButton}" Click="BrowseVerso_Click" AutomationProperties.Name="{local:Tr DropVerso}"
                                         DragOver="VersoZone_DragOver" Drop="VersoZone_Drop"
                                         Visibility="{Binding HasVerso, Converter={StaticResource InverseBoolToVisibility}}">
                                     <StackPanel>
                                         <TextBlock Text="{local:Tr DropVerso}" FontWeight="SemiBold" TextAlignment="Center" TextWrapping="Wrap" />
-                                        <TextBlock Text="{local:Tr DropVersoHint}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" HorizontalAlignment="Center" />
+                                        <TextBlock Text="{local:Tr DropVersoHint}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" HorizontalAlignment="Center"
+                                                   Visibility="{Binding IsRepeatMode, Converter={StaticResource BoolToVisibility}}" />
                                     </StackPanel>
                                 </Button>
                                 <ContentControl Content="{Binding Verso}" ContentTemplate="{StaticResource SingleRow}"

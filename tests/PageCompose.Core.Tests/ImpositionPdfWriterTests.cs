@@ -133,6 +133,53 @@ public sealed class ImpositionPdfWriterTests : IDisposable
     }
 
     [Fact]
+    public void Visuals_with_their_own_back_get_it_and_the_others_the_shared_one()
+    {
+        var a = VisualLoader.Load(_files.Jpeg(1063, 650, name: "a.jpg"));
+        var b = VisualLoader.Load(_files.Jpeg(1000, 640, name: "b.jpg"));
+        var backOfA = VisualLoader.Load(_files.Jpeg(900, 600, name: "a-verso.jpg"));
+        var shared = VisualLoader.Load(_files.Png(600, 400, name: "shared.png"));
+        var layout = CardsOnSra3();
+        var plan = SheetFiller.Fill([new(a, 30), new(b, 10)], layout.PerSheet, completeLastSheet: false);
+        var backs = plan.Sheets.Select(s => s.Select(v => v == a ? backOfA : null).ToArray()).ToList();
+        var job = new ImpositionJob(layout, plan.Sheets, Backs: backs);
+
+        using var ownOnly = WriteAndOpen(job);
+        using var withShared = WriteAndOpen(job with { Verso = shared });
+
+        Assert.True(job.HasBack);
+        Assert.Same(backOfA, job.BackOf(0, 0));
+        Assert.Null(job.BackOf(1, plan.Sheets[1].Length - 1));
+        Assert.Equal(4, ownOnly.PageCount);           // 40 cards at 21 per sheet, each with its back page
+        Assert.Equal(3, ImageXObjects(ownOnly).Count);
+        Assert.Equal(4, ImageXObjects(withShared).Count);
+        // Sheet 2 holds 9 a and 10 b: without a shared back, only the 9 a have one.
+        Assert.True(ContentLength(ownOnly.Pages[3]) < ContentLength(withShared.Pages[3]));
+    }
+
+    [Fact]
+    public void Backs_without_any_back_leave_the_sheets_single_sided()
+    {
+        var a = VisualLoader.Load(_files.Jpeg(1063, 650));
+        var layout = CardsOnSra3();
+        var job = ImpositionJob.Repeat(layout, a, 2) with { Backs = [new VisualInfo?[layout.PerSheet], new VisualInfo?[layout.PerSheet]] };
+
+        using var doc = WriteAndOpen(job);
+
+        Assert.False(job.HasBack);
+        Assert.Equal(2, doc.PageCount);
+    }
+
+    [Fact]
+    public void Backs_must_match_the_sheets()
+    {
+        var a = VisualLoader.Load(_files.Jpeg(1063, 650));
+        var job = ImpositionJob.Repeat(CardsOnSra3(), a, 2) with { Backs = [new VisualInfo?[3]] };
+
+        Assert.Throws<ArgumentException>(() => ImpositionPdfWriter.Write(job, Stream.Null));
+    }
+
+    [Fact]
     public void Cut_lines_are_drawn_on_the_front_only()
     {
         var recto = VisualLoader.Load(_files.Jpeg(1063, 650, name: "recto.jpg"));

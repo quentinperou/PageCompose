@@ -48,8 +48,8 @@ with any printer that prints at actual size.
   a `.PageCompose` file (or dropping it on the window) imports them too; a file of a single preset applies it at once.
   The file is still JSON, readable in Notepad.
 - **PDF of several pages**: a page list on the line of the file chooses the page used. Added to a list of visuals,
-  the app asks whether to take all its pages (one line each) or one page, chosen in a list. A PDF of two pages in Repeat
-  mode (a business card) gives its front and its back at once.
+  the app asks whether to take all its pages (one line each) or one page, chosen in a list. A PDF of two pages (a
+  business card) gives its front and its back at once: in Repeat mode, or in a list when Double-sided is ticked.
 - **Preset sizes**: business card 85 × 55, photos 9 × 13 / 10 × 15 / 13 × 18 / 15 × 20 / 20 × 30 (lab sizes, in
   inches: 10 × 15 = 4 × 6 in = 101.6 × 152.4 mm), squares (also 10 × 10 with a 5 mm white border), **instant photo frames** (classic
   Polaroid, Instax Mini, Square and Wide, with their thick border at the bottom), A6 postcard, DL and A5 flyers, A4,
@@ -66,8 +66,10 @@ with any printer that prints at actual size.
   follows; "Centre the photo" in its right click menu).
 - **Cutting**: edge to edge (a single cut between two visuals), short **crop marks**, **bleed** (2 mm by default),
   an optional **space between visuals** (5 mm for instance), and **continuous cut lines** across the whole block.
-- **Double-sided**: a back shared by every visual, placed so that it lands behind its front (long or short edge
-  flip, optional 180° turn). The preview shows **both sides next to each other**.
+- **Double-sided**: each back is placed so that it lands behind its front (long or short edge flip, optional 180°
+  turn). In a list, **each visual may have its own back**, on its line (drop it on its "Back" slot); the others get
+  the **shared back**. The app finds them itself (an "auto" badge says so): page 2 of a PDF of two pages, or
+  `-recto` / `-verso` (`front` / `back`) files added together. The preview shows **both sides next to each other**.
 - **True preview**: what you see is the exported PDF, rendered by Windows, with the unprintable area shown in red.
   **Zoom** with the magnifier buttons, Ctrl + wheel or a double click (move around with the middle button, or Alt +
   click and drag), shown in % of the real size; the fit button brings the whole sheet back in view.

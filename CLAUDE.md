@@ -40,14 +40,14 @@ the photo sizes moved to exact inches.
   presets); the UI calls them **Repeat · Same size · Mixed sizes**, in French **Répétition · Même format ·
   Multi-formats** (renamed in 0.5.0 at the author's request: "Composition" sounded like the mode of several sizes). In Repeat and Compose, "Fill the last sheet" is optional (off: exactly the
   quantity asked); Mixed lays exactly the copies asked.
-- Drag and drop of files and folders, shared back (double-sided) with the front and back previews side by side,
-  sheet navigation, resolution and cropping checks, export.
+- Drag and drop of files and folders, double-sided (a shared back, and in the lists a back per visual) with the
+  front and back previews side by side, sheet navigation, resolution and cropping checks, export.
 - English/French UI with live switching from Settings (the main window is rebuilt on the same view model).
 - Windows 11 Fluent theme, light or dark: follows Windows, or forced from Settings (applied live).
 - Updates from GitHub Releases, as in CropPdf: check at startup (can be turned off), Stable/Beta channel, bar in the
   main window, download checked with SHA-256, silent install and relaunch. The Settings window copies CropPdf's
   (language, theme, updates, about).
-- 631 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.5.0.exe` locally (Inno Setup 6).
+- 646 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.5.0.exe` locally (Inno Setup 6).
 - The installer is not signed: the UAC prompt shows "Unknown publisher" (QuentinPerou appears in the file details
   and in Installed apps). Left as is for now (October 10, 2026). A paid certificate would show the author's legal
   name, SignPath Foundation its own name; only a self-signed certificate trusted by hand on each PC shows "QuentinPerou".
@@ -70,8 +70,11 @@ the photo sizes moved to exact inches.
     tried (fewer above 150 copies), `NumberPositions` places the cut numbers on screen;
   - `Visuals/VisualLoader`: JPEG/PNG headers read without decoding, EXIF orientation, PDF through PDFsharp;
     errors are `VisualLoadException` with a `VisualLoadError` code that the UI translates;
+  - `Visuals/BackPairs`: fronts and backs told apart by their names among files added together (`recto` / `verso`,
+    `front` / `back`, a word of its own, any case; same folder and rest of the name, the extension may differ);
   - `Pdf/ImpositionPdfWriter`: writes the PDF (PDFsharp 6.2.4, MIT); `ImpositionJob.SheetLayouts` gives each sheet
-    its own layout (`ImpositionJob.Mixed`). `Pdf/FlatPdfWriter`: the flattened PDF, one JPEG picture per page,
+    its own layout (`ImpositionJob.Mixed`); `ImpositionJob.Backs` the own back of each cell (null: the shared
+    `Verso`), `HasBack` / `BackOf`. `Pdf/FlatPdfWriter`: the flattened PDF, one JPEG picture per page,
     embedded as it is.
   - `Pdf/CuttingPlanWriter`: the cutting plan of the Mixed mode, an A4 PDF to print on office paper, never with the
     sheets: one page per sheet, the sheet drawn smaller (its visuals faded, through `ImpositionPdfWriter.DrawVisuals`)
@@ -134,7 +137,7 @@ the photo sizes moved to exact inches.
     Cursor: a hand when zoomed, the move cursor over a photo, the hand again over a photo while Alt is held (updated
     when Alt is pressed or released, asked by the author).
   - **Reframing on the preview** (`MainWindow.xaml.cs`, "Reframing"; `MainViewModel.BeginCropDrag` / `CropDragTo` /
-    `EndCropDrag`): the left button drags a photo in its cell (front, or the shared back), every copy of its line on
+    `EndCropDrag`): the left button drags a photo in its cell (front, or its back), every copy of its line on
     the sheet following; meanwhile the copies are drawn over the rendered preview (`PreviewSide.Overlays`,
     `CropOverlay`: the photo as stored, `ThumbnailLoader.LoadRawAsync`, faded around its cell, sharp inside it) until
     the preview is rendered again with the new part kept. A double click still zooms; "Recentrer la photo" in the
@@ -174,7 +177,8 @@ the photo sizes moved to exact inches.
     `%TEMP%\PageCompose-Update`, then asks whether to delete `%LOCALAPPDATA%\PageCompose` (settings, presets), No by
     default; a silent uninstall keeps them. The .NET runtime stays (shared).
   - **PDF pages**: `VisualInfo.PageNumber` / `PageCount`; a page list on the file line (`VisualItem.Pages`) when
-    there are several. A PDF of exactly two pages in Repeat mode sets page 2 as the back. Added to a list (Same size,
+    there are several. A PDF of exactly two pages in Repeat mode sets page 2 as the back; in a list with
+    Double-sided ticked, page 2 becomes the back of its line. Otherwise, added to a list (Same size,
     Mixed sizes), PDFs of several pages make the app ask once (`PdfPagesWindow`, through
     `MainViewModel.AskPdfPages`): all their pages, one line each, or one page (chosen in a list for a single PDF;
     the first of each for several, changed afterwards on its line). Cancel or the window closed: those PDFs are not
@@ -227,6 +231,12 @@ the photo sizes moved to exact inches.
 - A PDF with a TrimBox is placed at 100 % on the trim and clipped to the layout bleed.
 - Back: cells mirrored according to the flip (long edge: vertical axis; short edge: horizontal axis). Crop marks
   and continuous cut lines (`ImpositionJob.CutLines`: every cut, across the block of trims) on the front only.
+- **A back per visual** (lists only, `VisualItem.Back`, chosen by the author from a combined mock-up): with
+  Double-sided ticked, each line shows a "Verso" slot (drop or click; × gives the shared back again; right click turns
+  or centres it). Behind a line without its own back: the shared back of the "Recto verso" card, else nothing (a
+  notice counts those visuals). Found by the app, with an "auto" badge (`IsBackAuto`): page 2 of a PDF of two pages,
+  and `BackPairs` among the files added together. In Repeat mode, one such pair is the visual and the shared back.
+  Duplicating a line copies its back; it belongs to the line, not to the presets.
 - **Space between visuals** (`LayoutOptions.SpacingMm`): trim to trim; the gap is `max(spacing, 2 × bleed)`, so the
   bleed always fits. Spacing is only between visuals, not around the block. When it is wider than the bleeds, the
   band left between them is **painted white** (`ImpositionPdfWriter.PaintSpaces`, both sides): nothing changes on

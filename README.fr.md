@@ -51,7 +51,8 @@ de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réel
   Bloc-notes.
 - **PDF de plusieurs pages** : une liste sur la ligne du fichier choisit la page utilisée. Ajouté à une liste de
   visuels, l'appli demande s'il faut prendre toutes ses pages (une ligne chacune) ou une page, choisie dans une liste. Un
-  PDF de deux pages en mode Répétition (une carte de visite) donne d'un coup son recto et son verso.
+  PDF de deux pages (une carte de visite) donne d'un coup son recto et son verso : en mode Répétition, ou dans une
+  liste quand Recto verso est coché.
 - **Formats prédéfinis** : carte de visite 85 × 55, photos 9 × 13 / 10 × 15 / 13 × 18 / 15 × 20 / 20 × 30 (tailles
   de labo, en pouces : 10 × 15 = 4 × 6 po = 101,6 × 152,4 mm), carrés (dont un 10 × 10 avec une marge blanche de 5 mm), **cadres photo
   instantanée** (Polaroid classique, Instax Mini, Square et Wide, avec leur grosse bande en bas), carte postale A6,
@@ -70,8 +71,11 @@ de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réel
 - **Coupe** : bord à bord (une seule coupe entre deux visuels), **traits de coupe** courts, **fond perdu**
   (2 mm par défaut) et, en option, un **espace entre les visuels** (5 mm par exemple) et des **lignes de coupe
   continues** sur tout le bloc.
-- **Recto verso** : un verso commun à tous les visuels, placé pour retomber derrière son recto (retournement bord
-  long ou bord court, rotation de 180° en option). L'aperçu montre **les deux faces côte à côte**.
+- **Recto verso** : chaque verso est placé pour retomber derrière son recto (retournement bord long ou bord court,
+  rotation de 180° en option). Dans une liste, **chaque visuel peut avoir son propre verso**, sur sa ligne (à déposer
+  sur sa case « Verso ») ; les autres reçoivent le **verso commun**. L'appli les trouve seule (un badge « auto » le
+  signale) : la page 2 d'un PDF de deux pages, ou des fichiers `-recto` / `-verso` (`front` / `back`) ajoutés
+  ensemble. L'aperçu montre **les deux faces côte à côte**.
 - **Aperçu fidèle** : c'est le PDF exporté, rendu par Windows, avec la zone non imprimable en rouge.
   **Zoom** avec les loupes, Ctrl + molette ou un double clic (pour se déplacer : clic molette, ou Alt + glisser),
   affiché en % de la taille réelle ; le bouton « Ajuster » remet la feuille entière dans la vue.

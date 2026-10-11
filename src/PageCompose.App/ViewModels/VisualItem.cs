@@ -110,6 +110,43 @@ public sealed class VisualItem : ObservableObject
     public string FileName => Info.FileName;
     public string Details => Describe(Info);
 
+    /// <summary>The file name, with the page of a PDF of several pages: "card.pdf · page 2" (a back, on its line).</summary>
+    public string NameWithPage => Info.PageCount > 1 ? Strings.Format("NameWithPage", FileName, Info.PageNumber) : FileName;
+
+    private VisualItem? _back;
+
+    /// <summary>
+    /// Its own back when the layout is double-sided (lines of a list); none: the shared back of the "Double-sided"
+    /// card. Like the turn, it belongs to the file line, not to the presets.
+    /// </summary>
+    public VisualItem? Back
+    {
+        get => _back;
+        set
+        {
+            if (!Set(ref _back, value)) return;
+            IsBackAuto = false;
+            OnPropertyChanged(nameof(HasBack));
+            _changed();
+        }
+    }
+
+    public bool HasBack => _back is not null;
+
+    /// <summary>A back found by the app (page 2 of the PDF, a "-verso" file added with it), without recomputing anything.</summary>
+    public void InitBack(VisualItem back, bool auto)
+    {
+        _back = back;
+        IsBackAuto = auto;
+        OnPropertyChanged(nameof(Back));
+        OnPropertyChanged(nameof(HasBack));
+    }
+
+    private bool _isBackAuto;
+
+    /// <summary>The back was found by the app: an "auto" badge says so on the line.</summary>
+    public bool IsBackAuto { get => _isBackAuto; private set => Set(ref _isBackAuto, value); }
+
     /// <summary>Pages of the file: the page list shows when there are several.</summary>
     public IReadOnlyList<PageOption> Pages { get; }
     public bool HasPages => Pages.Count > 1;
@@ -131,6 +168,7 @@ public sealed class VisualItem : ObservableObject
         _info = info;
         OnPropertyChanged(nameof(Info));
         OnPropertyChanged(nameof(Details));
+        OnPropertyChanged(nameof(NameWithPage));
         _changed();
     }
 

@@ -135,7 +135,7 @@
     <value>Un exemplaire de plus</value>
   </data>
   <data name="DuplexTitle" xml:space="preserve">
-    <value>Recto verso (verso commun)</value>
+    <value>Recto verso</value>
   </data>
   <data name="DropVerso" xml:space="preserve">
     <value>Glissez le verso ici ou cliquez pour choisir</value>
@@ -877,5 +877,35 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
   </data>
   <data name="UpdateChannelBeta" xml:space="preserve">
     <value>Bêta</value>
+  </data>
+  <data name="BackLabel" xml:space="preserve">
+    <value>Verso</value>
+  </data>
+  <data name="DropLineBack" xml:space="preserve">
+    <value>Déposer son verso · sinon : verso commun</value>
+  </data>
+  <data name="LineBackAuto" xml:space="preserve">
+    <value>auto</value>
+  </data>
+  <data name="LineBackAutoTooltip" xml:space="preserve">
+    <value>Trouvé par PageCompose : page 2 du PDF, ou le fichier verso ajouté avec lui</value>
+  </data>
+  <data name="RemoveBackTooltip" xml:space="preserve">
+    <value>Retirer ce verso (le verso commun le remplace)</value>
+  </data>
+  <data name="SharedBackCaption" xml:space="preserve">
+    <value>Verso commun (visuels sans verso)</value>
+  </data>
+  <data name="NoticeWithoutBackOne" xml:space="preserve">
+    <value>{0} visuel sans verso : imprimé recto seul.</value>
+  </data>
+  <data name="NoticeWithoutBackMany" xml:space="preserve">
+    <value>{0} visuels sans verso : imprimés recto seul.</value>
+  </data>
+  <data name="NameWithPage" xml:space="preserve">
+    <value>{0} · page {1}</value>
+  </data>
+  <data name="OpenLineBackTitle" xml:space="preserve">
+    <value>Choisir le verso de {0}</value>
   </data>
 </root>

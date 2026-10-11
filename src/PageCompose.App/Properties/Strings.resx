@@ -135,7 +135,7 @@
     <value>One copy more</value>
   </data>
   <data name="DuplexTitle" xml:space="preserve">
-    <value>Double-sided (shared back)</value>
+    <value>Double-sided</value>
   </data>
   <data name="DropVerso" xml:space="preserve">
     <value>Drop the back here or click to choose</value>
@@ -877,5 +877,35 @@ The file may be open in another program.</value>
   </data>
   <data name="UpdateChannelBeta" xml:space="preserve">
     <value>Beta</value>
+  </data>
+  <data name="BackLabel" xml:space="preserve">
+    <value>Back</value>
+  </data>
+  <data name="DropLineBack" xml:space="preserve">
+    <value>Drop its back · else: the shared back</value>
+  </data>
+  <data name="LineBackAuto" xml:space="preserve">
+    <value>auto</value>
+  </data>
+  <data name="LineBackAutoTooltip" xml:space="preserve">
+    <value>Found by PageCompose: page 2 of the PDF, or the back file added with it</value>
+  </data>
+  <data name="RemoveBackTooltip" xml:space="preserve">
+    <value>Remove this back (the shared back takes its place)</value>
+  </data>
+  <data name="SharedBackCaption" xml:space="preserve">
+    <value>Shared back (visuals without their own)</value>
+  </data>
+  <data name="NoticeWithoutBackOne" xml:space="preserve">
+    <value>{0} visual has no back: printed single-sided.</value>
+  </data>
+  <data name="NoticeWithoutBackMany" xml:space="preserve">
+    <value>{0} visuals have no back: printed single-sided.</value>
+  </data>
+  <data name="NameWithPage" xml:space="preserve">
+    <value>{0} · page {1}</value>
+  </data>
+  <data name="OpenLineBackTitle" xml:space="preserve">
+    <value>Choose the back of {0}</value>
   </data>
 </root>

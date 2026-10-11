@@ -700,13 +700,13 @@ public sealed class MainViewModel : ObservableObject
             var cell = front ? layout.Cells[i] : Placement.MirrorForVerso(layout.Cells[i], layout.Sheet, _flip);
             var b = cell.Bleed;
             if (x < b.X || x > b.Right || y < b.Y || y > b.Bottom) continue;
-            var line = front ? LineOfCell(PreviewSheetIndex, i) : VersoEnabled ? Verso : null;
+            var line = front ? LineOfCell(PreviewSheetIndex, i) : BackOf(LineOfCell(PreviewSheetIndex, i));
             return line is null ? null : (line, cell, side);
         }
         return null;
     }
 
-    // Every cell of the sheet shown holding this line (on the back: the back is behind every front).
+    // Every cell of the sheet shown holding this line, on the front, or this back, on the back.
     private List<LayoutCell> CellsOf(VisualItem line, bool front)
     {
         var cells = new List<LayoutCell>();
@@ -716,10 +716,18 @@ public sealed class MainViewModel : ObservableObject
         {
             if (visuals[i] is null) continue;
             if (front && LineOfCell(PreviewSheetIndex, i) == line) cells.Add(layout.Cells[i]);
-            else if (!front) cells.Add(Placement.MirrorForVerso(layout.Cells[i], layout.Sheet, _flip));
+            else if (!front && BackOf(LineOfCell(PreviewSheetIndex, i)) == line)
+                cells.Add(Placement.MirrorForVerso(layout.Cells[i], layout.Sheet, _flip));
         }
         return cells;
     }
+
+    /// <summary>
+    /// What is printed behind a line when the layout is double-sided: its own back (lines of a list), else the shared
+    /// one; null when single-sided.
+    /// </summary>
+    private VisualItem? BackOf(VisualItem? line) =>
+        !VersoEnabled ? null : (_mode != LayoutMode.Repeat ? line?.Back : null) ?? Verso;
 
     private VisualItem? LineOfCell(int sheet, int cell)
     {
@@ -779,7 +787,25 @@ public sealed class MainViewModel : ObservableObject
             if (error is not null) errors.Add(error);
         }
 
+        // A front and its back added together ("card-recto.pdf" and "card-verso.pdf", "front" / "back"): in the lists,
+        // when the layout is double-sided, the back goes on the line of its front; one such pair in the Repeat mode is
+        // its visual and the back, as a PDF of two pages.
+        var pairs = BackPairs.Find(loaded.Select(v => v.OriginalPath))
+            .Select(p => (Front: loaded.First(v => SamePath(v.OriginalPath, p.Front)), Back: loaded.First(v => SamePath(v.OriginalPath, p.Back))))
+            .Where(p => p.Front.PageCount <= 2) // a back for each page of a longer PDF: not guessed
+            .ToList();
+
         var messages = new List<string>(notes);
+        if (_mode == LayoutMode.Repeat && loaded.Count == 2 && pairs.Count == 1)
+        {
+            RepeatVisual = CreateItem(pairs[0].Front, _ => RepeatVisual = null);
+            Verso = CreateItem(pairs[0].Back, _ => Verso = null);
+            VersoError = null;
+            VersoEnabled = true;
+            FilesMessage = notes.Count > 0 ? string.Join(" ", notes) : null;
+            return;
+        }
+
         if (_mode == LayoutMode.Repeat && loaded.Count > 1)
         {
             SetMode(LayoutMode.Compose, carryOver: false);
@@ -812,9 +838,19 @@ public sealed class MainViewModel : ObservableObject
             bool InList(VisualInfo v) => Visuals.Any(i =>
                 string.Equals(i.Info.OriginalPath, v.OriginalPath, StringComparison.OrdinalIgnoreCase) && i.Info.PageNumber == v.PageNumber);
 
+            // Double-sided: the backs added with their fronts go on their lines, and a PDF of two pages is a front and its
+            // back; both show an "auto" badge. Otherwise they are visuals like the others.
+            var backOf = new Dictionary<VisualInfo, VisualInfo>(ReferenceEqualityComparer.Instance);
+            if (VersoEnabled)
+            {
+                foreach (var (front, back) in pairs) backOf[front] = back;
+                loaded.RemoveAll(v => backOf.Values.Any(b => ReferenceEquals(b, v)));
+            }
+            bool TwoSided(VisualInfo v) => VersoEnabled && v.PageCount == 2 && !backOf.ContainsKey(v);
+
             // PDFs of several pages: all their pages (one line each) or one page, asked once for all of them; cancelled,
             // they are left out (the other files are added).
-            var multiPage = loaded.Where(v => v.PageCount > 1 && !InList(v)).ToList();
+            var multiPage = loaded.Where(v => v.PageCount > 1 && !TwoSided(v) && !backOf.ContainsKey(v) && !InList(v)).ToList();
             var choice = multiPage.Count > 0 && AskPdfPages is { } ask
                 ? ask([.. multiPage.Select(v => (v.FileName, v.PageCount))])
                 : new PdfPagesChoice(false);
@@ -825,11 +861,24 @@ public sealed class MainViewModel : ObservableObject
                 if (InList(v))
                 {
                     duplicates++;
+                    // Its back added again: on the line already there, if it has none.
+                    if (backOf.TryGetValue(v, out var again) && Visuals.FirstOrDefault(i => SamePath(i.Info.OriginalPath, v.OriginalPath) &&
+                            i.Info.PageNumber == v.PageNumber && !i.HasBack) is { } existing)
+                        existing.InitBack(CreateBackItem(existing, again), auto: true);
                     continue;
                 }
-                if (v.PageCount < 2)
+                if (v.PageCount < 2 || TwoSided(v) || backOf.ContainsKey(v))
                 {
-                    Visuals.Add(CreateItem(v));
+                    var line = CreateItem(v);
+                    if (backOf.TryGetValue(v, out var back))
+                        line.InitBack(CreateBackItem(line, back), auto: true);
+                    else if (TwoSided(v))
+                    {
+                        var (page2, _, error) = await LoadAsync(v.OriginalPath, 2);
+                        if (page2 is not null) line.InitBack(CreateBackItem(line, page2), auto: true);
+                        if (error is not null) errors.Add(error);
+                    }
+                    Visuals.Add(line);
                     continue;
                 }
                 if (choice is null) continue;
@@ -862,6 +911,20 @@ public sealed class MainViewModel : ObservableObject
         VersoEnabled = true;
         if (note is not null) FilesMessage = note;
     }
+
+    /// <summary>The own back of a line of the list, dropped on its "Back" slot or chosen with it.</summary>
+    public async Task SetLineBackAsync(VisualItem line, string path)
+    {
+        var (info, note, error) = await LoadAsync(path);
+        FilesMessage = error ?? note;
+        if (info is null || !Visuals.Contains(line)) return;
+        line.Back = CreateBackItem(line, info);
+    }
+
+    // A back on its line: its close button takes it off the line (the shared back is then printed behind it).
+    private VisualItem CreateBackItem(VisualItem line, VisualInfo info) => CreateItem(info, _ => line.Back = null);
+
+    private static bool SamePath(string a, string b) => string.Equals(a, b, StringComparison.OrdinalIgnoreCase);
 
     /// <summary>
     /// Reads a visual (a page of a PDF, from 1). A PDF that PDFsharp cannot read becomes an image rendered by Windows,
@@ -1004,8 +1067,8 @@ public sealed class MainViewModel : ObservableObject
             ? [path]
             : Enumerable.Range(0, count).Select(i =>
             {
-                int sheet = (job.Verso is null ? i : i / 2) + 1;
-                bool back = job.Verso is not null && i % 2 == 1;
+                int sheet = (job.HasBack ? i / 2 : i) + 1;
+                bool back = job.HasBack && i % 2 == 1;
                 return Path.Combine(folder, Strings.Format(back ? "JpegPageBack" : "JpegPageFront", stem, sheet) + ".jpg");
             }).ToList();
 
@@ -1022,7 +1085,7 @@ public sealed class MainViewModel : ObservableObject
     }
 
     // Front, then back when there is one, for every sheet: as in the PDF.
-    private static int PageCount(ImpositionJob job) => job.Sheets.Count * (job.Verso is null ? 1 : 2);
+    private static int PageCount(ImpositionJob job) => job.Sheets.Count * (job.HasBack ? 2 : 1);
 
     private async Task RenderPagesAsync(ImpositionJob job, IReadOnlyList<string> files)
     {
@@ -1098,6 +1161,12 @@ public sealed class MainViewModel : ObservableObject
         if (index < 0) return;
         var copy = CreateItem(item.SourceInfo);
         copy.CopyChoicesOf(item);
+        if (item.Back is { } back)
+        {
+            var copyBack = CreateBackItem(copy, back.SourceInfo);
+            copyBack.CopyChoicesOf(back);
+            copy.InitBack(copyBack, item.IsBackAuto);
+        }
         Visuals.Insert(index + 1, copy);
         Changed();
     }
@@ -1165,6 +1234,14 @@ public sealed class MainViewModel : ObservableObject
         {
             _repeatVisual = CreateItem(Visuals[0].SourceInfo, _ => RepeatVisual = null);
             _repeatVisual.CopyChoicesOf(Visuals[0]);
+            // Its own back is the back of the Repeat mode, when there was no shared one.
+            if (_verso is null && Visuals[0].Back is { } back)
+            {
+                _verso = CreateItem(back.SourceInfo, _ => Verso = null);
+                _verso.CopyChoicesOf(back);
+                OnPropertyChanged(nameof(Verso));
+                OnPropertyChanged(nameof(HasVerso));
+            }
         }
 
         // Lines added in another mode get their size in the Mixed mode now, from the size chosen until then.
@@ -1539,10 +1616,18 @@ public sealed class MainViewModel : ObservableObject
         var lowDpi = new List<(string Name, int Dpi)>();
         var cropped = new List<(string Name, double Ratio)>();
         var ownBleed = new List<(string Name, double Mm)>();
+        // Each back in the cell of its front; the shared one, when some visual has no back of its own, in the cell given.
+        var versoSide = new SideOptions(true, _flip, RotateVerso180, BackHasMargins);
+        bool ownBacks = VersoEnabled && _mode != LayoutMode.Repeat;
         foreach (var (item, cell) in fronts)
+        {
             Assess(item, cell, SideOptions.Recto, lowDpi, cropped, ownBleed);
-        if (VersoEnabled && Verso is not null && back is not null)
-            Assess(Verso, back, new SideOptions(true, _flip, RotateVerso180, BackHasMargins), lowDpi, cropped, ownBleed);
+            if (ownBacks && item.Back is { } own)
+                Assess(own, cell, versoSide, lowDpi, cropped, ownBleed);
+        }
+        int withoutBack = ownBacks ? ActiveVisuals().Count(v => !v.HasBack) : ActiveVisuals().Count();
+        if (VersoEnabled && Verso is not null && back is not null && withoutBack > 0)
+            Assess(Verso, back, versoSide, lowDpi, cropped, ownBleed);
 
         var critical = lowDpi.Where(d => d.Dpi < CriticalDpi).ToList();
         var low = lowDpi.Where(d => d.Dpi >= CriticalDpi).ToList();
@@ -1562,8 +1647,10 @@ public sealed class MainViewModel : ObservableObject
 
         // No notice for what the settings column already says (asked by the author): the empty cells are in the
         // quantity summary, the "Fit" mode in its own label.
-        if (VersoEnabled && Verso is null)
+        if (VersoEnabled && Verso is null && withoutBack == ActiveVisuals().Count())
             Notices.Add(new Notice(NoticeLevel.Warning, Strings.Get("NoticeNoBack")));
+        else if (VersoEnabled && Verso is null && withoutBack > 0)
+            Notices.Add(new Notice(NoticeLevel.Warning, Strings.Count("NoticeWithoutBack", withoutBack)));
     }
 
     private void Assess(VisualItem item, LayoutCell cell, SideOptions side,
@@ -1640,7 +1727,7 @@ public sealed class MainViewModel : ObservableObject
                 return ms.ToArray();
             });
             var recto = await PdfPreviewRenderer.RenderAsync(pdf, 0, _previewWidthPx);
-            var verso = job.Verso is null ? null : await PdfPreviewRenderer.RenderAsync(pdf, 1, _previewWidthPx);
+            var verso = job.HasBack ? await PdfPreviewRenderer.RenderAsync(pdf, 1, _previewWidthPx) : null;
             if (version == _previewVersion)
             {
                 RectoSide.Image = recto;
@@ -1671,9 +1758,14 @@ public sealed class MainViewModel : ObservableObject
             ? ImpositionJob.Mixed(_mixed, sheets) with { Title = Strings.Get("PdfTitleMixed"), CutLines = MixedCutLines }
             : new ImpositionJob(Layout!, [.. sheets.Select(i => Plan.Sheets[i])], CutLines: CutLines,
                 Title: _mode == LayoutMode.Repeat ? RepeatVisual?.Info.FileName : Strings.Get("PdfTitleCompose"));
+        // The own backs of the lines, cell by cell (the others get the shared back).
+        bool ownBacks = VersoEnabled && _mode != LayoutMode.Repeat && Visuals.Any(v => v.HasBack);
         return job with
         {
             Verso = VersoEnabled ? Verso?.Info : null,
+            Backs = ownBacks
+                ? [.. sheets.Select((s, k) => Enumerable.Range(0, job.Sheets[k].Length).Select(c => LineOfCell(s, c)?.Back?.Info).ToArray())]
+                : null,
             Fit = _fit,
             Flip = _flip,
             RotateVerso180 = RotateVerso180,

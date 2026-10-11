@@ -150,6 +150,22 @@ public partial class MainWindow : Window
             await AddPathsAsync(paths); // a preset file
     }
 
+    // The "Back" slot of a line of the list: its own back, dropped or chosen (a file dropped on its back replaces it).
+    private async void LineBack_Click(object sender, RoutedEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not VisualItem line) return;
+        var dialog = new OpenFileDialog { Title = Strings.Format("OpenLineBackTitle", line.FileName), Filter = Strings.Get("VisualsFilter") };
+        if (dialog.ShowDialog(this) == true) await ViewModel.SetLineBackAsync(line, dialog.FileName);
+    }
+
+    private async void LineBack_Drop(object sender, DragEventArgs e)
+    {
+        e.Handled = true;
+        DropOverlay.Visibility = Visibility.Collapsed;
+        if ((sender as FrameworkElement)?.DataContext is VisualItem line && ExpandPaths(DroppedPaths(e)) is [var first, ..])
+            await ViewModel.SetLineBackAsync(line, first);
+    }
+
     // ---- Export ----
 
     private async void Export_Click(object sender, RoutedEventArgs e)
