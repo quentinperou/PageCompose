@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <!-- Icon of the PageCompose preset files (.PageCompose), 256 px design. Written by scripts/make-icons.ps1: change the design there. -->
+  <!-- Icon of the PageCompose preset files (.PageComposePreset), 256 px design. Written by scripts/make-icons.ps1: change the design there. -->
   <defs>
     <linearGradient id="gradient" gradientUnits="userSpaceOnUse" x1="36" y1="8" x2="185.92" y2="267.67">
       <stop offset="0" stop-color="#2CC5B5" />

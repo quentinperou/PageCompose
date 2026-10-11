@@ -180,6 +180,21 @@ public sealed class ImpositionPdfWriterTests : IDisposable
     }
 
     [Fact]
+    public void The_mark_of_each_sheet_is_written_on_its_front_only()
+    {
+        var recto = VisualLoader.Load(_files.Jpeg(1063, 650, name: "recto.jpg"));
+        var verso = VisualLoader.Load(_files.Jpeg(1000, 640, name: "verso.jpg"));
+        var job = ImpositionJob.Repeat(CardsOnSra3(), recto, 2, verso);
+
+        using var plain = WriteAndOpen(job);
+        using var marked = WriteAndOpen(job with { Marks = ["dupont · 11/10/2026 · sheet 1/2", "dupont · 11/10/2026 · sheet 2/2"] });
+
+        Assert.True(ContentLength(marked.Pages[0]) > ContentLength(plain.Pages[0]));
+        Assert.Equal(ContentLength(plain.Pages[1]), ContentLength(marked.Pages[1]));
+        Assert.Throws<ArgumentException>(() => ImpositionPdfWriter.Write(job with { Marks = ["one mark"] }, Stream.Null));
+    }
+
+    [Fact]
     public void Cut_lines_are_drawn_on_the_front_only()
     {
         var recto = VisualLoader.Load(_files.Jpeg(1063, 650, name: "recto.jpg"));

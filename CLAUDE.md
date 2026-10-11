@@ -16,6 +16,14 @@ QuentinPerou, with Claude Code (Anthropic)".
 
 ## Project status (October 11, 2026)
 
+Version **0.7.0** (October 11, 2026: commit "PageCompose 0.7.0", tag `v0.7.0`, GitHub release with its patch note)
+adds iPhone HEIC, WebP and TIFF photos (converted by Windows), the ID photo size 35 × 45, the mark of each sheet,
+the projects (`.PageComposeProject`: files and settings, saved with an export or alone, opened again by a double click
+or a drop), undo / redo (Ctrl+Z, Ctrl+Y), and renames the preset files `.PageComposePreset`.
+Version **0.6.0** (published on October 11, 2026: tag `v0.6.0` on the commit "PageCompose 0.6.0", GitHub release
+with its patch note) adds a back per visual in the lists (found alone from a 2-page PDF or a `-recto` / `-verso`
+pair), reframing by dragging a photo on the preview, "Duplicate the line", a custom size per line in Mixed sizes and
+the window that asks for the pages of a PDF.
 Version **0.5.0** (published on October 11, 2026: commit "PageCompose 0.5.0: Mixed sizes mode and cutting plan",
 tag `v0.5.0`, GitHub release with its patch note) adds the third mode, **Mixed** (several print sizes on a sheet,
 packed with guillotine cuts, the cutting order numbered on the preview, the cutting plan), and widens the settings
@@ -47,7 +55,7 @@ the photo sizes moved to exact inches.
 - Updates from GitHub Releases, as in CropPdf: check at startup (can be turned off), Stable/Beta channel, bar in the
   main window, download checked with SHA-256, silent install and relaunch. The Settings window copies CropPdf's
   (language, theme, updates, about).
-- 646 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.6.0.exe` locally (Inno Setup 6).
+- 1118 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.7.0.exe` locally (Inno Setup 6).
 - The installer is not signed: the UAC prompt shows "Unknown publisher" (QuentinPerou appears in the file details
   and in Installed apps). Left as is for now (October 10, 2026). A paid certificate would show the author's legal
   name, SignPath Foundation its own name; only a self-signed certificate trusted by hand on each PC shows "QuentinPerou".
@@ -69,7 +77,8 @@ the photo sizes moved to exact inches.
     `Spaces`, and the item of each cell; items too large left out). A guillotine tree per sheet, many heuristics
     tried (fewer above 150 copies), `NumberPositions` places the cut numbers on screen;
   - `Visuals/VisualLoader`: JPEG/PNG headers read without decoding, EXIF orientation, PDF through PDFsharp;
-    errors are `VisualLoadException` with a `VisualLoadError` code that the UI translates;
+    errors are `VisualLoadException` with a `VisualLoadError` code that the UI translates. `ConvertedExtensions`
+    (HEIC / HEIF, WebP, TIFF): taken by `IsSupported`, but converted by the app first (`NeedsConversion`);
   - `Visuals/BackPairs`: fronts and backs told apart by their names among files added together (`recto` / `verso`,
     `front` / `back`, a word of its own, any case; same folder and rest of the name, the extension may differ);
   - `Pdf/ImpositionPdfWriter`: writes the PDF (PDFsharp 6.2.4, MIT); `ImpositionJob.SheetLayouts` gives each sheet
@@ -152,6 +161,12 @@ the photo sizes moved to exact inches.
     `%TEMP%\PageCompose\Converted` (files older than a day deleted at startup: another window may be using its
     own) and used as an image; `VisualInfo.SourcePath` keeps the
     original file for the name, the folder and the "PDF · … px" line.
+  - `Services/PhotoConverter`: an iPhone HEIC, a WebP or a TIFF is decoded by Windows (WinRT
+    `BitmapDecoder`: EXIF orientation applied, colours managed to sRGB, since an iPhone HEIC is in Display P3),
+    flattened on white where transparent, and saved full size as a JPEG of quality 95 in the same `Converted`
+    folder (once per file version); `SourcePath` keeps the original ("HEIC · 4032 × 3024 px"). HEIC needs the
+    "HEIF Image Extensions" and "HEVC Video Extensions" of the Store: without them, the line is refused with
+    `LoadHeicCodec`, which names them.
   - Exports ("Export as PDF" / "Export as JPG": same "as" on both buttons, "JPG" everywhere in the UI): the PDF as
     it is; "Flatten the PDF" and "Export as JPG" render each page of that PDF with
     `Windows.Data.Pdf` at 300 dpi (`Services/SheetExporter`: JPEG quality 95, 300 dpi in the file), then
@@ -167,13 +182,39 @@ the photo sizes moved to exact inches.
     settings match it: a manual change clears the selection, so picking it again applies it again. Settings →
     Presets exports them (`{"Format": "PageCompose presets", "Version": 1, "Presets": [...]}`) and imports them
     (a copy of presets.json works too; the same name replaces). The export takes all of them
-    (`all-preset.PageCompose`, the author's name) or the one chosen in a list (`<preset name>.PageCompose`,
-    `PresetStore.ExportFileName`). Exported files end in **`.PageCompose`**
-    (`PresetStore.FileExtension`, capitals wanted by the author; still plain JSON). The installer associates the
+    (`all-preset.PageComposePreset`, the author's name) or the one chosen in a list (`<preset name>.PageComposePreset`,
+    `PresetStore.ExportFileName`). Exported files end in **`.PageComposePreset`** (`PresetStore.FileExtension`,
+    capitals wanted by the author; still plain JSON; `.PageCompose` until 0.6.0, renamed at his request with no
+    compatibility kept: the installer deletes the old association). The installer associates the
     extension (`[Registry]`, ProgID `PageCompose.Presets`, icon `{app}\PresetFile.ico`): a double click starts the
     app with the file, and `MainWindow.AddPathsAsync` imports it (also when dropped on the window); a file of one
-    preset applies it, a toast says what came in. The import dialog still accepts the `.json` files of 0.4.3.
-  - **Uninstall** (`installer/PageCompose.iss`): removes the `.PageCompose` association, `%TEMP%\PageCompose` and
+    preset applies it, a toast says what came in.
+  - **Sheet mark** ("Mark each sheet", `SheetMark`, in the Export section, the settings and the presets; asked by the
+    author): `ImpositionJob.Marks`, one text per sheet, "name · date · sheet 2/5", the name being that of the exported
+    file (the one offered, in the preview). `Core/Pdf/SheetMark.Place` finds a band of 2.6 mm outside the block and its
+    crop marks, 1 mm away, inside the printable area: below, else above, else along the left or right side (read from
+    the bottom up); none on a lab print filled to its edges, which a notice says. Grey Segoe UI 6 pt (down to 4 pt
+    when too long), on the front only.
+  - **Projects** (`Services/ProjectStore`, `.PageComposeProject`, asked by the author; first named `.PageComposeJob` and
+    "commande", renamed before any release at his request: "Job" read as a print job sent to a printer): "Save the
+    project" (`SaveProject`, Export section, settings and presets, off by default) writes `<name>.PageComposeProject`
+    next to each export, PDF or JPG: a zip renamed, `project.json` (`ProjectFile`: the settings as a `LayoutPreset`, the quantity, the Repeat visual, the shared back,
+    the lines with copies, page, turn, part kept, size, own back and its "auto") and a copy of each file once
+    (`files/1/IMG_0042.HEIC`: a folder each, so that the names stay). "Export the project", a button under the box
+    (asked by the author, who chose its words), writes it alone, without exporting the sheets (`ExportProjectAsync`). A double click (ProgID `PageCompose.Project`, icon
+    `{app}\ProjectFile.ico`, chosen by the author: the preset page in front of a paler one) or a drop opens it: extracted
+    to `%TEMP%\PageCompose\Projects\<name>-<hash>` (folders older than a day deleted at startup), it takes the place of
+    the job in progress (Ctrl+Z gives it back); the export then offers its folder and name. A double click starts a
+    window of its own; dropped on a window that holds work, `OpenProjectWindow` asks (asked by the author): "In a new
+    window" (the default: another process of the app with the file, as a double click) or "Replace". `Window_Drop`
+    answers the drop before any question (`Dispatcher.Yield`): a dialog shown inside the drop held Explorer until it
+    was answered.
+  - **Undo, redo** (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z; shortcuts only, the author's choice): `MainViewModel` keeps the
+    whole job (`JobState`: the settings through `CapturePreset`, the quantity, `VisualItem.Capture()` of each line,
+    the same objects) 600 ms after the last change, up to 100 steps; `RestoreState` puts the same lines back
+    (`VisualItem.Restore`) with `_restoring` set, so that nothing is recomputed until the end. In a text box that can
+    undo its own typing, Ctrl+Z is left to it.
+  - **Uninstall** (`installer/PageCompose.iss`): removes the file associations, `%TEMP%\PageCompose` and
     `%TEMP%\PageCompose-Update`, then asks whether to delete `%LOCALAPPDATA%\PageCompose` (settings, presets), No by
     default; a silent uninstall keeps them. The .NET runtime stays (shared).
   - **PDF pages**: `VisualInfo.PageNumber` / `PageCount`; a page list on the file line (`VisualItem.Pages`) when
@@ -190,9 +231,9 @@ the photo sizes moved to exact inches.
   - Settings column: the sections have no number in their title (asked by the author in 0.5.0: some are hidden in
     some modes, the numbers then jumped). The title, the Settings button and the presets are fixed at the top (asked by the author), the
     two export buttons at the bottom, each with a divider; only the settings between them scroll. The export options
-    ("Flatten the PDF", "Add the cutting plan" in the Mixed mode) are in the last section, "Export", at the end of
-    the scroll (asked by the author in 0.5.0); both are saved in the settings and in the presets, and both are on by
-    default (the author's choice).
+    ("Flatten the PDF", "Add the cutting plan" in the Mixed mode, "Mark each sheet", "Save the project") are in the last
+    section, "Export", at the end of the scroll (asked by the author in 0.5.0); all are saved in the settings and in the
+    presets; the first two are on by default (the author's choice), the last two off.
   - **Notices under the preview** (`MainViewModel.AddVisualNotices`): only what the settings column does not already
     show (resolution, cropping, own bleed, missing back, how many fit without crop marks). The author removed those
     that repeated it: the empty cells (in the quantity summary) and the "Fit" mode (in its own label).
@@ -219,7 +260,7 @@ the photo sizes moved to exact inches.
 - Photo and lab print sizes are **in inches**, as labs print them: 9 × 13 = 3.5 × 5 in (88.9 × 127),
   10 × 15 = 4 × 6 in (101.6 × 152.4), 13 × 18 = 5 × 7 in, 15 × 20 = 6 × 8 in, 20 × 30 = 8 × 12 in (203.2 × 304.8),
   30 × 45 = 12 × 18 in. So four 10 × 15 fill a 20 × 30 exactly (rounded to 102 × 152 they did not). The SRA3 / A3 / A4
-  reference table did not change. Business card: 85 × 55.
+  reference table did not change. Business card: 85 × 55. ID photo: 35 × 45 (`IdPhoto`, eight on a 10 × 15 print).
 - Crop marks need 3 mm around the block: on a lab print, where the visuals reach the edges, they cost visuals; the
   app then says how many fit without them.
 - Both orientations are tried; on a tie the requested one is kept.
@@ -307,7 +348,8 @@ the photo sizes moved to exact inches.
 - Full build with installer: `.\scripts\build.ps1` (options `-SkipTests`, `-NoInstaller`), output in `dist\`.
 - Icons: `.\scripts\make-icons.ps1` (Windows PowerShell 5.1, System.Drawing); generated files are committed: the app
   icon, the preset file icon (`Assets/PresetFile.ico`: the app's grid on a page of its gradient, chosen by the author
-  among four proposals) and SVG copies of the 256 px designs in `docs/icons` (not used by the build). Small sizes are
+  among four proposals), the project file icon (`Assets/ProjectFile.ico`: that page in front of a paler one, proposal A of
+  four) and SVG copies of the 256 px designs in `docs/icons` (not used by the build). Small sizes are
   hand-fitted to whole pixels in the script's tables.
 - Check a PDF visually: `gswin64c -q -dNOPAUSE -dBATCH -sDEVICE=png16m -r45 -o page-%d.png file.pdf`
   (needs Ghostscript, installed on the shop PC).

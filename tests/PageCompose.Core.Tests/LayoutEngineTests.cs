@@ -15,6 +15,7 @@ public class LayoutEngineTests
     public static TheoryData<string, string, int, int, int> Reference => new()
     {
         { "SRA3", "BusinessCard", 25, 25, 21 },
+        { "SRA3", "IdPhoto", 72, 72, 66 },
         { "SRA3", "Photo9x13", 9, 9, 9 },
         { "SRA3", "Photo10x15", 8, 8, 4 },
         { "SRA3", "Photo13x18", 4, 4, 4 },
@@ -32,6 +33,7 @@ public class LayoutEngineTests
         { "SRA3", "FlyerA5", 4, 4, 4 },
         { "SRA3", "A4", 2, 2, 2 },
         { "A3", "BusinessCard", 21, 21, 18 },
+        { "A3", "IdPhoto", 72, 72, 56 },
         { "A3", "Photo9x13", 9, 9, 9 },
         { "A3", "Photo10x15", 4, 4, 4 },
         { "A3", "Photo13x18", 4, 4, 4 },
@@ -49,6 +51,7 @@ public class LayoutEngineTests
         { "A3", "FlyerA5", 2, 2, 2 },
         { "A3", "A4", 1, 1, 1 },
         { "A4", "BusinessCard", 10, 10, 9 },
+        { "A4", "IdPhoto", 32, 32, 25 },
         { "A4", "Photo9x13", 4, 4, 4 },
         { "A4", "Photo10x15", 2, 2, 2 },
         { "A4", "Photo13x18", 2, 2, 2 },
@@ -164,6 +167,7 @@ public class LayoutEngineTests
     [InlineData("Lab30x45", "Photo15x20", 4)]
     [InlineData("Lab10x15", "Photo10x15", 1)]
     [InlineData("Lab10x15", "InstaxMini", 2)]
+    [InlineData("Lab10x15", "IdPhoto", 8)]     // a sheet of ID photos
     public void Lab_prints_are_printed_to_the_edge(string sheetId, string itemId, int expected)
     {
         var sheet = SheetFormats.All.Single(s => s.Id == sheetId);

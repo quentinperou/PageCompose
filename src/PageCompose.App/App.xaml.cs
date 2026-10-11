@@ -51,12 +51,13 @@ public partial class App : Application
         };
 
         PdfRasterizer.DeleteOldFiles();
+        ProjectStore.DeleteOldFolders();
         var window = new MainWindow(new MainViewModel(Settings));
         MainWindow = window;
         window.Show();
 
         // Files or folders given on the command line (dropped on the app icon) become visuals; a preset file
-        // (double click on a .PageCompose file) is imported.
+        // (double click on a .PageComposePreset file) is imported.
         _ = window.AddPathsAsync(e.Args);
 
         // Once per run (not when the window is rebuilt for a language change); the window shows the offer.

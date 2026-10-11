@@ -94,6 +94,12 @@ public sealed class AppSettings
     /// <summary>Mixed mode: the cutting plan (A4 PDF) is written next to each export.</summary>
     public bool CuttingPlan { get; set; } = true;
 
+    /// <summary>The mark of each sheet (job, date, sheet number) outside the block.</summary>
+    public bool SheetMark { get; set; }
+
+    /// <summary>The project (.PageComposeProject: files and settings) is written next to each export.</summary>
+    public bool SaveProject { get; set; }
+
     // A missing or damaged file just means default settings: preferences are never worth an error message.
     public static AppSettings Load()
     {

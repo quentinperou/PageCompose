@@ -107,5 +107,20 @@ public sealed class VisualLoaderTests : IDisposable
         Assert.Equal("fake.jpg", unreadable.FileName);
     }
 
+    [Theory]
+    [InlineData("photo.jpg", true, false)]
+    [InlineData("scan.PDF", true, false)]
+    [InlineData("IMG_0042.HEIC", true, true)] // an iPhone photo
+    [InlineData("image.heif", true, true)]
+    [InlineData("whatsapp.webp", true, true)]
+    [InlineData("scan.tif", true, true)]
+    [InlineData("scan.tiff", true, true)]
+    [InlineData("notes.txt", false, false)]
+    public void Photos_that_windows_decodes_are_taken_and_converted(string name, bool supported, bool converted)
+    {
+        Assert.Equal(supported, VisualLoader.IsSupported(name));
+        Assert.Equal(converted, VisualLoader.NeedsConversion(name));
+    }
+
     public void Dispose() => _files.Dispose();
 }

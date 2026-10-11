@@ -222,14 +222,4 @@ public static class CuttingPlanWriter
     private static double Pt(double mm) => Units.MmToPt(mm);
 
     private static XRect Box(double x, double y, double width, double height) => new(Pt(x), Pt(y), Pt(width), Pt(height));
-
-    /// <summary>Segoe UI of Windows, as in the app: the core build of PDFsharp finds no font by itself.</summary>
-    private sealed class WindowsFonts : IFontResolver
-    {
-        public FontResolverInfo? ResolveTypeface(string familyName, bool bold, bool italic) =>
-            new(bold ? "segoeuib" : "segoeui");
-
-        public byte[]? GetFont(string faceName) =>
-            File.ReadAllBytes(Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), faceName + ".ttf"));
-    }
 }

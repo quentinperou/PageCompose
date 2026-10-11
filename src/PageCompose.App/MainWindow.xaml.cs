@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Microsoft.Win32;
 using PageCompose.App.Services;
 using PageCompose.App.ViewModels;
@@ -35,17 +36,52 @@ public partial class MainWindow : Window
     public MainViewModel ViewModel { get; }
 
     /// <summary>
-    /// Adds files and folders (command line, drag and drop) as visuals; a preset file (.PageCompose, opened by a
-    /// double click) is imported instead.
+    /// Adds files and folders (command line, drag and drop) as visuals; a preset file (.PageComposePreset, opened by a
+    /// double click) is imported instead, and a project (.PageComposeProject) opened.
     /// </summary>
     public async Task AddPathsAsync(IEnumerable<string> paths)
     {
         var all = paths.ToList();
         foreach (var preset in all.Where(p => PresetStore.IsPresetFile(p) && File.Exists(p)))
             ImportPresets(preset);
+        if (all.FirstOrDefault(p => ProjectStore.IsProjectFile(p) && File.Exists(p)) is { } job)
+            await OpenProjectAsync(job);
 
         var files = ExpandPaths(all);
         if (files.Count > 0) await ViewModel.AddFilesAsync(files);
+    }
+
+    // In a window that already holds work, the project takes its place or opens in a new window, as asked.
+    private async Task OpenProjectAsync(string path)
+    {
+        if (ViewModel.HasAnyVisual)
+        {
+            var ask = new OpenProjectWindow(Path.GetFileName(path)) { Owner = this };
+            if (ask.ShowDialog() != true) return;
+            if (!ask.Replace)
+            {
+                // Another window of the app, as a double click on the file gives.
+                Process.Start(new ProcessStartInfo(Environment.ProcessPath!) { ArgumentList = { path }, UseShellExecute = false });
+                return;
+            }
+        }
+
+        string? error = null;
+        try
+        {
+            await ViewModel.OpenProjectAsync(path);
+        }
+        catch (InvalidDataException)
+        {
+            error = Strings.Get("ProjectNotAFile");
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            error = Strings.Format("ProjectOpenFailed", ex.Message);
+        }
+
+        if (error is not null)
+            MessageBox.Show(this, error, Strings.Get("AppTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
     }
 
     private void ImportPresets(string path)
@@ -108,7 +144,7 @@ public partial class MainWindow : Window
         e.Data.GetDataPresent(DataFormats.FileDrop) && e.Data.GetData(DataFormats.FileDrop) is string[] paths ? paths : [];
 
     private static bool CanAccept(DragEventArgs e) =>
-        DroppedPaths(e).Any(p => Directory.Exists(p) || VisualLoader.IsSupported(p) || PresetStore.IsPresetFile(p));
+        DroppedPaths(e).Any(p => Directory.Exists(p) || VisualLoader.IsSupported(p) || PresetStore.IsPresetFile(p) || ProjectStore.IsProjectFile(p));
 
     private void Window_DragOver(object sender, DragEventArgs e)
     {
@@ -129,7 +165,11 @@ public partial class MainWindow : Window
     private async void Window_Drop(object sender, DragEventArgs e)
     {
         DropOverlay.Visibility = Visibility.Collapsed;
-        await AddPathsAsync(DroppedPaths(e));
+        var paths = DroppedPaths(e);
+        // The drop is answered first: a question asked meanwhile (open a project, the pages of a PDF) would hold the
+        // window it comes from, Explorer, until it is answered.
+        await Dispatcher.Yield(DispatcherPriority.Background);
+        await AddPathsAsync(paths);
     }
 
     private void VersoZone_DragOver(object sender, DragEventArgs e)
@@ -185,6 +225,19 @@ public partial class MainWindow : Window
             Path.ChangeExtension(ViewModel.SuggestedFileName(), ".jpg"));
         if (dialog.ShowDialog(this) != true) return;
         await RunExportAsync(() => ViewModel.ExportJpegAsync(dialog.FileName));
+    }
+
+    // The project alone (.PageComposeProject), without the sheets.
+    private async void ExportProject_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = ExportDialog(Strings.Get("ExportProjectDialogTitle"), Strings.Get("ProjectFilter"),
+            Path.ChangeExtension(ViewModel.SuggestedFileName(), ProjectStore.FileExtension));
+        if (dialog.ShowDialog(this) != true) return;
+        await RunExportAsync(async () =>
+        {
+            await ViewModel.ExportProjectAsync(dialog.FileName);
+            return [dialog.FileName];
+        });
     }
 
     private SaveFileDialog ExportDialog(string title, string filter, string fileName) => new()
@@ -446,6 +499,15 @@ public partial class MainWindow : Window
         if (e.Key == Key.System && e.SystemKey is Key.LeftAlt or Key.RightAlt)
         {
             UpdateSheetCursor(alt: true); // not handled: Alt keeps its usual part in Windows
+            return;
+        }
+        // Undo, redo: the job (settings and lines), except in a text box that has its own typing to undo.
+        if (e.Key is Key.Z or Key.Y && (Keyboard.Modifiers & ModifierKeys.Control) != 0 &&
+            !(Keyboard.FocusedElement is TextBox { CanUndo: true } && e.Key == Key.Z && Keyboard.Modifiers == ModifierKeys.Control))
+        {
+            bool redo = e.Key == Key.Y || (Keyboard.Modifiers & ModifierKeys.Shift) != 0;
+            if (redo ? ViewModel.Redo() : ViewModel.Undo()) ViewModel.Toast.Hide();
+            e.Handled = true;
             return;
         }
         if (Keyboard.Modifiers != ModifierKeys.Control) return;

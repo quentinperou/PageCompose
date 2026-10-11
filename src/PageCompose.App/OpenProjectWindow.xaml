@@ -1,0 +1,23 @@
+<Window x:Class="PageCompose.App.OpenProjectWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PageCompose.App"
+        Title="{local:Tr OpenProjectTitle}"
+        Width="460" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Foreground="{DynamicResource TextFillColorPrimaryBrush}" Background="{DynamicResource ApplicationBackgroundBrush}">
+
+  <StackPanel Margin="24,20,24,24">
+    <TextBlock x:Name="MessageText" TextWrapping="Wrap" />
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+      <!-- The work in progress stays as it is: the default -->
+      <Button x:Name="NewWindowButton" Content="{local:Tr OpenProjectNewWindow}" Style="{DynamicResource AccentButtonStyle}" MinWidth="96"
+              IsDefault="True" Click="NewWindow_Click" />
+      <Button Content="{local:Tr OpenProjectReplace}" MinWidth="96" Margin="8,0,0,0" Click="Replace_Click"
+              ToolTip="{local:Tr OpenProjectReplaceTooltip}" />
+      <!-- Cancel, or the window closed: the project is not opened -->
+      <Button Content="{local:Tr Cancel}" MinWidth="96" Margin="8,0,0,0" IsCancel="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

@@ -227,7 +227,6 @@ public partial class SettingsWindow : Window
 
     private void ImportPresets_Click(object sender, RoutedEventArgs e)
     {
-        // Files exported before version 0.4.4 end in .json.
         var dialog = new OpenFileDialog { Title = Strings.Get("PresetsImportTitle"), Filter = Strings.Get("PresetsOpenFilter") };
         if (dialog.ShowDialog(this) != true) return;
         try

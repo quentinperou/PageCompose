@@ -161,6 +161,8 @@ public sealed class MainViewModel : ObservableObject
         _unit = settings.Unit;
         _flattenPdf = settings.FlattenPdf;
         _cuttingPlan = settings.CuttingPlan;
+        _sheetMark = settings.SheetMark;
+        _saveProject = settings.SaveProject;
 
         ClearVisualsCommand = new RelayCommand(ClearVisuals);
         PreviousSheetCommand = new RelayCommand(() => PreviewSheetIndex--);
@@ -177,8 +179,11 @@ public sealed class MainViewModel : ObservableObject
             _previewDebounce.Stop();
             await RefreshPreviewAsync();
         };
+        _historyDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(HistoryDelayMs) };
+        _historyDebounce.Tick += (_, _) => Remember();
 
         Recompute();
+        _current = CaptureState();
     }
 
     // ---- Lists ----
@@ -233,7 +238,7 @@ public sealed class MainViewModel : ObservableObject
     public void ReloadPresets() => ShowPresets(PresetStore.Load(), SelectedPreset?.Name);
 
     /// <summary>
-    /// Imports a preset file (double click on a .PageCompose file, or dropped on the window). A file of one preset
+    /// Imports a preset file (double click on a .PageComposePreset file, or dropped on the window). A file of one preset
     /// applies it at once; the notification tells what came in.
     /// </summary>
     /// <exception cref="InvalidDataException">The file holds no PageCompose presets.</exception>
@@ -298,6 +303,8 @@ public sealed class MainViewModel : ObservableObject
         RotateVerso180 = RotateVerso180,
         FlattenPdf = FlattenPdf,
         CuttingPlan = CuttingPlan,
+        SheetMark = SheetMark,
+        SaveProject = SaveProject,
     };
 
     private bool _applyingPreset;
@@ -353,6 +360,8 @@ public sealed class MainViewModel : ObservableObject
         RotateVerso180 = p.RotateVerso180;
         FlattenPdf = p.FlattenPdf;
         CuttingPlan = p.CuttingPlan;
+        SheetMark = p.SheetMark;
+        SaveProject = p.SaveProject;
     }
 
     // ---- Mode ----
@@ -754,12 +763,36 @@ public sealed class MainViewModel : ObservableObject
     // ---- Export ----
 
     private bool _flattenPdf;
-    public bool FlattenPdf { get => _flattenPdf; set { if (Set(ref _flattenPdf, value)) ForgetPresetIfChanged(); } }
+    public bool FlattenPdf { get => _flattenPdf; set { if (Set(ref _flattenPdf, value)) OptionChanged(); } }
 
     private bool _cuttingPlan;
 
     /// <summary>Mixed mode: writes the cutting plan (A4 PDF, to print on office paper) next to each export.</summary>
-    public bool CuttingPlan { get => _cuttingPlan; set { if (Set(ref _cuttingPlan, value)) ForgetPresetIfChanged(); } }
+    public bool CuttingPlan { get => _cuttingPlan; set { if (Set(ref _cuttingPlan, value)) OptionChanged(); } }
+
+    private bool _saveProject;
+
+    /// <summary>
+    /// Writes the project (its files and settings, a .PageComposeProject file) next to each export, to print it again later
+    /// as it was: a double click opens it (asked by the author).
+    /// </summary>
+    public bool SaveProject { get => _saveProject; set { if (Set(ref _saveProject, value)) OptionChanged(); } }
+
+    // An option of the export: nothing to lay out again.
+    private void OptionChanged()
+    {
+        if (_restoring) return;
+        ForgetPresetIfChanged();
+        RememberLater();
+    }
+
+    private bool _sheetMark;
+
+    /// <summary>
+    /// The mark of each sheet, outside the block: the name of the exported file (the one offered, in the preview), the
+    /// date and "sheet 2/5", to sort the sheets at the guillotine (asked by the author).
+    /// </summary>
+    public bool SheetMark { get => _sheetMark; set { if (Set(ref _sheetMark, value)) Changed(); } }
 
     /// <summary>Progress and result of the exports, shown over the preview.</summary>
     public ExportToast Toast { get; } = new();
@@ -767,7 +800,173 @@ public sealed class MainViewModel : ObservableObject
     public string? LastExportFolder => _settings.LastExportFolder;
 
     /// <summary>Folder of the first visual, offered by default for the export.</summary>
-    public string? FirstVisualFolder => Path.GetDirectoryName(ActiveVisuals().FirstOrDefault()?.Info.OriginalPath);
+    public string? FirstVisualFolder => _projectFolder ?? Path.GetDirectoryName(ActiveVisuals().FirstOrDefault()?.Info.OriginalPath);
+
+    // ---- Undo, redo (Ctrl+Z, Ctrl+Y; asked by the author) ----
+    // The whole job is taken HistoryDelayMs after the last change, so that typing a number is one step, and at most
+    // HistoryLength steps are kept. A step taken back puts the same lines back, their thumbnails with them.
+
+    private sealed record JobState(string SettingsJson, LayoutPreset Settings, int Quantity, LineState? Repeat, LineState? SharedBack,
+        IReadOnlyList<LineState> Lines)
+    {
+        public bool SameAs(JobState other) => SettingsJson == other.SettingsJson && Quantity == other.Quantity &&
+                                              Repeat == other.Repeat && SharedBack == other.SharedBack && Lines.SequenceEqual(other.Lines);
+    }
+
+    private const int HistoryDelayMs = 600, HistoryLength = 100;
+    private readonly DispatcherTimer _historyDebounce;
+    private readonly List<JobState> _undo = [], _redo = [];
+    private JobState _current;
+    private bool _restoring;
+
+    private JobState CaptureState()
+    {
+        var settings = CapturePreset("");
+        return new JobState(System.Text.Json.JsonSerializer.Serialize(settings), settings, Quantity, RepeatVisual?.Capture(),
+            Verso?.Capture(), [.. Visuals.Select(v => v.Capture())]);
+    }
+
+    private void RememberLater()
+    {
+        _historyDebounce.Stop();
+        _historyDebounce.Start();
+    }
+
+    private void Remember()
+    {
+        _historyDebounce.Stop();
+        var now = CaptureState();
+        if (now.SameAs(_current)) return;
+        _undo.Add(_current);
+        if (_undo.Count > HistoryLength) _undo.RemoveAt(0);
+        _redo.Clear();
+        _current = now;
+    }
+
+    /// <summary>Ctrl+Z: the job as it was before the last change; false when there is none.</summary>
+    public bool Undo() => Step(_undo, _redo);
+
+    /// <summary>Ctrl+Y: the change undone last, made again.</summary>
+    public bool Redo() => Step(_redo, _undo);
+
+    private bool Step(List<JobState> from, List<JobState> to)
+    {
+        if (_historyDebounce.IsEnabled) Remember(); // a change still waiting is a step of its own
+        if (from.Count == 0) return false;
+        to.Add(_current);
+        _current = from[^1];
+        from.RemoveAt(from.Count - 1);
+        RestoreState(_current);
+        return true;
+    }
+
+    private void RestoreState(JobState state)
+    {
+        _restoring = true;
+        try
+        {
+            ApplyPresetValues(state.Settings);
+            _quantity = state.Quantity;
+            Visuals.Clear();
+            foreach (var line in state.Lines)
+            {
+                line.Item.Restore(line);
+                Visuals.Add(line.Item);
+            }
+            state.Repeat?.Item.Restore(state.Repeat);
+            state.SharedBack?.Item.Restore(state.SharedBack);
+            (_repeatVisual, _verso) = (state.Repeat?.Item, state.SharedBack?.Item);
+        }
+        finally
+        {
+            _restoring = false;
+        }
+
+        foreach (var name in new[] { nameof(Quantity), nameof(RepeatVisual), nameof(HasRepeatVisual), nameof(Verso), nameof(HasVerso) })
+            OnPropertyChanged(name);
+        foreach (var item in AllItems().Where(i => i.ThumbnailOutdated))
+        {
+            item.ThumbnailOutdated = false;
+            _ = LoadThumbnailAsync(item);
+        }
+        ForgetPresetIfChanged();
+        Recompute();
+        SchedulePreview();
+    }
+
+    // Every visual of the job, backs included.
+    private IEnumerable<VisualItem> AllItems() => new[] { RepeatVisual, Verso }.Concat(Visuals).OfType<VisualItem>()
+        .SelectMany(i => i.Back is { } back ? new[] { i, back } : [i]);
+
+    // ---- Projects (.PageComposeProject) ----
+
+    /// <summary>Folder and name of the project opened last: offered for its export.</summary>
+    private string? _projectFolder, _projectName;
+
+    private ProjectFile ToProjectFile()
+    {
+        static ProjectLine Line(LineState s) => new()
+        {
+            File = s.Info.OriginalPath,
+            Page = s.Info.PageNumber,
+            Copies = s.Copies,
+            Rotation = s.Rotation,
+            CropX = s.CropX,
+            CropY = s.CropY,
+            FormatId = s.Format is null ? null : s.Format.Format?.Id ?? AppSettings.CustomFormatId,
+            CustomWidth = s.CustomWidth,
+            CustomHeight = s.CustomHeight,
+            Back = s.Back is null ? null : Line(s.Back),
+            BackAuto = s.BackAuto,
+        };
+
+        var state = CaptureState();
+        return new ProjectFile
+        {
+            Settings = state.Settings,
+            Quantity = state.Quantity,
+            Repeat = state.Repeat is null ? null : Line(state.Repeat),
+            SharedBack = state.SharedBack is null ? null : Line(state.SharedBack),
+            Visuals = [.. state.Lines.Select(Line)],
+        };
+    }
+
+    /// <summary>
+    /// Opens a project (double click on a .PageComposeProject file, or dropped on the window): it takes the place of the job
+    /// in progress, which Ctrl+Z gives back. Its files that cannot be read are left out, and said so.
+    /// </summary>
+    /// <exception cref="InvalidDataException">Not a PageCompose project, or a damaged one.</exception>
+    public async Task OpenProjectAsync(string path)
+    {
+        var job = await Task.Run(() => ProjectStore.Open(path));
+        var errors = new List<string>();
+
+        async Task<LineState?> Line(ProjectLine l, Func<VisualInfo, VisualItem> create)
+        {
+            var (info, _, error) = await LoadAsync(l.File, l.Page);
+            if (error is not null) errors.Add(error);
+            if (info is null) return null;
+            var item = create(info);
+            var back = l.Back is { } b ? await Line(b, i => CreateBackItem(item, i)) : null;
+            var format = l.FormatId is null ? null : MixedFormats.FirstOrDefault(f => (f.Format?.Id ?? AppSettings.CustomFormatId) == l.FormatId);
+            return new LineState(item, info, Math.Clamp(l.Copies, 1, 100_000), (l.Rotation % 360 + 360) % 360 / 90 * 90, format,
+                l.CustomWidth, l.CustomHeight, Math.Clamp(l.CropX, 0, 1), Math.Clamp(l.CropY, 0, 1), back, back is not null && l.BackAuto);
+        }
+
+        var lines = new List<LineState>();
+        foreach (var l in job.Visuals)
+            if (await Line(l, i => CreateItem(i)) is { } line) lines.Add(line);
+        var repeat = job.Repeat is { } r ? await Line(r, i => CreateItem(i, _ => RepeatVisual = null)) : null;
+        var shared = job.SharedBack is { } sb ? await Line(sb, i => CreateItem(i, _ => Verso = null)) : null;
+
+        if (_historyDebounce.IsEnabled) Remember();
+        RestoreState(new JobState("", job.Settings, Math.Clamp(job.Quantity, 0, 100_000), repeat, shared, lines));
+        Remember(); // one step: Ctrl+Z gives the job before it back
+        (_projectFolder, _projectName) = (Path.GetDirectoryName(Path.GetFullPath(path)), Path.GetFileNameWithoutExtension(path));
+        FilesMessage = errors.Count > 0 ? string.Join(" ", errors.Take(3)) : null;
+        Toast.ShowMessage(Strings.Get("ProjectOpened"),
+            Strings.Format("ProjectOpenedDetail", Path.GetFileName(path), Strings.Count("Visuals", lines.Count + (repeat is null ? 0 : 1))));
+    }
 
     // ---- Files ----
 
@@ -932,6 +1131,8 @@ public sealed class MainViewModel : ObservableObject
     /// </summary>
     private static async Task<(VisualInfo? Info, string? Note, string? Error)> LoadAsync(string path, int pageNumber = 1)
     {
+        if (VisualLoader.NeedsConversion(path))
+            return await ConvertAsync(path);
         try
         {
             return (VisualLoader.Load(path, pageNumber), null, null);
@@ -957,6 +1158,31 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// An iPhone HEIC, a WebP, a TIFF: decoded by Windows into a JPEG, then read as any photo; the line keeps the name
+    /// and the type of the file ("HEIC · 4032 × 3024 px").
+    /// </summary>
+    private static async Task<(VisualInfo? Info, string? Note, string? Error)> ConvertAsync(string path)
+    {
+        string name = Path.GetFileName(path);
+        if (!File.Exists(path)) return (null, null, Strings.Format("LoadNotFound", path));
+        try
+        {
+            string jpeg = await PhotoConverter.ConvertAsync(path);
+            return (VisualLoader.Load(jpeg) with { SourcePath = path }, null, null);
+        }
+        catch (VisualLoadException ex)
+        {
+            return (null, null, Strings.Format("LoadUnreadable", name, ex.Detail ?? ""));
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            // Without its extensions (HEIF, and HEVC for the photos themselves), Windows cannot decode a HEIC at all.
+            bool heic = Path.GetExtension(path).ToLowerInvariant() is ".heic" or ".heif";
+            return (null, null, heic ? Strings.Format("LoadHeicCodec", name) : Strings.Format("LoadUnreadable", name, ex.Message.Trim()));
+        }
+    }
+
     public static string LoadErrorMessage(VisualLoadException ex) => ex.Error switch
     {
         VisualLoadError.NotFound => Strings.Format("LoadNotFound", ex.FilePath),
@@ -968,6 +1194,7 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>File name offered for the export, with the .pdf extension (the JPEG export changes it).</summary>
     public string SuggestedFileName()
     {
+        if (_projectName is not null) return _projectName + ".pdf"; // a project opened, printed again
         var item = CurrentItemSize() ?? default;
         string size = $"{item.Width:0}x{item.Height:0}"; // whole millimetres: 10 x 15 reads 102x152, not 101,6x152,4
         string name = _mode switch
@@ -983,7 +1210,7 @@ public sealed class MainViewModel : ObservableObject
     public async Task ExportAsync(string path)
     {
         if (!CanExport) return;
-        var job = BuildJob(AllSheets());
+        var job = BuildJob(AllSheets(), Path.GetFileNameWithoutExtension(path));
         Toast.ShowProgress(Strings.Get("Exporting"), Path.GetFileName(path));
         if (FlattenPdf)
         {
@@ -1012,12 +1239,38 @@ public sealed class MainViewModel : ObservableObject
         }
 
         var cuttingPlan = await WriteCuttingPlanAsync(path);
+        var projectFile = await WriteProjectAsync(path);
         Toast.ShowDone(Strings.Get("ToastPdfSaved"),
             Strings.Format("ToastPdfDetail", Path.GetFileName(path), Strings.Count("Sheets", Plan.SheetCount)) +
-            (cuttingPlan is null ? "" : Strings.Get("ToastWithPlan")),
+            (cuttingPlan is null ? "" : Strings.Get("ToastWithPlan")) + (projectFile is null ? "" : Strings.Get("ToastWithProject")),
             cuttingPlan is null ? [path] : [path, cuttingPlan]);
         _settings.LastExportFolder = Path.GetDirectoryName(path);
         SaveSettings();
+    }
+
+    /// <summary>There is something to save as a project: a visual, in the list or in the Repeat mode.</summary>
+    public bool HasAnyVisual => ActiveVisuals().Any();
+
+    /// <summary>"Save the project only": the .PageComposeProject file, without exporting the sheets.</summary>
+    public async Task ExportProjectAsync(string path)
+    {
+        if (!HasAnyVisual) return;
+        Toast.ShowProgress(Strings.Get("SavingProject"), Path.GetFileName(path));
+        var job = ToProjectFile();
+        await Task.Run(() => ProjectStore.Save(path, job));
+        Toast.ShowDone(Strings.Get("ToastProjectSaved"), Path.GetFileName(path), [path]);
+        _settings.LastExportFolder = Path.GetDirectoryName(path);
+        SaveSettings();
+    }
+
+    /// <summary>When asked: the project next to the export ("name.PageComposeProject"). Returns its path, or null.</summary>
+    private async Task<string?> WriteProjectAsync(string exportPath)
+    {
+        if (!SaveProject) return null;
+        string path = Path.Combine(Path.GetDirectoryName(exportPath) ?? "", Path.GetFileNameWithoutExtension(exportPath) + ProjectStore.FileExtension);
+        var job = ToProjectFile();
+        await Task.Run(() => ProjectStore.Save(path, job));
+        return path;
     }
 
     /// <summary>
@@ -1060,7 +1313,7 @@ public sealed class MainViewModel : ObservableObject
     public async Task<IReadOnlyList<string>> ExportJpegAsync(string path)
     {
         if (!CanExport) return [];
-        var job = BuildJob(AllSheets());
+        var job = BuildJob(AllSheets(), Path.GetFileNameWithoutExtension(path));
         int count = PageCount(job);
         string folder = Path.GetDirectoryName(path) ?? "", stem = Path.GetFileNameWithoutExtension(path);
         List<string> files = count == 1
@@ -1075,9 +1328,10 @@ public sealed class MainViewModel : ObservableObject
         Toast.ShowProgress(Strings.Get("Exporting"), Path.GetFileName(path));
         await RenderPagesAsync(job, files);
         var cuttingPlan = await WriteCuttingPlanAsync(path);
+        var projectFile = await WriteProjectAsync(path);
         Toast.ShowDone(Strings.Count("JpegSaved", files.Count),
             (files.Count == 1 ? Path.GetFileName(path) : Strings.Format("ToastInFolder", Path.GetFileName(folder))) +
-            (cuttingPlan is null ? "" : Strings.Get("ToastWithPlan")),
+            (cuttingPlan is null ? "" : Strings.Get("ToastWithPlan")) + (projectFile is null ? "" : Strings.Get("ToastWithProject")),
             cuttingPlan is null ? files : [.. files, cuttingPlan]);
         _settings.LastExportFolder = folder;
         SaveSettings();
@@ -1125,6 +1379,8 @@ public sealed class MainViewModel : ObservableObject
         _settings.Unit = _unit;
         _settings.FlattenPdf = FlattenPdf;
         _settings.CuttingPlan = CuttingPlan;
+        _settings.SheetMark = SheetMark;
+        _settings.SaveProject = SaveProject;
         _settings.Save();
     }
 
@@ -1210,6 +1466,7 @@ public sealed class MainViewModel : ObservableObject
 
     private void ClearVisuals()
     {
+        (_projectFolder, _projectName) = (null, null);
         Visuals.Clear();
         FilesMessage = null;
         Changed();
@@ -1224,6 +1481,7 @@ public sealed class MainViewModel : ObservableObject
         _mode = mode;
 
         // Keep the work in progress when switching modes, turned as it was. Compose and Mixed share their list.
+        carryOver &= !_restoring; // a state taken back has its own lists
         if (carryOver && mode != LayoutMode.Repeat && Visuals.Count == 0 && RepeatVisual is { } r)
         {
             var copy = CreateItem(r.SourceInfo);
@@ -1340,9 +1598,11 @@ public sealed class MainViewModel : ObservableObject
 
     private void Changed()
     {
+        if (_restoring) return; // recomputed once, at the end
         ForgetPresetIfChanged();
         Recompute();
         SchedulePreview();
+        RememberLater();
     }
 
     /// <summary>Width of the rendered preview, in pixels: more when the preview is zoomed.</summary>
@@ -1387,6 +1647,8 @@ public sealed class MainViewModel : ObservableObject
             RecomputeGrid(sheetValid, bleed, spacing);
 
         PlanText = BuildPlanText();
+        if (MarkHasNoRoom() && Plan.SheetCount > 0)
+            Notices.Add(new Notice(NoticeLevel.Warning, Strings.Get("NoticeNoRoomForMark")));
         double edge = Sheet.Margins.Top;
         PreviewHint = edge > 0 ? Strings.Format("PreviewHintMargin", edge.ToString("0.#")) : Strings.Get("PreviewHint");
 
@@ -1403,6 +1665,7 @@ public sealed class MainViewModel : ObservableObject
                      nameof(Layout), nameof(Plan), nameof(Headline), nameof(Details), nameof(PlanText), nameof(CanExport),
                      nameof(SheetWidth), nameof(SheetHeight), nameof(MarginGeometry), nameof(PlaceholderCells), nameof(PreviewHint),
                      nameof(PreviewSheetIndex), nameof(PreviewSheetLabel), nameof(HasSeveralSheets), nameof(CutNumbers),
+                     nameof(HasAnyVisual),
                  })
             OnPropertyChanged(name);
     }
@@ -1751,7 +2014,8 @@ public sealed class MainViewModel : ObservableObject
     }
 
     /// <param name="sheets">Indices of the sheets, from 0.</param>
-    private ImpositionJob BuildJob(IReadOnlyList<int> sheets)
+    /// <param name="jobName">Name of the exported file, in the marks of the sheets; the one offered for the preview.</param>
+    private ImpositionJob BuildJob(IReadOnlyList<int> sheets, string? jobName = null)
     {
         // Mixed sheets each have their own layout, and their own cut lines setting (on by default).
         var job = _mode == LayoutMode.Mixed
@@ -1766,6 +2030,7 @@ public sealed class MainViewModel : ObservableObject
             Backs = ownBacks
                 ? [.. sheets.Select((s, k) => Enumerable.Range(0, job.Sheets[k].Length).Select(c => LineOfCell(s, c)?.Back?.Info).ToArray())]
                 : null,
+            Marks = SheetMark ? MarksOf(sheets, jobName ?? Path.GetFileNameWithoutExtension(SuggestedFileName())) : null,
             Fit = _fit,
             Flip = _flip,
             RotateVerso180 = RotateVerso180,
@@ -1774,4 +2039,16 @@ public sealed class MainViewModel : ObservableObject
     }
 
     private List<int> AllSheets() => [.. Enumerable.Range(0, Plan.SheetCount)];
+
+    // "dupont-cards · 11/10/2026 · sheet 2/5"
+    private List<string> MarksOf(IReadOnlyList<int> sheets, string jobName)
+    {
+        string date = DateTime.Now.ToString("d", System.Globalization.CultureInfo.CurrentCulture);
+        return [.. sheets.Select(i => Strings.Format("SheetMarkText", jobName, date, i + 1, Plan.SheetCount))];
+    }
+
+    /// <summary>The mark is asked, but a sheet leaves no room for it outside the block (a lab print filled to its edges).</summary>
+    private bool MarkHasNoRoom() => SheetMark && (_mode == LayoutMode.Mixed
+        ? _mixed.Sheets.Any(s => Core.Pdf.SheetMark.Place(s.Layout) is null)
+        : Layout is { IsEmpty: false } layout && Core.Pdf.SheetMark.Place(layout) is null);
 }

@@ -45,7 +45,7 @@ Compression=lzma2/max
 SolidCompression=yes
 CloseApplications=yes
 RestartApplications=no
-; Preset files (.PageCompose) open in the app: Explorer is told to refresh their icon.
+; Preset files (.PageComposePreset) and projects (.PageComposeProject) open in the app: Explorer is told to refresh their icons.
 ChangesAssociations=yes
 ; Only ask for the language when Windows uses one the installer does not have.
 ShowLanguageDialog=auto
@@ -65,6 +65,8 @@ english.DeleteUserData=Also delete your PageCompose settings and presets?%n%nKee
 french.DeleteUserData=Supprimer aussi vos réglages et vos préréglages PageCompose ?%n%nGardez-les si vous allez réinstaller PageCompose.
 english.PresetFileType=PageCompose presets
 french.PresetFileType=Préréglages PageCompose
+english.ProjectFileType=PageCompose project
+french.ProjectFileType=Projet PageCompose
 
 [Tasks]
 Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked
@@ -72,21 +74,31 @@ Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{
 [Files]
 Source: "..\dist\app\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\src\PageCompose.App\Assets\PresetFile.ico"; DestDir: "{app}"; Flags: ignoreversion
+Source: "..\src\PageCompose.App\Assets\ProjectFile.ico"; DestDir: "{app}"; Flags: ignoreversion
 
 [Registry]
 ; Preset files exported from Settings: their own icon, and a double click imports them (PresetStore.FileExtension).
-Root: HKA; Subkey: "Software\Classes\.PageCompose"; ValueType: string; ValueName: ""; ValueData: "PageCompose.Presets"; Flags: uninsdeletevalue
-Root: HKA; Subkey: "Software\Classes\.PageCompose\OpenWithProgids"; ValueType: string; ValueName: "PageCompose.Presets"; ValueData: ""; Flags: uninsdeletevalue
+; Up to 0.6.0 they ended in .PageCompose: that association goes (the author wants no compatibility).
+Root: HKA; Subkey: "Software\Classes\.PageCompose"; ValueType: none; Flags: deletekey
+Root: HKA; Subkey: "Software\Classes\.PageComposePreset"; ValueType: string; ValueName: ""; ValueData: "PageCompose.Presets"; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.PageComposePreset\OpenWithProgids"; ValueType: string; ValueName: "PageCompose.Presets"; ValueData: ""; Flags: uninsdeletevalue
 Root: HKA; Subkey: "Software\Classes\PageCompose.Presets"; ValueType: string; ValueName: ""; ValueData: "{cm:PresetFileType}"; Flags: uninsdeletekey
 Root: HKA; Subkey: "Software\Classes\PageCompose.Presets\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\PresetFile.ico"
 Root: HKA; Subkey: "Software\Classes\PageCompose.Presets\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
+; Projects saved with an export (ProjectStore.FileExtension): their own icon, and a double click opens them.
+Root: HKA; Subkey: "Software\Classes\.PageComposeProject"; ValueType: string; ValueName: ""; ValueData: "PageCompose.Project"; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\.PageComposeProject\OpenWithProgids"; ValueType: string; ValueName: "PageCompose.Project"; ValueData: ""; Flags: uninsdeletevalue
+Root: HKA; Subkey: "Software\Classes\PageCompose.Project"; ValueType: string; ValueName: ""; ValueData: "{cm:ProjectFileType}"; Flags: uninsdeletekey
+Root: HKA; Subkey: "Software\Classes\PageCompose.Project\DefaultIcon"; ValueType: string; ValueName: ""; ValueData: "{app}\ProjectFile.ico"
+Root: HKA; Subkey: "Software\Classes\PageCompose.Project\shell\open\command"; ValueType: string; ValueName: ""; ValueData: """{app}\{#AppExe}"" ""%1"""
 
 [Icons]
 Name: "{autoprograms}\{#AppName}"; Filename: "{app}\{#AppExe}"
 Name: "{autodesktop}\{#AppName}"; Filename: "{app}\{#AppExe}"; Tasks: desktopicon
 
 [UninstallDelete]
-; Temporary files of the app: PDFs converted to pictures, flattened exports, the last update downloaded.
+; Temporary files of the app: PDFs and photos converted to pictures, projects opened, flattened exports, the last update
+; downloaded.
 Type: filesandordirs; Name: "{%TEMP}\PageCompose"
 Type: filesandordirs; Name: "{%TEMP}\PageCompose-Update"
 

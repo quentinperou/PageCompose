@@ -1,11 +1,13 @@
 ﻿<#
 .SYNOPSIS
-    Generates the application icon (.ico), its large in-app image, the README icon (.png), the icon of the
-    preset files (.PageCompose), and SVG copies of both designs (docs\icons).
+    Generates the application icon (.ico), its large in-app image, the README icon (.png), the icons of the
+    preset files (.PageComposePreset) and of the project files (.PageComposeProject), and SVG copies of the designs
+    (docs\icons).
 .DESCRIPTION
     The generated files are committed: run this script again only to change the design.
     Design: a white 2 x 3 grid of visuals (one sheet, step and repeat) on a rounded square with a
-    turquoise-to-blue gradient. A preset file is the same grid on a page of that gradient, with a folded corner.
+    turquoise-to-blue gradient. A preset file is the same grid on a page of that gradient, with a folded corner; an
+    project file, that page in front of a paler one.
     Small sizes are drawn on whole pixels to stay sharp.
     Requires Windows PowerShell 5.1 (System.Drawing).
 #>
@@ -108,13 +110,11 @@ $fileSpecs = @{
     256 = @{ Page = @(36, 8, 184, 240); Fold = 60; R = 14; Xs = @(64, 132); W = 60; Ys = @(92, 144, 196); H = 40; TR = 8 }
 }
 
-function New-FileIconBitmap([int]$size) {
-    $spec = $fileSpecs[$size]
-    $canvas = New-Canvas $size
-    $g = $canvas.Graphics
-    $x, $y, $w, $h = [float[]]$spec.Page
-    $f = [float]$spec.Fold
-    $d = [float](2 * $spec.R)
+# A page of the gradient (alpha: 255 opaque), with rounded corners and its top right one folded; returns its outline
+# (only the outline, drawing nothing, when there is no graphics).
+function Add-Page([System.Drawing.Graphics]$g, $rect, [float]$f, [float]$r, [int]$alpha = 255) {
+    $x, $y, $w, $h = [float[]]$rect
+    $d = [float](2 * $r)
     $x1 = $x + $w; $y1 = $y + $h
 
     # The page: rounded corners, the top right one cut by the fold.
@@ -130,22 +130,73 @@ function New-FileIconBitmap([int]$size) {
 
     # The fold, lighter; its inner corner is rounded like the page corners.
     $fold = New-Object System.Drawing.Drawing2D.GraphicsPath
-    $fr = [float][Math]::Min($spec.R * 0.75, $f / 4)
+    $fr = [float][Math]::Min($r * 0.75, $f / 4)
     $fold.AddLine(($x1 - $f), $y, ($x1 - $f), ($y + $f - $fr))
     if ($fr -gt 0) { $fold.AddArc(($x1 - $f), ($y + $f - 2 * $fr), (2 * $fr), (2 * $fr), 180, -90) }
     $fold.AddLine(($x1 - $f + $fr), ($y + $f), $x1, ($y + $f))
     $fold.CloseFigure()
 
+    if ($null -eq $g) { $fold.Dispose(); return $page }
     $pageRect = New-Object System.Drawing.RectangleF $x, $y, $w, $h
-    $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $pageRect, $gradientStart, $gradientEnd, ([float]60)
+    $from = [System.Drawing.Color]::FromArgb($alpha, $gradientStart); $to = [System.Drawing.Color]::FromArgb($alpha, $gradientEnd)
+    $brush = New-Object System.Drawing.Drawing2D.LinearGradientBrush $pageRect, $from, $to, ([float]60)
     $light = New-Object System.Drawing.SolidBrush ([System.Drawing.Color]::FromArgb(110, 255, 255, 255))
     $g.FillPath($brush, $page)
     $g.FillPath($light, $fold)
+    $light.Dispose(); $brush.Dispose(); $fold.Dispose()
+    return $page
+}
+
+function New-FileIconBitmap([int]$size) {
+    $spec = $fileSpecs[$size]
+    $canvas = New-Canvas $size
+    $g = $canvas.Graphics
+    $page = Add-Page $g $spec.Page ([float]$spec.Fold) ([float]$spec.R)
 
     $tiles = foreach ($ty in $spec.Ys) { foreach ($tx in $spec.Xs) { New-Object System.Drawing.RectangleF $tx, $ty, $spec.W, $spec.H } }
     Fill-Tiles $g $tiles ([float]$spec.TR)
 
-    $light.Dispose(); $brush.Dispose(); $fold.Dispose(); $page.Dispose(); $g.Dispose()
+    $page.Dispose(); $g.Dispose()
+    return $canvas.Bitmap
+}
+
+# ---------------------------------------------------------------- Project file icon
+
+# A project (.PageComposeProject) is a pile: the preset page, smaller, in front of a paler one, up and to the right (chosen
+# by the author among four proposals). By size, on whole pixels: back page and front page (x, y, width, height),
+# folded corner, page corner radius, gap between the pages, then the grid of the front page as for the presets.
+$projectSpecs = @{
+    16 = @{ Back = @(6, 0, 10, 13); Front = @(1, 3, 11, 13); Fold = 3; R = 0; Gap = 1; Xs = @(3, 7); W = 3; Ys = @(7, 10, 13); H = 2; TR = 0 }
+    20 = @{ Back = @(7, 0, 12, 16); Front = @(1, 4, 14, 16); Fold = 4; R = 0; Gap = 1; Xs = @(3, 9); W = 4; Ys = @(9, 12, 15); H = 2; TR = 0 }
+    24 = @{ Back = @(8, 0, 15, 19); Front = @(1, 5, 17, 19); Fold = 5; R = 1; Gap = 1; Xs = @(3, 10); W = 5; Ys = @(11, 15, 19); H = 3; TR = 0.5 }
+    32 = @{ Back = @(9, 0, 22, 27); Front = @(2, 5, 22, 27); Fold = 7; R = 2; Gap = 1; Xs = @(5, 14); W = 7; Ys = @(14, 20, 26); H = 4; TR = 1 }
+    40 = @{ Back = @(11, 0, 27, 34); Front = @(2, 6, 28, 34); Fold = 9; R = 2; Gap = 2; Xs = @(6, 17); W = 9; Ys = @(17, 24, 31); H = 5; TR = 1 }
+    48 = @{ Back = @(13, 0, 33, 40); Front = @(2, 8, 34, 40); Fold = 11; R = 2.5; Gap = 2; Xs = @(7, 20); W = 11; Ys = @(20, 28, 36); H = 6; TR = 1.5 }
+    64 = @{ Back = @(18, 0, 44, 54); Front = @(3, 10, 45, 54); Fold = 14; R = 3.5; Gap = 3; Xs = @(9, 26); W = 14; Ys = @(27, 38, 49); H = 8; TR = 2 }
+    256 = @{ Back = @(68, 8, 164, 216); Front = @(28, 36, 164, 216); Fold = 52; R = 13; Gap = 8; Xs = @(53, 115); W = 52; Ys = @(112, 158, 204); H = 36; TR = 7 }
+}
+
+# Opacity of the page behind.
+$projectBackAlpha = 130
+
+function New-ProjectIconBitmap([int]$size) {
+    $spec = $projectSpecs[$size]
+    $canvas = New-Canvas $size
+    $g = $canvas.Graphics
+    $back = Add-Page $g $spec.Back ([float]$spec.Fold) ([float]$spec.R) $projectBackAlpha
+
+    # A clear gap around the front page, so that both pages stand apart on a light or a dark background.
+    $outline = Add-Page $null $spec.Front ([float]$spec.Fold) ([float]$spec.R)
+    $g.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceCopy
+    $clear = New-Object System.Drawing.Pen ([System.Drawing.Color]::Transparent), ([float](2 * $spec.Gap))
+    $g.DrawPath($clear, $outline)
+    $g.CompositingMode = [System.Drawing.Drawing2D.CompositingMode]::SourceOver
+
+    $front = Add-Page $g $spec.Front ([float]$spec.Fold) ([float]$spec.R)
+    $tiles = foreach ($ty in $spec.Ys) { foreach ($tx in $spec.Xs) { New-Object System.Drawing.RectangleF $tx, $ty, $spec.W, $spec.H } }
+    Fill-Tiles $g $tiles ([float]$spec.TR)
+
+    $clear.Dispose(); $outline.Dispose(); $front.Dispose(); $back.Dispose(); $g.Dispose()
     return $canvas.Bitmap
 }
 
@@ -232,7 +283,7 @@ function Get-FileSvg {
     $tiles = Get-TilesSvg $spec.Xs $spec.Ys $spec.W $spec.H $spec.TR
     @"
 <svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
-  <!-- Icon of the PageCompose preset files (.PageCompose), 256 px design. Written by scripts/make-icons.ps1: change the design there. -->
+  <!-- Icon of the PageCompose preset files (.PageComposePreset), 256 px design. Written by scripts/make-icons.ps1: change the design there. -->
   <defs>
     <linearGradient id="gradient" gradientUnits="userSpaceOnUse" x1="$x" y1="$y" x2="$gx" y2="$gy">
       <stop offset="0" stop-color="$(Get-Hex $gradientStart)" />
@@ -241,6 +292,61 @@ function Get-FileSvg {
   </defs>
   <path d="M$x,$($y + $r) A$r,$r 0 0 1 $($x + $r),$y L$($x1 - $f),$y L$x1,$($y + $f) L$x1,$($y1 - $r) A$r,$r 0 0 1 $($x1 - $r),$y1 L$($x + $r),$y1 A$r,$r 0 0 1 $x,$($y1 - $r) Z" fill="url(#gradient)" />
   <path d="M$($x1 - $f),$y L$($x1 - $f),$($y + $f - $fr) A$fr,$fr 0 0 0 $($x1 - $f + $fr),$($y + $f) L$x1,$($y + $f) Z" fill="#FFFFFF" fill-opacity="0.43" />
+  <g fill="#FFFFFF">
+$tiles
+  </g>
+</svg>
+"@
+}
+
+# The path of a page with its folded corner, and its fold, for the SVG copies.
+function Get-PageSvgPaths($rect, $f, $r) {
+    $x, $y, $w, $h = $rect
+    $x1 = $x + $w; $y1 = $y + $h
+    $fr = [Math]::Min($r * 0.75, $f / 4)
+    @{
+        Page = "M$x,$($y + $r) A$r,$r 0 0 1 $($x + $r),$y L$($x1 - $f),$y L$x1,$($y + $f) L$x1,$($y1 - $r) A$r,$r 0 0 1 $($x1 - $r),$y1 L$($x + $r),$y1 A$r,$r 0 0 1 $x,$($y1 - $r) Z"
+        Fold = "M$($x1 - $f),$y L$($x1 - $f),$($y + $f - $fr) A$fr,$fr 0 0 0 $($x1 - $f + $fr),$($y + $f) L$x1,$($y + $f) Z"
+    }
+}
+
+function Get-GradientSvg([string]$id, $rect) {
+    $x, $y, $w, $h = $rect
+    $a = 60 * [Math]::PI / 180
+    $length = $w * [Math]::Cos($a) + $h * [Math]::Sin($a)
+    $gx = [Math]::Round($x + $length * [Math]::Cos($a), 2)
+    $gy = [Math]::Round($y + $length * [Math]::Sin($a), 2)
+    @"
+    <linearGradient id="$id" gradientUnits="userSpaceOnUse" x1="$x" y1="$y" x2="$gx" y2="$gy">
+      <stop offset="0" stop-color="$(Get-Hex $gradientStart)" />
+      <stop offset="1" stop-color="$(Get-Hex $gradientEnd)" />
+    </linearGradient>
+"@
+}
+
+function Get-ProjectSvg {
+    $spec = $projectSpecs[256]
+    $back = Get-PageSvgPaths $spec.Back $spec.Fold $spec.R
+    $front = Get-PageSvgPaths $spec.Front $spec.Fold $spec.R
+    $tiles = Get-TilesSvg $spec.Xs $spec.Ys $spec.W $spec.H $spec.TR
+    $opacity = [Math]::Round($projectBackAlpha / 255, 2)
+    @"
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">
+  <!-- Icon of the PageCompose project files (.PageComposeProject), 256 px design. Written by scripts/make-icons.ps1: change the design there. -->
+  <defs>
+$(Get-GradientSvg 'back' $spec.Back)
+$(Get-GradientSvg 'front' $spec.Front)
+    <mask id="gap">
+      <rect width="256" height="256" fill="#FFFFFF" />
+      <path d="$($front.Page)" fill="#000000" stroke="#000000" stroke-width="$(2 * $spec.Gap)" />
+    </mask>
+  </defs>
+  <g mask="url(#gap)" opacity="$opacity">
+    <path d="$($back.Page)" fill="url(#back)" />
+    <path d="$($back.Fold)" fill="#FFFFFF" fill-opacity="0.43" />
+  </g>
+  <path d="$($front.Page)" fill="url(#front)" />
+  <path d="$($front.Fold)" fill="#FFFFFF" fill-opacity="0.43" />
   <g fill="#FFFFFF">
 $tiles
   </g>
@@ -263,3 +369,6 @@ Save-Png 256 (Join-Path $root 'src\PageCompose.App\Assets\PageCompose.png')
 Save-Ico @(16, 20, 24, 32, 40, 48, 64, 256) (Join-Path $root 'src\PageCompose.App\Assets\PresetFile.ico') { param($size) New-FileIconBitmap $size }
 Save-Svg (Join-Path $root 'docs\icons\PageCompose.svg') (Get-AppSvg)
 Save-Svg (Join-Path $root 'docs\icons\PresetFile.svg') (Get-FileSvg)
+# Icon of the project files (.PageComposeProject), installed and registered in the same way.
+Save-Ico @(16, 20, 24, 32, 40, 48, 64, 256) (Join-Path $root 'src\PageCompose.App\Assets\ProjectFile.ico') { param($size) New-ProjectIconBitmap $size }
+Save-Svg (Join-Path $root 'docs\icons\ProjectFile.svg') (Get-ProjectSvg)

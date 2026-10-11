@@ -4,10 +4,21 @@ namespace PageCompose.Core.Visuals;
 
 public static class VisualLoader
 {
+    /// <summary>Files read as they are.</summary>
     public static IReadOnlyList<string> SupportedExtensions { get; } = [".jpg", ".jpeg", ".png", ".pdf"];
 
+    /// <summary>
+    /// Photos that Windows decodes (iPhone HEIC, WebP, TIFF): the app turns them into a JPEG first, then reads it
+    /// (<see cref="Load"/> does not take them).
+    /// </summary>
+    public static IReadOnlyList<string> ConvertedExtensions { get; } = [".heic", ".heif", ".webp", ".tif", ".tiff"];
+
+    /// <summary>A file the app takes, as it is or converted.</summary>
     public static bool IsSupported(string path) =>
-        SupportedExtensions.Contains(Path.GetExtension(path).ToLowerInvariant());
+        SupportedExtensions.Contains(Path.GetExtension(path).ToLowerInvariant()) || NeedsConversion(path);
+
+    public static bool NeedsConversion(string path) =>
+        ConvertedExtensions.Contains(Path.GetExtension(path).ToLowerInvariant());
 
     /// <param name="pageNumber">Page of a PDF, from 1 (ignored for an image).</param>
     /// <exception cref="VisualLoadException">Missing, unsupported or unreadable file, or no such page.</exception>

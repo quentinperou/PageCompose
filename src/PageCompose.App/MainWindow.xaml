@@ -300,6 +300,7 @@
                                     <TextBlock Text="&#xE710;" FontFamily="{StaticResource IconFont}" FontSize="18" HorizontalAlignment="Center" Foreground="{DynamicResource AccentFillColorDefaultBrush}" />
                                     <TextBlock Text="{Binding VisualsDropHint}" FontWeight="SemiBold" TextAlignment="Center" TextWrapping="Wrap" Margin="0,4,0,0" />
                                     <TextBlock Text="{local:Tr DropVisualsHint}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" HorizontalAlignment="Center" />
+                                    <TextBlock Text="{local:Tr FileTypes}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" HorizontalAlignment="Center" />
                                 </StackPanel>
                             </Button>
                         </StackPanel>
@@ -491,6 +492,13 @@
                             <!-- Mixed mode: a separate A4 PDF next to the export, to print on office paper (never on the sheets) -->
                             <CheckBox Content="{local:Tr CuttingPlan}" IsChecked="{Binding CuttingPlan}" ToolTip="{local:Tr CuttingPlanTooltip}"
                                       Visibility="{Binding IsMixedMode, Converter={StaticResource BoolToVisibility}}" />
+                            <!-- Name of the file, date and sheet number, small, in the waste outside the block -->
+                            <CheckBox Content="{local:Tr SheetMark}" IsChecked="{Binding SheetMark}" ToolTip="{local:Tr SheetMarkTooltip}" />
+                            <!-- A .PageComposeProject next to the export: its files and settings, opened again by a double click -->
+                            <CheckBox Content="{local:Tr SaveProject}" IsChecked="{Binding SaveProject}" ToolTip="{local:Tr SaveProjectTooltip}" />
+                            <!-- The project alone, without exporting the sheets (asked by the author) -->
+                            <Button Content="{local:Tr ExportProject}" Click="ExportProject_Click" IsEnabled="{Binding HasAnyVisual}"
+                                    HorizontalAlignment="Left" Padding="12,4" Margin="0,8,0,0" ToolTip="{local:Tr ExportProjectTooltip}" />
                         </StackPanel>
                     </Border>
                 </StackPanel>

@@ -105,7 +105,7 @@
     <value>Glissez un visuel ici ou cliquez pour choisir</value>
   </data>
   <data name="FileTypes" xml:space="preserve">
-    <value>JPG, PNG ou PDF</value>
+    <value>JPG, PNG, HEIC, WebP, TIFF ou PDF</value>
   </data>
   <data name="ClearAll" xml:space="preserve">
     <value>Tout retirer</value>
@@ -169,6 +169,9 @@
   </data>
   <data name="Format_BusinessCard" xml:space="preserve">
     <value>Carte de visite 85 × 55</value>
+  </data>
+  <data name="Format_IdPhoto" xml:space="preserve">
+    <value>Photo d'identité 35 × 45</value>
   </data>
   <data name="Format_Photo9x13" xml:space="preserve">
     <value>Photo 9 × 13</value>
@@ -622,7 +625,7 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
     <value>Fichier introuvable : {0}</value>
   </data>
   <data name="LoadUnsupported" xml:space="preserve">
-    <value>Format non pris en charge ({0}). Utilisez un JPG, PNG ou PDF.</value>
+    <value>Format non pris en charge ({0}). Utilisez un JPG, PNG, HEIC, WebP, TIFF ou PDF.</value>
   </data>
   <data name="LoadNoPages" xml:space="preserve">
     <value>« {0} » ne contient aucune page.</value>
@@ -658,10 +661,10 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
     <value>Importer des préréglages</value>
   </data>
   <data name="PresetsFilter" xml:space="preserve">
-    <value>Préréglages PageCompose (*.PageCompose)|*.PageCompose</value>
+    <value>Préréglages PageCompose (*.PageComposePreset)|*.PageComposePreset</value>
   </data>
   <data name="PresetsOpenFilter" xml:space="preserve">
-    <value>Préréglages PageCompose (*.PageCompose, *.json)|*.PageCompose;*.json</value>
+    <value>Préréglages PageCompose (*.PageComposePreset)|*.PageComposePreset</value>
   </data>
   <data name="PresetApplied" xml:space="preserve">
     <value>« {0} » est appliqué.</value>
@@ -757,7 +760,7 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
     <value>Choisir le verso</value>
   </data>
   <data name="VisualsFilter" xml:space="preserve">
-    <value>Visuels (*.jpg;*.jpeg;*.png;*.pdf)|*.jpg;*.jpeg;*.png;*.pdf</value>
+    <value>Visuels (JPG, PNG, HEIC, WebP, TIFF, PDF)|*.jpg;*.jpeg;*.png;*.heic;*.heif;*.webp;*.tif;*.tiff;*.pdf</value>
   </data>
   <data name="UnexpectedError" xml:space="preserve">
     <value>Une erreur inattendue s'est produite :
@@ -907,5 +910,74 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
   </data>
   <data name="OpenLineBackTitle" xml:space="preserve">
     <value>Choisir le verso de {0}</value>
+  </data>
+  <data name="LoadHeicCodec" xml:space="preserve">
+    <value>Impossible de lire « {0} » : Windows ne lit les photos HEIC qu'avec « Extensions d'image HEIF » et « Extensions vidéo HEVC » (Microsoft Store).</value>
+  </data>
+  <data name="SheetMark" xml:space="preserve">
+    <value>Repère sur chaque feuille (nom, date, numéro)</value>
+  </data>
+  <data name="SheetMarkTooltip" xml:space="preserve">
+    <value>En petit hors des visuels, coupé avec les chutes : le nom du fichier, la date et « feuille 2/5 », pour trier les feuilles au massicot.</value>
+  </data>
+  <data name="SheetMarkText" xml:space="preserve">
+    <value>{0} · {1} · feuille {2}/{3}</value>
+  </data>
+  <data name="NoticeNoRoomForMark" xml:space="preserve">
+    <value>Pas de place hors des visuels pour le repère de la feuille : il ne sera pas imprimé.</value>
+  </data>
+  <data name="SaveProject" xml:space="preserve">
+    <value>Enregistrer le projet (fichiers et réglages)</value>
+  </data>
+  <data name="SaveProjectTooltip" xml:space="preserve">
+    <value>Un fichier .PageComposeProject à côté de l'export : un double clic rouvre le projet tel quel, pour le réimprimer.</value>
+  </data>
+  <data name="ToastWithProject" xml:space="preserve">
+    <value> + projet</value>
+  </data>
+  <data name="ProjectOpened" xml:space="preserve">
+    <value>Projet ouvert</value>
+  </data>
+  <data name="ProjectOpenedDetail" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="ProjectNotAFile" xml:space="preserve">
+    <value>Ce fichier n'est pas un projet PageCompose, ou il est endommagé.</value>
+  </data>
+  <data name="ProjectOpenFailed" xml:space="preserve">
+    <value>Impossible d'ouvrir le projet : {0}</value>
+  </data>
+  <data name="ExportProject" xml:space="preserve">
+    <value>Exporter le projet</value>
+  </data>
+  <data name="ExportProjectTooltip" xml:space="preserve">
+    <value>Le fichier .PageComposeProject seul (fichiers et réglages), sans exporter les feuilles.</value>
+  </data>
+  <data name="ExportProjectDialogTitle" xml:space="preserve">
+    <value>Exporter le projet</value>
+  </data>
+  <data name="ProjectFilter" xml:space="preserve">
+    <value>Projets PageCompose (*.PageComposeProject)|*.PageComposeProject</value>
+  </data>
+  <data name="SavingProject" xml:space="preserve">
+    <value>Enregistrement du projet</value>
+  </data>
+  <data name="ToastProjectSaved" xml:space="preserve">
+    <value>Projet enregistré</value>
+  </data>
+  <data name="OpenProjectTitle" xml:space="preserve">
+    <value>Ouvrir le projet</value>
+  </data>
+  <data name="OpenProjectMessage" xml:space="preserve">
+    <value>Cette fenêtre contient déjà un travail en cours. Ouvrir « {0} » :</value>
+  </data>
+  <data name="OpenProjectNewWindow" xml:space="preserve">
+    <value>Dans une nouvelle fenêtre</value>
+  </data>
+  <data name="OpenProjectReplace" xml:space="preserve">
+    <value>Remplacer</value>
+  </data>
+  <data name="OpenProjectReplaceTooltip" xml:space="preserve">
+    <value>À la place du travail en cours (Ctrl+Z le rend)</value>
   </data>
 </root>

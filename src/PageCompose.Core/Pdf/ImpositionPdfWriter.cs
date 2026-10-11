@@ -1,6 +1,7 @@
 using PageCompose.Core.Layout;
 using PageCompose.Core.Visuals;
 using PdfSharp.Drawing;
+using PdfSharp.Fonts;
 using PdfSharp.Pdf;
 
 namespace PageCompose.Core.Pdf;
@@ -18,6 +19,7 @@ namespace PageCompose.Core.Pdf;
 /// The back of each cell, sheet by sheet, when visuals have their own (null in a cell: <paramref name="Verso"/>, the
 /// shared back, if any).
 /// </param>
+/// <param name="Marks">The mark of each sheet, on its front outside the block (see <see cref="SheetMark"/>); null: none.</param>
 public sealed record ImpositionJob(
     SheetLayout Layout,
     IReadOnlyList<VisualInfo?[]> Sheets,
@@ -29,7 +31,8 @@ public sealed record ImpositionJob(
     bool CutLines = false,
     bool VersoMargins = false,
     IReadOnlyList<SheetLayout>? SheetLayouts = null,
-    IReadOnlyList<VisualInfo?[]>? Backs = null)
+    IReadOnlyList<VisualInfo?[]>? Backs = null,
+    IReadOnlyList<string>? Marks = null)
 {
     /// <summary>Layout of sheet <paramref name="index"/> (from 0).</summary>
     public SheetLayout LayoutOf(int index) => SheetLayouts?[index] ?? Layout;
@@ -88,6 +91,8 @@ public static class ImpositionPdfWriter
             throw new ArgumentException("Each sheet must have as many cells as the layout.", nameof(job));
         if (job.Backs is { } backs && (backs.Count != job.Sheets.Count || backs.Where((b, i) => b.Length != job.Sheets[i].Length).Any()))
             throw new ArgumentException("The backs must match the sheets, cell by cell.", nameof(job));
+        if (job.Marks is { } marks && marks.Count != job.Sheets.Count)
+            throw new ArgumentException("One mark per sheet.", nameof(job));
 
         using var doc = new PdfDocument();
         var first = job.Sheets.SelectMany(s => s).FirstOrDefault(v => v is not null);
@@ -111,7 +116,7 @@ public static class ImpositionPdfWriter
             {
                 var (layout, sheet) = (job.LayoutOf(s), job.Sheets[s]);
                 var recto = layout.Cells.Select((cell, i) => (cell, visual: sheet[i])).ToList();
-                DrawSide(doc, layout, recto, ImageOf, job.Fit, SideOptions.Recto, job.CutLines);
+                DrawSide(doc, layout, recto, ImageOf, job.Fit, SideOptions.Recto, job.CutLines, job.Marks?[s]);
 
                 if (job.HasBack)
                 {
@@ -142,7 +147,7 @@ public static class ImpositionPdfWriter
     }
 
     private static void DrawSide(PdfDocument doc, SheetLayout layout, List<(LayoutCell cell, VisualInfo? visual)> cells,
-        Func<VisualInfo, XImage> imageOf, FitMode fit, SideOptions side, bool cutLines)
+        Func<VisualInfo, XImage> imageOf, FitMode fit, SideOptions side, bool cutLines, string? mark = null)
     {
         var page = doc.AddPage();
         page.Width = XUnit.FromMillimeter(layout.Sheet.Width);
@@ -192,6 +197,28 @@ public static class ImpositionPdfWriter
             foreach (var y in layout.CutsY)
                 gfx.DrawLine(pen, Units.MmToPt(left), Units.MmToPt(y), Units.MmToPt(right), Units.MmToPt(y));
         }
+
+        if (!side.IsVerso && !string.IsNullOrWhiteSpace(mark) && SheetMark.Place(layout) is { } at)
+            DrawMark(gfx, mark, at.Band, at.Side);
+    }
+
+    // Small grey text, centred along its band; shrunk down to SheetMark.MinFontSizePt when longer than the band.
+    private static void DrawMark(XGraphics gfx, string text, RectMm band, SheetMark.Side side)
+    {
+        GlobalFontSettings.FontResolver ??= new WindowsFonts();
+        bool upright = side is SheetMark.Side.Bottom or SheetMark.Side.Top;
+        double length = Units.MmToPt(upright ? band.Width : band.Height) - Units.MmToPt(2);
+        double size = SheetMark.FontSizePt;
+        double width = gfx.MeasureString(text, new XFont("Segoe UI", size)).Width;
+        if (width > length) size = Math.Max(SheetMark.MinFontSizePt, size * length / width);
+        var font = new XFont("Segoe UI", size);
+
+        double cx = Units.MmToPt(band.X + band.Width / 2), cy = Units.MmToPt(band.Y + band.Height / 2);
+        double w = Units.MmToPt(upright ? band.Width : band.Height), h = Units.MmToPt(upright ? band.Height : band.Width);
+        var state = gfx.Save();
+        if (!upright) gfx.RotateAtTransform(-90, new XPoint(cx, cy)); // read from the bottom up
+        gfx.DrawString(text, font, XBrushes.Gray, new XRect(cx - w / 2, cy - h / 2, w, h), XStringFormats.Center);
+        gfx.Restore(state);
     }
 
     /// <summary>The visual of each cell, in the coordinates of the sheet (points); the cutting plan draws them smaller.</summary>

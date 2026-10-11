@@ -20,7 +20,7 @@
 
 ## Features
 
-PageCompose turns your visuals (JPG, PNG or PDF) into a **print-ready PDF**: the sheet is filled with as many
+PageCompose turns your visuals (JPG, PNG, HEIC, WebP, TIFF or PDF) into a **print-ready PDF**: the sheet is filled with as many
 copies as fit, with optional crop marks and bleed, ready to cut on a guillotine. Its defaults match the
 **FUJIFILM ApeosPro C810 for Photo** (SRA3, A3 and A4 sheets, 4.1 mm unprintable margin), but the PDF works
 with any printer that prints at actual size.
@@ -42,15 +42,18 @@ with any printer that prints at actual size.
   in Repeat mode switches to Same size.
 - **Presets**: save the settings of a usual job under a name (mode, size and margins, sheet, cutting, quantity in
   visuals or in sheets, double-sided, export) and get them back in one click. Files, the number of copies and the
-  size of each line in Mixed sizes mode are not part of them. **Settings → Presets** exports
-  them to a `.PageCompose` file (all of them in `all-preset.PageCompose`, or a single one under its own name) and
+  size of each line in Mixed sizes mode are not part of them (a project keeps them, see below). **Settings → Presets** exports
+  them to a `.PageComposePreset` file (all of them in `all-preset.PageComposePreset`, or a single one under its own name) and
   imports them, to copy them to another PC or keep them safe. A **double click** on
-  a `.PageCompose` file (or dropping it on the window) imports them too; a file of a single preset applies it at once.
+  a `.PageComposePreset` file (or dropping it on the window) imports them too; a file of a single preset applies it at once.
   The file is still JSON, readable in Notepad.
+- **iPhone photos (HEIC), WebP and TIFF**: Windows converts them when they are added (upright, colours in sRGB) into a
+  JPEG of top quality, used as any photo. HEIC needs the "HEIF Image Extensions" and "HEVC Video Extensions" of the
+  Microsoft Store, usually already installed; the app says so when they are missing.
 - **PDF of several pages**: a page list on the line of the file chooses the page used. Added to a list of visuals,
   the app asks whether to take all its pages (one line each) or one page, chosen in a list. A PDF of two pages (a
   business card) gives its front and its back at once: in Repeat mode, or in a list when Double-sided is ticked.
-- **Preset sizes**: business card 85 × 55, photos 9 × 13 / 10 × 15 / 13 × 18 / 15 × 20 / 20 × 30 (lab sizes, in
+- **Preset sizes**: business card 85 × 55, ID photo 35 × 45 (eight on a 10 × 15 print), photos 9 × 13 / 10 × 15 / 13 × 18 / 15 × 20 / 20 × 30 (lab sizes, in
   inches: 10 × 15 = 4 × 6 in = 101.6 × 152.4 mm), squares (also 10 × 10 with a 5 mm white border), **instant photo frames** (classic
   Polaroid, Instax Mini, Square and Wide, with their thick border at the bottom), A6 postcard, DL and A5 flyers, A4,
   or any custom size.
@@ -77,6 +80,14 @@ with any printer that prints at actual size.
   vectors; **"Flatten the PDF"** turns each sheet side into a single 300 dpi picture, leaving nothing for the printer
   to interpret. **"Export as JPG"** writes one 300 dpi picture per sheet side, handy for a photo lab. A notification
   then offers to open the file (the first picture of a JPG export) or show it in its folder.
+- **Sheet mark** (optional): the name of the file, the date and "sheet 2/5" in small print outside the visuals, cut off
+  with the waste, to sort the sheets at the guillotine.
+- **Projects saved to print again**: "Save the project" writes a `.PageComposeProject` file next to each export, holding a
+  copy of its files and every setting (copies, sizes, backs, reframing, turns); **"Export the project"** writes it without
+  exporting the sheets. A double click on it opens the project as it was, on any PC, in a window of its own; dropped
+  on a window that already holds work, it asks whether to open it in a new window or in place of that work (Ctrl+Z
+  gives it back).
+- **Undo, redo**: Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z) undo and redo the changes of the settings and of the list.
 - **Number fields**: the Up and Down arrows change the value (Shift: by 10); "0.1" and "0,1" both work.
 - **Checks**: effective resolution of each visual at the chosen size (warning below 200 dpi), cropping when the
   proportions differ from the size.
@@ -95,6 +106,7 @@ Examples on an SRA3 sheet:
 | Size | Edge to edge | With 2 mm bleed |
 |------|:---:|:---:|
 | Business card 85 × 55 | 25 | 21 |
+| ID photo 35 × 45 | 72 | 66 |
 | Photo 10 × 15 | 8 | 4 |
 | Photo 9 × 13 | 9 | 9 |
 | Photo 13 × 18 | 4 | 4 |
@@ -129,7 +141,8 @@ hot folder set to the real size and no imposition. A lab print sheet goes to the
 The installer:
 
 - copies the app to `C:\Program Files\PageCompose` and adds it to the Start menu (desktop shortcut optional);
-- associates the `.PageCompose` preset files with PageCompose (their icon, and the double click that imports them);
+- associates the `.PageComposePreset` preset files and the `.PageComposeProject` projects with PageCompose (their icons, and
+  the double click that imports or opens them);
 - offers to install the Microsoft **.NET 10 Desktop Runtime** if it is missing.
 
 Later versions install from the app: when one is available, a bar offers to **Update** (or use **Settings →
@@ -137,7 +150,7 @@ Updates**). The new installer is downloaded from GitHub, checked against the SHA
 silently, and PageCompose starts again.
 
 To uninstall: **Settings → Apps → Installed apps → PageCompose**. The uninstaller removes the app, its temporary
-files and the `.PageCompose` file association, and asks whether to delete your settings and presets too (No by default, to find them again after a
+files and its file associations, and asks whether to delete your settings and presets too (No by default, to find them again after a
 reinstall).
 
 **Requirements:** Windows 10 2004 or later, x64 (made for Windows 11).
@@ -188,8 +201,8 @@ src/
   PageCompose.Core/   Logic without UI: layout computation, packing of mixed sizes (guillotine cuts),
                       placement, distribution over the sheets, reading the visuals (size, EXIF, PDF
                       TrimBox), writing the PDF (PDFsharp), list of the GitHub releases (updates)
-  PageCompose.App/    WPF app: settings panel, preview (Windows.Data.Pdf), drag and drop, settings, updates,
-                      UI strings
+  PageCompose.App/    WPF app: settings panel, preview (Windows.Data.Pdf), drag and drop, HEIC / WebP / TIFF
+                      conversion, projects, undo, settings, updates, UI strings
 installer/            Inno Setup script of the installer
 scripts/              build.ps1 (full build), make-icons.ps1 (regenerates the icons)
 tests/                Unit tests (xUnit)
@@ -210,9 +223,9 @@ Adding a language means updating these three places, plus a `README.<language>.m
 ### Icons
 
 `scripts\make-icons.ps1` draws the icon (`src/PageCompose.App/Assets/PageCompose.ico`, its 256 px image for the app,
-and `docs/icon-256.png`), the icon of the preset files (`src/PageCompose.App/Assets/PresetFile.ico`, installed next to
-the app) and SVG copies of both (`docs/icons/PageCompose.svg`, `docs/icons/PresetFile.svg`) to rework the design in a
-vector editor; the small sizes of the `.ico` files are fitted to whole pixels by the script. The generated files are
+and `docs/icon-256.png`), the icons of the preset files and of the projects
+(`src/PageCompose.App/Assets/PresetFile.ico`, `ProjectFile.ico`, installed next to the app) and SVG copies of them
+(`docs/icons/PageCompose.svg`, `PresetFile.svg`, `ProjectFile.svg`) to rework the designs in a vector editor; the small sizes of the `.ico` files are fitted to whole pixels by the script. The generated files are
 committed: run it again only to change the design.
 
 ### Releasing a version

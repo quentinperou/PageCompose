@@ -43,6 +43,7 @@ public static class SheetFormats
 public static class ItemFormats
 {
     public static readonly PaperFormat BusinessCard = new("BusinessCard", 85, 55);
+    public static readonly PaperFormat IdPhoto = new("IdPhoto", 35, 45); // eight on a 10 x 15 print
     public static readonly PaperFormat Photo9x13 = new("Photo9x13", Inches.Mm(3.5), Inches.Mm(5));
     public static readonly PaperFormat Photo10x15 = new("Photo10x15", Inches.Mm(4), Inches.Mm(6));
     public static readonly PaperFormat Photo13x18 = new("Photo13x18", Inches.Mm(5), Inches.Mm(7));
@@ -66,7 +67,7 @@ public static class ItemFormats
 
     public static IReadOnlyList<PaperFormat> All { get; } =
     [
-        BusinessCard, Photo9x13, Photo10x15, Photo13x18, Photo15x20, Photo20x30,
+        BusinessCard, IdPhoto, Photo9x13, Photo10x15, Photo13x18, Photo15x20, Photo20x30,
         Square10, Square15, Square10Border, Polaroid, InstaxMini, InstaxSquare, InstaxWide,
         PostcardA6, FlyerDl, FlyerA5, A4,
     ];

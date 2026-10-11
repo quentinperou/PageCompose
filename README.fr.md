@@ -20,7 +20,7 @@
 
 ## Fonctionnalités
 
-PageCompose transforme vos visuels (JPG, PNG ou PDF) en **PDF prêt à imprimer** : la feuille est remplie avec autant
+PageCompose transforme vos visuels (JPG, PNG, HEIC, WebP, TIFF ou PDF) en **PDF prêt à imprimer** : la feuille est remplie avec autant
 d'exemplaires que possible, avec traits de coupe et fond perdu en option, prête à passer au massicot. Ses réglages
 par défaut correspondent à la **FUJIFILM ApeosPro C810 for Photo** (feuilles SRA3, A3 et A4, marge non imprimable
 de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réelle.
@@ -44,16 +44,20 @@ de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réel
   Déposer plusieurs fichiers en mode Répétition fait passer en Même format.
 - **Préréglages** : enregistrez sous un nom les réglages d'un travail habituel (mode, format et marges, feuille, coupe,
   quantité en visuels ou en feuilles, recto verso, export) et retrouvez-les en un clic. Les fichiers, le nombre
-  d'exemplaires et le format de chaque ligne en mode Multi-formats n'en font pas partie.
-  **Paramètres → Préréglages** les exporte dans un fichier `.PageCompose` (tous dans `all-preset.PageCompose`, ou un
-  seul sous son propre nom) et les importe, pour les copier sur un autre PC ou les sauvegarder. Un **double clic** sur un fichier `.PageCompose` (ou un glisser-déposer dans la fenêtre) les
+  d'exemplaires et le format de chaque ligne en mode Multi-formats n'en font pas partie (un projet les garde, voir
+  plus bas).
+  **Paramètres → Préréglages** les exporte dans un fichier `.PageComposePreset` (tous dans `all-preset.PageComposePreset`, ou un
+  seul sous son propre nom) et les importe, pour les copier sur un autre PC ou les sauvegarder. Un **double clic** sur un fichier `.PageComposePreset` (ou un glisser-déposer dans la fenêtre) les
   importe aussi ; un fichier d'un seul préréglage l'applique aussitôt. Ce fichier reste du JSON lisible avec le
   Bloc-notes.
+- **Photos d'iPhone (HEIC), WebP et TIFF** : Windows les convertit à l'ajout (redressées, couleurs en sRGB) en JPEG
+  de qualité maximale, utilisé comme n'importe quelle photo. Le HEIC demande les « Extensions d'image HEIF » et
+  « Extensions vidéo HEVC » du Microsoft Store, en général déjà installées ; l'appli le signale quand elles manquent.
 - **PDF de plusieurs pages** : une liste sur la ligne du fichier choisit la page utilisée. Ajouté à une liste de
   visuels, l'appli demande s'il faut prendre toutes ses pages (une ligne chacune) ou une page, choisie dans une liste. Un
   PDF de deux pages (une carte de visite) donne d'un coup son recto et son verso : en mode Répétition, ou dans une
   liste quand Recto verso est coché.
-- **Formats prédéfinis** : carte de visite 85 × 55, photos 9 × 13 / 10 × 15 / 13 × 18 / 15 × 20 / 20 × 30 (tailles
+- **Formats prédéfinis** : carte de visite 85 × 55, photo d'identité 35 × 45 (huit sur un tirage 10 × 15), photos 9 × 13 / 10 × 15 / 13 × 18 / 15 × 20 / 20 × 30 (tailles
   de labo, en pouces : 10 × 15 = 4 × 6 po = 101,6 × 152,4 mm), carrés (dont un 10 × 10 avec une marge blanche de 5 mm), **cadres photo
   instantanée** (Polaroid classique, Instax Mini, Square et Wide, avec leur grosse bande en bas), carte postale A6,
   flyers DL et A5, A4, ou une taille libre.
@@ -84,6 +88,15 @@ de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réel
   l'imprimante. **« Exporter en JPG »** écrit une image 300 dpi par face de feuille, pratique pour un labo photo.
   Une notification propose ensuite d'ouvrir le fichier (la première image pour un export JPG) ou de l'afficher dans
   son dossier.
+- **Repère de feuille** (en option) : le nom du fichier, la date et « feuille 2/5 » en petit hors des visuels, coupés
+  avec les chutes, pour trier les feuilles au massicot.
+- **Projets enregistrés pour les réimprimer** : « Enregistrer le projet » écrit un fichier `.PageComposeProject` à
+  côté de chaque export, avec une copie de ses fichiers et tous les réglages (exemplaires, formats, versos, cadrages,
+  rotations) ; **« Exporter le projet »** l'écrit sans exporter les feuilles. Un double clic dessus rouvre le projet
+  tel quel, sur n'importe quel PC, dans sa propre fenêtre ; glissé sur une fenêtre qui contient déjà un travail, il
+  demande s'il faut l'ouvrir dans une nouvelle fenêtre ou à la place de ce travail (Ctrl+Z le rend).
+- **Annuler, rétablir** : Ctrl+Z et Ctrl+Y (ou Ctrl+Maj+Z) annulent et rétablissent les changements des réglages et
+  de la liste.
 - **Champs numériques** : les flèches haut et bas du clavier changent la valeur (Maj : de 10 en 10) ; « 0.1 » et
   « 0,1 » fonctionnent tous les deux.
 - **Contrôles** : résolution effective de chaque visuel au format choisi (alerte sous 200 dpi), recadrage quand les
@@ -104,6 +117,7 @@ Exemples sur une feuille SRA3 :
 | Format | Bord à bord | Avec fond perdu 2 mm |
 |--------|:---:|:---:|
 | Carte de visite 85 × 55 | 25 | 21 |
+| Photo d'identité 35 × 45 | 72 | 66 |
 | Photo 10 × 15 | 8 | 4 |
 | Photo 9 × 13 | 9 | 9 |
 | Photo 13 × 18 | 4 | 4 |
@@ -139,7 +153,8 @@ part au labo à sa taille, sans marge.
 L'installateur :
 
 - copie l'application dans `C:\Program Files\PageCompose` et l'ajoute au menu Démarrer (raccourci bureau en option) ;
-- associe les fichiers de préréglages `.PageCompose` à PageCompose (leur icône, et le double clic qui les importe) ;
+- associe les fichiers de préréglages `.PageComposePreset` et les projets `.PageComposeProject` à PageCompose (leurs
+  icônes, et le double clic qui les importe ou les ouvre) ;
 - propose d'installer le **.NET 10 Desktop Runtime** de Microsoft s'il manque.
 
 Les versions suivantes s'installent depuis l'application : quand l'une d'elles est disponible, une barre propose de
@@ -147,7 +162,7 @@ Les versions suivantes s'installent depuis l'application : quand l'une d'elles e
 contrôlé avec le SHA-256 publié par GitHub, installé sans fenêtre d'assistant, puis PageCompose redémarre.
 
 Pour désinstaller : **Paramètres → Applications → Applications installées → PageCompose**. Le désinstalleur retire
-l'application, ses fichiers temporaires et l'association des fichiers `.PageCompose`, et demande s'il faut aussi supprimer vos réglages et préréglages (Non par
+l'application, ses fichiers temporaires et ses associations de fichiers, et demande s'il faut aussi supprimer vos réglages et préréglages (Non par
 défaut, pour les retrouver après une réinstallation).
 
 **Configuration requise :** Windows 10 2004 ou plus récent, x64 (conçu pour Windows 11).
@@ -200,7 +215,8 @@ src/
                       EXIF, TrimBox PDF), écriture du PDF (PDFsharp), liste des versions publiées sur
                       GitHub (mises à jour)
   PageCompose.App/    Application WPF : panneau de réglages, aperçu (Windows.Data.Pdf), glisser-déposer,
-                      paramètres, mises à jour, textes de l'interface
+                      conversion HEIC / WebP / TIFF, projets, annulation, paramètres, mises à jour, textes
+                      de l'interface
 installer/            Script Inno Setup de l'installateur
 scripts/              build.ps1 (compilation complète), make-icons.ps1 (régénère les icônes)
 tests/                Tests unitaires (xUnit)
@@ -221,9 +237,9 @@ Ajouter une langue, c'est mettre à jour ces trois endroits, plus un `README.<la
 ### Icônes
 
 `scripts\make-icons.ps1` dessine l'icône (`src/PageCompose.App/Assets/PageCompose.ico`, son image 256 px pour
-l'application et `docs/icon-256.png`), celle des fichiers de préréglages (`src/PageCompose.App/Assets/PresetFile.ico`,
-installée à côté de l'application) et leurs copies en SVG (`docs/icons/PageCompose.svg`, `docs/icons/PresetFile.svg`),
-pour retravailler le dessin dans un éditeur vectoriel ; les petites tailles des `.ico` sont calées au pixel par le
+l'application et `docs/icon-256.png`), celles des fichiers de préréglages et des projets
+(`src/PageCompose.App/Assets/PresetFile.ico`, `ProjectFile.ico`, installées à côté de l'application) et leurs copies en
+SVG (`docs/icons/PageCompose.svg`, `PresetFile.svg`, `ProjectFile.svg`), pour retravailler les dessins dans un éditeur vectoriel ; les petites tailles des `.ico` sont calées au pixel par le
 script. Les fichiers générés sont versionnés : ne relancez le script que pour changer le dessin.
 
 ### Publier une version

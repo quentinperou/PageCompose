@@ -11,6 +11,13 @@ public sealed record PageOption(int Number, string Name)
     public override string ToString() => Name;
 }
 
+/// <summary>
+/// What was chosen on a line at one moment: to undo a change (the same <see cref="Item"/> gets it back) or to save the
+/// project. Its back is captured with it.
+/// </summary>
+public sealed record LineState(VisualItem Item, VisualInfo Info, int Copies, int Rotation, FormatOption? Format,
+    double CustomWidth, double CustomHeight, double CropX, double CropY, LineState? Back, bool BackAuto);
+
 /// <summary>A visual of the list, with its number of copies, and its page when it is a PDF of several pages.</summary>
 public sealed class VisualItem : ObservableObject
 {
@@ -97,6 +104,29 @@ public sealed class VisualItem : ObservableObject
         (_cropX, _cropY) = other.Crop;
     }
 
+    public LineState Capture() => new(this, _info, _copies, _rotation, _format, _customWidth, _customHeight, _cropX, _cropY,
+        _back?.Capture(), _isBackAuto);
+
+    /// <summary>
+    /// Takes back what <see cref="Capture"/> saw (or a project opened), its back included, without recomputing
+    /// anything: the view model does it once.
+    /// </summary>
+    public void Restore(LineState s)
+    {
+        if (s.Info.PageNumber != _info.PageNumber) (ThumbnailOutdated, DragImage) = (true, null);
+        _info = s.Info;
+        (_copies, _rotation, _format, _customWidth, _customHeight, _cropX, _cropY) =
+            (s.Copies, s.Rotation, s.Format, s.CustomWidth, s.CustomHeight, s.CropX, s.CropY);
+        _back = s.Back?.Item;
+        if (s.Back is { } back) back.Item.Restore(back);
+        _isBackAuto = s.BackAuto;
+        _selectedPage = Pages[Math.Clamp(_info.PageNumber, 1, Pages.Count) - 1];
+        OnPropertyChanged(string.Empty); // every property
+    }
+
+    /// <summary>Another page of its file came back with <see cref="Restore"/>: the view model reads its thumbnail again.</summary>
+    public bool ThumbnailOutdated { get; set; }
+
     private void Rotate(int degrees)
     {
         if (degrees % 360 == 0) return;
@@ -166,6 +196,7 @@ public sealed class VisualItem : ObservableObject
     public void Replace(VisualInfo info)
     {
         _info = info;
+        DragImage = null; // the picture of the other page
         OnPropertyChanged(nameof(Info));
         OnPropertyChanged(nameof(Details));
         OnPropertyChanged(nameof(NameWithPage));

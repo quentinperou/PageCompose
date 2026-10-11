@@ -19,7 +19,8 @@ internal static class PdfRasterizer
     // A0 at 300 dpi is about 14000 px: beyond this, the resolution goes down instead.
     private const double MaxSidePx = 12000;
 
-    private static readonly string Folder = Path.Combine(Path.GetTempPath(), "PageCompose", "Converted");
+    /// <summary>The converted files of the app (also the photos of <see cref="PhotoConverter"/>).</summary>
+    internal static readonly string Folder = Path.Combine(Path.GetTempPath(), "PageCompose", "Converted");
 
     /// <summary>
     /// Returns the PNG of a page (from 1) and the number of pages of the file. The PNG is made once per file version

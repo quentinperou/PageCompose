@@ -62,6 +62,12 @@ public sealed class LayoutPreset
     /// <summary>Mixed mode: the cutting plan next to each export (presets of 0.4.x: yes).</summary>
     public bool CuttingPlan { get; set; } = true;
 
+    /// <summary>The mark of each sheet outside the block (presets of 0.6.x and before: none).</summary>
+    public bool SheetMark { get; set; }
+
+    /// <summary>The project next to each export (presets of 0.6.x and before: no).</summary>
+    public bool SaveProject { get; set; }
+
     public override string ToString() => Name;
 }
 
@@ -81,7 +87,7 @@ public static class PresetStore
     /// Extension of the exported files, registered by the installer: a double click imports them. They are still
     /// plain JSON, readable in any text editor.
     /// </summary>
-    public const string FileExtension = ".PageCompose";
+    public const string FileExtension = ".PageComposePreset";
 
     public static bool IsPresetFile(string path) => Path.GetExtension(path).Equals(FileExtension, StringComparison.OrdinalIgnoreCase);
 
@@ -138,7 +144,7 @@ public static class PresetStore
     }
 
     /// <summary>
-    /// Name proposed for an export: "all-preset.PageCompose" for all of them (the author's choice), else the name of
+    /// Name proposed for an export: "all-preset.PageComposePreset" for all of them (the author's choice), else the name of
     /// the preset, without the characters a file name cannot hold.
     /// </summary>
     public static string ExportFileName(string? name)
