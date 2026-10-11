@@ -47,7 +47,7 @@ the photo sizes moved to exact inches.
 - Updates from GitHub Releases, as in CropPdf: check at startup (can be turned off), Stable/Beta channel, bar in the
   main window, download checked with SHA-256, silent install and relaunch. The Settings window copies CropPdf's
   (language, theme, updates, about).
-- 646 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.5.0.exe` locally (Inno Setup 6).
+- 646 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.6.0.exe` locally (Inno Setup 6).
 - The installer is not signed: the UAC prompt shows "Unknown publisher" (QuentinPerou appears in the file details
   and in Installed apps). Left as is for now (October 10, 2026). A paid certificate would show the author's legal
   name, SignPath Foundation its own name; only a self-signed certificate trusted by hand on each PC shows "QuentinPerou".
