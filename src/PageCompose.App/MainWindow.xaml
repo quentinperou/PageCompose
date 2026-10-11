@@ -8,7 +8,7 @@
         FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="14"
         Foreground="{DynamicResource TextFillColorPrimaryBrush}" Background="{DynamicResource ApplicationBackgroundBrush}"
         AllowDrop="True" DragEnter="Window_DragOver" DragOver="Window_DragOver" DragLeave="Window_DragLeave"
-        Drop="Window_Drop" Closing="Window_Closing" PreviewKeyDown="Window_PreviewKeyDown">
+        Drop="Window_Drop" Closing="Window_Closing" PreviewKeyDown="Window_PreviewKeyDown" PreviewKeyUp="Window_PreviewKeyUp">
 
     <Window.Resources>
         <!-- Rounded thumbnail -->
@@ -30,6 +30,14 @@
 
         <!-- Right click on a file line: turn the visual (a photo imported sideways) -->
         <ContextMenu x:Key="VisualMenu" x:Shared="False">
+            <!-- Lines of a list only: the same photo in another size, typically (Mixed sizes) -->
+            <MenuItem Header="{local:Tr DuplicateLine}" Command="{Binding DuplicateCommand}"
+                      Visibility="{Binding DuplicateCommand, Converter={StaticResource NullToCollapsed}}">
+                <MenuItem.Icon>
+                    <TextBlock Text="&#xE8C8;" FontFamily="{StaticResource IconFont}" FontSize="16" />
+                </MenuItem.Icon>
+            </MenuItem>
+            <Separator Visibility="{Binding DuplicateCommand, Converter={StaticResource NullToCollapsed}}" />
             <MenuItem Header="{local:Tr RotateRight}" Command="{Binding RotateRightCommand}">
                 <MenuItem.Icon>
                     <TextBlock Text="&#xE7AD;" FontFamily="{StaticResource IconFont}" FontSize="16" />
@@ -50,6 +58,12 @@
             <MenuItem Header="{local:Tr RotateAuto}" Command="{Binding RotateAutoCommand}" IsEnabled="{Binding IsTurnedByHand}">
                 <MenuItem.Icon>
                     <TextBlock Text="&#xE7A7;" FontFamily="{StaticResource IconFont}" FontSize="16" />
+                </MenuItem.Icon>
+            </MenuItem>
+            <!-- Back to the middle of the photo, once it was dragged on the preview -->
+            <MenuItem Header="{local:Tr RecenterPhoto}" Command="{Binding RecenterCommand}" IsEnabled="{Binding IsCropMoved}">
+                <MenuItem.Icon>
+                    <TextBlock Text="&#xE7AC;" FontFamily="{StaticResource IconFont}" FontSize="16" />
                 </MenuItem.Icon>
             </MenuItem>
         </ContextMenu>
@@ -91,9 +105,21 @@
 
         <!-- Mixed mode: the size of the print, on its line (preset sizes only) -->
         <DataTemplate x:Key="SizePicker" DataType="{x:Type vm:VisualItem}">
-            <ComboBox ItemsSource="{Binding DataContext.MixedFormats, RelativeSource={RelativeSource AncestorType=Window}}"
-                      SelectedItem="{Binding Format}" DisplayMemberPath="Name" AutomationProperties.Name="{local:Tr ItemSize}"
-                      HorizontalAlignment="Stretch" />
+            <DockPanel>
+                <!-- "Custom": its width and height, typed on the line -->
+                <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0"
+                            Visibility="{Binding IsCustomFormat, Converter={StaticResource BoolToVisibility}}">
+                    <TextBox Width="64" MinWidth="0" AutomationProperties.Name="{local:Tr WidthMm}"
+                             Text="{Binding CustomWidth, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                    <TextBlock Text="×" VerticalAlignment="Center" Margin="6,0" />
+                    <TextBox Width="64" MinWidth="0" AutomationProperties.Name="{local:Tr HeightMm}"
+                             Text="{Binding CustomHeight, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                    <TextBlock Text="{local:Tr Millimetres}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                </StackPanel>
+                <ComboBox ItemsSource="{Binding DataContext.MixedFormats, RelativeSource={RelativeSource AncestorType=Window}}"
+                          SelectedItem="{Binding Format}" DisplayMemberPath="Name" AutomationProperties.Name="{local:Tr ItemSize}"
+                          HorizontalAlignment="Stretch" />
+            </DockPanel>
         </DataTemplate>
 
         <!-- Visual of a composition, with its number of copies. In the Mixed mode, its size on a row of its own, across
@@ -493,6 +519,7 @@
                     <ItemsControl x:Name="PreviewSidesView" ItemsSource="{Binding PreviewSides}" Background="Transparent"
                                   MouseLeftButtonDown="Preview_MouseLeftButtonDown" MouseMove="Preview_MouseMove"
                                   MouseLeftButtonUp="Preview_MouseLeftButtonUp" LostMouseCapture="Preview_LostMouseCapture"
+                                  MouseDown="Preview_MouseDown" MouseUp="Preview_MouseUp"
                                   LayoutUpdated="PreviewSidesView_LayoutUpdated">
                         <ItemsControl.ItemsPanel>
                             <ItemsPanelTemplate>
@@ -505,8 +532,13 @@
                                     <TextBlock DockPanel.Dock="Top" Text="{Binding Label}" FontWeight="SemiBold" HorizontalAlignment="Center" Margin="0,0,0,6"
                                                Visibility="{Binding ShowLabel, Converter={StaticResource BoolToVisibility}}" />
                                     <Viewbox Stretch="Uniform">
+                                        <!-- The sheet, in millimetres. A photo dragged keeps another part of it; a right click
+                                             on it opens the menu of its line. -->
                                         <Grid Width="{Binding DataContext.SheetWidth, RelativeSource={RelativeSource AncestorType=Window}}"
-                                              Height="{Binding DataContext.SheetHeight, RelativeSource={RelativeSource AncestorType=Window}}" Margin="4">
+                                              Height="{Binding DataContext.SheetHeight, RelativeSource={RelativeSource AncestorType=Window}}" Margin="4"
+                                              MouseLeftButtonDown="Sheet_MouseLeftButtonDown" MouseMove="Sheet_MouseMove"
+                                              MouseLeftButtonUp="Sheet_MouseLeftButtonUp" LostMouseCapture="Sheet_LostMouseCapture"
+                                              MouseRightButtonUp="Sheet_MouseRightButtonUp" MouseLeave="Sheet_MouseLeave">
                                             <!-- The sheet is paper: white in both themes -->
                                             <Border Background="White">
                                                 <Border.Effect>
@@ -536,6 +568,43 @@
                                             </ItemsControl>
     
                                             <Image Source="{Binding Image}" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality" />
+
+                                            <!-- A photo being dragged: each copy of its line, the rest of it faded around its cell
+                                                 (all of them first), then the part kept in its cell, until the preview is
+                                                 rendered again -->
+                                            <ItemsControl ItemsSource="{Binding Overlays}" IsHitTestVisible="False" Focusable="False">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <Canvas />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:CropOverlay}">
+                                                        <Image Source="{Binding Image}" Width="{Binding Width}" Height="{Binding Height}" Stretch="Fill"
+                                                               Opacity="0.35" RenderTransform="{Binding Transform}" />
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
+                                            <ItemsControl ItemsSource="{Binding Overlays}" IsHitTestVisible="False" Focusable="False">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <Canvas />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:CropOverlay}">
+                                                        <Canvas>
+                                                            <Canvas Clip="{Binding Clip}">
+                                                                <Image Source="{Binding Image}" Width="{Binding Width}" Height="{Binding Height}" Stretch="Fill"
+                                                                       RenderTransform="{Binding Transform}" />
+                                                            </Canvas>
+                                                            <Rectangle Canvas.Left="{Binding Cell.X}" Canvas.Top="{Binding Cell.Y}"
+                                                                       Width="{Binding Cell.Width}" Height="{Binding Cell.Height}"
+                                                                       Stroke="#005FB8" StrokeThickness="0.8" />
+                                                        </Canvas>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
                                             <Path Data="{Binding DataContext.MarginGeometry, RelativeSource={RelativeSource AncestorType=Window}}"
                                                   Fill="#2EE63946" IsHitTestVisible="False" />
 

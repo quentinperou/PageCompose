@@ -211,6 +211,21 @@ public sealed class ImpositionPdfWriterTests : IDisposable
     }
 
     [Fact]
+    public void The_same_photo_in_two_sizes_is_stored_once()
+    {
+        // A line duplicated in the Mixed sizes mode: the same visual, another size.
+        var photo = VisualLoader.Load(_files.Jpeg(1200, 1800, name: "photo.jpg"));
+        var plan = MixedPacker.Pack(SheetFormats.Sra3,
+            [new MixedItem(photo, ItemFormats.Photo10x15.Size, 2), new MixedItem(photo, ItemFormats.Photo20x30.Size, 1)]);
+
+        using var doc = WriteAndOpen(ImpositionJob.Mixed(plan));
+
+        Assert.Equal(3, plan.Printed);
+        Assert.Contains(plan.Sheets.SelectMany(s => s.Layout.Cells), c => Math.Abs(c.Trim.Width * c.Trim.Height - 203.2 * 304.8) < 1e-6);
+        Assert.Single(ImageXObjects(doc));
+    }
+
+    [Fact]
     public void Mixed_cut_lines_are_drawn_on_the_front_only()
     {
         var photo = VisualLoader.Load(_files.Jpeg(1200, 1800, name: "photo.jpg"));

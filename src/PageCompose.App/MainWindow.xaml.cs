@@ -22,6 +22,11 @@ public partial class MainWindow : Window
         DataContext = viewModel;
         MicaBackdrop.Apply(this);
         ApplyZoom();
+        viewModel.AskPdfPages = pdfs =>
+        {
+            var dialog = new PdfPagesWindow(pdfs) { Owner = this };
+            return dialog.ShowDialog() == true ? dialog.Choice : null;
+        };
 
         Updater.Checked += Updater_Checked;
         ShowUpdateBar();
@@ -221,9 +226,10 @@ public partial class MainWindow : Window
 
     // ---- Preview zoom ----
     // Zoom 1: the sheets fit the preview area, as they always did. Above 1, the sides are laid out that many times
-    // larger inside the scroll viewer: drag to move, Ctrl + wheel zooms around the mouse, Ctrl + / - / 0 from the
-    // keyboard, a double click zooms in or fits again. The view model renders the preview sharper when it is shown
-    // larger (MainViewModel.SetPreviewDisplayWidth).
+    // larger inside the scroll viewer: drag with the middle button, or with Alt and the left button (the left button
+    // alone drags the photos, "Reframing" below), or from a place without photo, to move; Ctrl + wheel zooms around
+    // the mouse, Ctrl + / - / 0 from the keyboard, a double click zooms in or fits again. The view model renders the
+    // preview sharper when it is shown larger (MainViewModel.SetPreviewDisplayWidth).
 
     private const double MaxZoom = 16, ZoomStep = 1.5, WheelStep = 1.2;
     private double _zoom = 1;
@@ -252,7 +258,7 @@ public partial class MainWindow : Window
         PreviewScroll.HorizontalScrollBarVisibility = PreviewScroll.VerticalScrollBarVisibility = bars;
         PreviewSidesView.Width = zoomed ? PreviewScroll.ActualWidth * _zoom : double.NaN;
         PreviewSidesView.Height = zoomed ? PreviewScroll.ActualHeight * _zoom : double.NaN;
-        PreviewSidesView.Cursor = zoomed ? Cursors.SizeAll : null;
+        PreviewSidesView.Cursor = zoomed ? Cursors.Hand : null; // a photo shows the move cursor (it can be dragged)
         ZoomOutButton.IsEnabled = ZoomFitButton.IsEnabled = zoomed;
         ZoomInButton.IsEnabled = _zoom < MaxZoom;
     }
@@ -289,6 +295,23 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
+        // Here: Alt held, or a place without photo (a photo takes the left button first, Sheet_MouseLeftButtonDown).
+        StartPan(e);
+    }
+
+    // The middle button moves the zoomed preview anywhere, photos included.
+    private void Preview_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Middle) StartPan(e);
+    }
+
+    private void Preview_MouseUp(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ChangedButton == MouseButton.Middle) EndPan();
+    }
+
+    private void StartPan(MouseButtonEventArgs e)
+    {
         if (_zoom <= 1) return;
         _panStart = e.GetPosition(PreviewScroll);
         _panOffset = new Vector(PreviewScroll.HorizontalOffset, PreviewScroll.VerticalOffset);
@@ -296,25 +319,119 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
-    private void Preview_MouseMove(object sender, MouseEventArgs e)
-    {
-        if (_panStart is not { } start || e.LeftButton != MouseButtonState.Pressed) return;
-        var moved = e.GetPosition(PreviewScroll) - start;
-        PreviewScroll.ScrollToHorizontalOffset(_panOffset.X - moved.X);
-        PreviewScroll.ScrollToVerticalOffset(_panOffset.Y - moved.Y);
-    }
-
-    private void Preview_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    private void EndPan()
     {
         if (_panStart is null) return;
         _panStart = null;
         PreviewSidesView.ReleaseMouseCapture();
     }
 
+    private void Preview_MouseMove(object sender, MouseEventArgs e)
+    {
+        if (_panStart is not { } start || (e.LeftButton != MouseButtonState.Pressed && e.MiddleButton != MouseButtonState.Pressed)) return;
+        var moved = e.GetPosition(PreviewScroll) - start;
+        PreviewScroll.ScrollToHorizontalOffset(_panOffset.X - moved.X);
+        PreviewScroll.ScrollToVerticalOffset(_panOffset.Y - moved.Y);
+    }
+
+    private void Preview_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => EndPan();
+
     private void Preview_LostMouseCapture(object sender, MouseEventArgs e) => _panStart = null;
+
+    // ---- Reframing: a photo dragged on the preview keeps another part of it ----
+    // The left button on a photo of the sheet drags it in its cell (every copy of its line follows, drawn over the
+    // preview by the view model until it is rendered again); a double click still zooms, Alt still moves the view.
+    // A right click on a photo opens the menu of its line (duplicate, turn, centre the photo…).
+
+    private FrameworkElement? _dragSheet;
+
+    // The sheet under the mouse, and where: Alt pressed or released changes its cursor without a move.
+    private FrameworkElement? _hoverSheet;
+    private Point _hoverAt;
+
+    private static (bool Front, Point At) SheetPoint(object sender, MouseEventArgs e)
+    {
+        var sheet = (FrameworkElement)sender;
+        return (((PreviewSide)sheet.DataContext).IsFront, e.GetPosition(sheet)); // the sheet is laid out in millimetres
+    }
+
+    // Alt held: the hand that moves the zoomed view (nothing to move at 100 %); else the move cursor over a photo.
+    private void UpdateSheetCursor(bool alt)
+    {
+        if (_hoverSheet is not { DataContext: PreviewSide side } sheet || _dragSheet is not null || _panStart is not null) return;
+        sheet.Cursor = alt
+            ? _zoom > 1 ? Cursors.Hand : null
+            : ViewModel.LineAt(side.IsFront, _hoverAt.X, _hoverAt.Y) is null ? null : Cursors.SizeAll;
+    }
+
+    private void Sheet_MouseLeave(object sender, MouseEventArgs e)
+    {
+        if (_hoverSheet == sender) _hoverSheet = null;
+    }
+
+    private void Window_PreviewKeyUp(object sender, KeyEventArgs e)
+    {
+        if (e.Key == Key.System && e.SystemKey is Key.LeftAlt or Key.RightAlt) UpdateSheetCursor(alt: false);
+    }
+
+    private void Sheet_MouseLeftButtonDown(object sender, MouseButtonEventArgs e)
+    {
+        if (e.ClickCount > 1 || Keyboard.Modifiers.HasFlag(ModifierKeys.Alt)) return;
+        var (front, at) = SheetPoint(sender, e);
+        if (!ViewModel.BeginCropDrag(front, at.X, at.Y)) return;
+        _dragSheet = (FrameworkElement)sender;
+        _dragSheet.CaptureMouse();
+        e.Handled = true;
+    }
+
+    private void Sheet_MouseMove(object sender, MouseEventArgs e)
+    {
+        var (_, at) = SheetPoint(sender, e);
+        if (_dragSheet == sender)
+        {
+            if (e.LeftButton == MouseButtonState.Pressed) ViewModel.CropDragTo(at.X, at.Y);
+            return;
+        }
+        _hoverSheet = (FrameworkElement)sender;
+        _hoverAt = at;
+        UpdateSheetCursor(Keyboard.Modifiers.HasFlag(ModifierKeys.Alt));
+    }
+
+    private void Sheet_MouseLeftButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        if (_dragSheet != sender) return;
+        _dragSheet = null;
+        ((FrameworkElement)sender).ReleaseMouseCapture();
+        ViewModel.EndCropDrag();
+        e.Handled = true;
+    }
+
+    private void Sheet_LostMouseCapture(object sender, MouseEventArgs e)
+    {
+        if (_dragSheet != sender) return;
+        _dragSheet = null;
+        ViewModel.EndCropDrag();
+    }
+
+    private void Sheet_MouseRightButtonUp(object sender, MouseButtonEventArgs e)
+    {
+        var (front, at) = SheetPoint(sender, e);
+        if (ViewModel.LineAt(front, at.X, at.Y) is not { } line) return;
+        var menu = (ContextMenu)FindResource("VisualMenu"); // not shared: a new menu each time
+        menu.DataContext = line;
+        menu.PlacementTarget = (UIElement)sender;
+        menu.Placement = System.Windows.Controls.Primitives.PlacementMode.MousePoint;
+        menu.IsOpen = true;
+        e.Handled = true;
+    }
 
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.System && e.SystemKey is Key.LeftAlt or Key.RightAlt)
+        {
+            UpdateSheetCursor(alt: true); // not handled: Alt keeps its usual part in Windows
+            return;
+        }
         if (Keyboard.Modifiers != ModifierKeys.Control) return;
         switch (e.Key)
         {

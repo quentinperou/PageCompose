@@ -32,7 +32,8 @@ de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réel
     chacun avec son nombre d'exemplaires. La dernière feuille peut être complétée en répétant les visuels, ou
     garder ses cases vides.
   - **Multi-formats** : plusieurs formats sur la même feuille (des tirages 10 × 15, 13 × 18 et 20 × 30 d'une même commande,
-    des cartes de visite…), chaque visuel avec son format et ses exemplaires. Ils sont placés sur **le moins de
+    des cartes de visite…), chaque visuel avec son format (prédéfini, ou une taille libre saisie sur sa ligne) et ses
+    exemplaires ; **« Dupliquer la ligne »** (clic droit) donne la même photo dans un autre format. Ils sont placés sur **le moins de
     feuilles possible**, chaque feuille avec sa propre disposition, en coupes droites uniquement (comme au massicot).
     L'aperçu **numérote les coupes dans l'ordre** ; les numéros restent à l'écran, le PDF n'a que des lignes de coupe
     fines (désactivables) et, si vous le voulez, des traits de coupe pour les coupes qui touchent le bord du bloc.
@@ -48,8 +49,9 @@ de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réel
   seul sous son propre nom) et les importe, pour les copier sur un autre PC ou les sauvegarder. Un **double clic** sur un fichier `.PageCompose` (ou un glisser-déposer dans la fenêtre) les
   importe aussi ; un fichier d'un seul préréglage l'applique aussitôt. Ce fichier reste du JSON lisible avec le
   Bloc-notes.
-- **PDF de plusieurs pages** : une liste sur la ligne du fichier choisit la page utilisée. Un PDF de deux pages en
-  mode répétition (une carte de visite) donne d'un coup son recto et son verso.
+- **PDF de plusieurs pages** : une liste sur la ligne du fichier choisit la page utilisée. Ajouté à une liste de
+  visuels, l'appli demande s'il faut prendre toutes ses pages (une ligne chacune) ou une page, choisie dans une liste. Un
+  PDF de deux pages en mode Répétition (une carte de visite) donne d'un coup son recto et son verso.
 - **Formats prédéfinis** : carte de visite 85 × 55, photos 9 × 13 / 10 × 15 / 13 × 18 / 15 × 20 / 20 × 30 (tailles
   de labo, en pouces : 10 × 15 = 4 × 6 po = 101,6 × 152,4 mm), carrés (dont un 10 × 10 avec une marge blanche de 5 mm), **cadres photo
   instantanée** (Polaroid classique, Instax Mini, Square et Wide, avec leur grosse bande en bas), carte postale A6,
@@ -63,15 +65,16 @@ de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réel
 - **Meilleur montage, automatiquement** : celui qui place le plus de visuels, en pivotant le format si besoin (un cadre
   Polaroid pivote alors avec sa photo, la grosse bande reste dessous). Chaque photo est tournée d'un quart de tour
   quand ses proportions le demandent ; un **clic droit** sur sa ligne la fait pivoter à la main (à droite, à gauche,
-  180°), pour une photo prise de travers.
+  180°), pour une photo prise de travers. **Faites glisser une photo dans l'aperçu** pour choisir la partie gardée
+  quand elle est recadrée (toutes les copies suivent ; « Recentrer la photo » dans son menu du clic droit).
 - **Coupe** : bord à bord (une seule coupe entre deux visuels), **traits de coupe** courts, **fond perdu**
   (2 mm par défaut) et, en option, un **espace entre les visuels** (5 mm par exemple) et des **lignes de coupe
   continues** sur tout le bloc.
 - **Recto verso** : un verso commun à tous les visuels, placé pour retomber derrière son recto (retournement bord
   long ou bord court, rotation de 180° en option). L'aperçu montre **les deux faces côte à côte**.
 - **Aperçu fidèle** : c'est le PDF exporté, rendu par Windows, avec la zone non imprimable en rouge.
-  **Zoom** avec les loupes, Ctrl + molette ou un double clic (glisser pour se déplacer), affiché en % de la taille
-  réelle ; le bouton « Ajuster » remet la feuille entière dans la vue.
+  **Zoom** avec les loupes, Ctrl + molette ou un double clic (pour se déplacer : clic molette, ou Alt + glisser),
+  affiché en % de la taille réelle ; le bouton « Ajuster » remet la feuille entière dans la vue.
 - **Export en PDF ou en JPG** : le PDF garde les photos telles quelles (sans recompression) et les PDF de graphiste
   en vectoriel ; **« Aplatir le PDF »** fait de chaque face une seule image 300 dpi, sans rien à interpréter pour
   l'imprimante. **« Exporter en JPG »** écrit une image 300 dpi par face de feuille, pratique pour un labo photo.

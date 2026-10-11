@@ -1,0 +1,29 @@
+<Window x:Class="PageCompose.App.PdfPagesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PageCompose.App"
+        Title="{local:Tr PdfPagesTitle}"
+        Width="460" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Foreground="{DynamicResource TextFillColorPrimaryBrush}" Background="{DynamicResource ApplicationBackgroundBrush}">
+
+  <StackPanel Margin="24,20,24,24">
+    <TextBlock x:Name="MessageText" TextWrapping="Wrap" Margin="0,0,0,10" />
+
+    <RadioButton x:Name="AllRadio" GroupName="pages" Content="{local:Tr PdfPagesAll}" IsChecked="True" />
+    <!-- One PDF: the page chosen here; several: the first page of each, changed afterwards on its line -->
+    <StackPanel x:Name="OnePagePanel" Orientation="Horizontal" Margin="0,4,0,0">
+      <RadioButton x:Name="OneRadio" GroupName="pages" Content="{local:Tr PdfPagesOnePage}" VerticalAlignment="Center" />
+      <ComboBox x:Name="PageList" MinWidth="150" Margin="4,0,0,0" DisplayMemberPath="Name"
+                AutomationProperties.Name="{local:Tr PagePicker}" SelectionChanged="PageList_SelectionChanged" />
+    </StackPanel>
+    <RadioButton x:Name="FirstRadio" GroupName="pages" Content="{local:Tr PdfPagesFirstOfEach}" Margin="0,4,16,0" Visibility="Collapsed" />
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+      <Button x:Name="AddButton" Content="{local:Tr PdfPagesAdd}" Style="{DynamicResource AccentButtonStyle}" MinWidth="96"
+              IsDefault="True" Click="Add_Click" />
+      <!-- Cancel, or the window closed: these PDFs are not added (the other files are) -->
+      <Button Content="{local:Tr Cancel}" MinWidth="96" Margin="8,0,0,0" IsCancel="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

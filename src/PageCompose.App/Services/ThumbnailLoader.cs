@@ -26,6 +26,47 @@ internal static class ThumbnailLoader
         }
     }
 
+    /// <summary>
+    /// The visual as stored in its file, before any turn (EXIF, PDF /Rotate), <paramref name="sizePx"/> wide: the axes
+    /// Placement draws it in, for the preview of a drag on the sheet. Null when it cannot be read.
+    /// </summary>
+    public static async Task<ImageSource?> LoadRawAsync(VisualInfo visual, int sizePx)
+    {
+        try
+        {
+            if (visual.Kind == VisualKind.Pdf)
+            {
+                // The Windows engine renders the page turned as displayed: turned back by its /Rotate.
+                var bytes = await File.ReadAllBytesAsync(visual.Path);
+                var page = await PdfPreviewRenderer.RenderAsync(bytes, (uint)(visual.PageNumber - 1), (uint)sizePx);
+                if (visual.BaseRotation == 0) return page;
+                var stored = new TransformedBitmap(page, new RotateTransform(-visual.BaseRotation));
+                stored.Freeze();
+                return stored;
+            }
+
+            return await Task.Run(() =>
+            {
+                var bitmap = new BitmapImage();
+                using (var stream = File.OpenRead(visual.Path))
+                {
+                    bitmap.BeginInit();
+                    bitmap.StreamSource = stream;
+                    bitmap.CacheOption = BitmapCacheOption.OnLoad;
+                    bitmap.DecodePixelWidth = sizePx; // WPF does not apply the EXIF orientation: as stored
+                    bitmap.EndInit();
+                }
+                bitmap.Freeze();
+                return (ImageSource)bitmap;
+            });
+        }
+        catch (Exception ex) when (ex is IOException or NotSupportedException or ArgumentException or UnauthorizedAccessException
+                                   or System.Runtime.InteropServices.COMException or FileFormatException)
+        {
+            return null;
+        }
+    }
+
     private static ImageSource LoadImage(VisualInfo visual, int sizePx)
     {
         var bitmap = new BitmapImage();

@@ -52,6 +52,17 @@ public sealed record VisualInfo
     /// </summary>
     public int UserRotation { get; init; }
 
+    /// <summary>
+    /// Part of the visual kept when it does not fit its area exactly (moved by dragging it on the preview), in the axes
+    /// of the visual as stored (before any turn), so that every copy keeps the same part however it is laid: 0 = its
+    /// left edge kept, 0.5 = centred, 1 = its right edge. In Fit mode, where it is smaller than its area, it is aligned
+    /// the same way.
+    /// </summary>
+    public double CropX { get; init; } = 0.5;
+
+    /// <summary>As <see cref="CropX"/>, from its top edge (0) to its bottom edge (1).</summary>
+    public double CropY { get; init; } = 0.5;
+
     /// <summary>Size of the trim area once the visual is upright, in raw units.</summary>
     public (double Width, double Height) UprightContentSize =>
         BaseRotation % 180 == 90 ? (Content.Height, Content.Width) : (Content.Width, Content.Height);

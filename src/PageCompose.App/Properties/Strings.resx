@@ -429,6 +429,36 @@ The file may be open in another program.</value>
   <data name="RotateHalf" xml:space="preserve">
     <value>Turn upside down (180°)</value>
   </data>
+  <data name="PdfPagesTitle" xml:space="preserve">
+    <value>PDF of several pages</value>
+  </data>
+  <data name="PdfPagesOne" xml:space="preserve">
+    <value>“{0}” has {1} pages.</value>
+  </data>
+  <data name="PdfPagesMany" xml:space="preserve">
+    <value>{0} PDFs have several pages ({1} pages in all).</value>
+  </data>
+  <data name="PdfPagesAll" xml:space="preserve">
+    <value>All pages (one line each)</value>
+  </data>
+  <data name="PdfPagesOnePage" xml:space="preserve">
+    <value>One page:</value>
+  </data>
+  <data name="PdfPagesFirstOfEach" xml:space="preserve">
+    <value>The first page of each (can be changed on its line)</value>
+  </data>
+  <data name="PdfPagesAdd" xml:space="preserve">
+    <value>Add</value>
+  </data>
+  <data name="DuplicateLine" xml:space="preserve">
+    <value>Duplicate the line</value>
+  </data>
+  <data name="QualitySizeTooSmall" xml:space="preserve">
+    <value>Size under {0} mm</value>
+  </data>
+  <data name="RecenterPhoto" xml:space="preserve">
+    <value>Centre the photo</value>
+  </data>
   <data name="RotateAuto" xml:space="preserve">
     <value>Automatic rotation</value>
   </data>

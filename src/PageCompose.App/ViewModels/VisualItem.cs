@@ -19,13 +19,15 @@ public sealed class VisualItem : ObservableObject
 
     /// <param name="choosePage">Loads another page of the PDF into this item (see <see cref="Replace"/>).</param>
     /// <param name="format">Its size in the Mixed mode (<see cref="Format"/>).</param>
+    /// <param name="duplicate">Adds a copy of the line below it (lines of a list only: none for a single visual).</param>
     public VisualItem(VisualInfo info, Action changed, Action<VisualItem> remove, Func<VisualItem, int, Task>? choosePage = null,
-        FormatOption? format = null)
+        FormatOption? format = null, Action<VisualItem>? duplicate = null)
     {
         _info = info;
         _format = format;
         _changed = changed;
         _choosePage = choosePage;
+        DuplicateCommand = duplicate is null ? null : new RelayCommand(() => duplicate(this));
         Pages = [.. Enumerable.Range(1, info.PageCount).Select(n => new PageOption(n, Strings.Format("PageOf", n, info.PageCount)))];
         _selectedPage = Pages[Math.Clamp(info.PageNumber, 1, Pages.Count) - 1];
         IncrementCommand = new RelayCommand(() => Copies++);
@@ -35,12 +37,38 @@ public sealed class VisualItem : ObservableObject
         RotateLeftCommand = new RelayCommand(() => Rotate(-90));
         RotateHalfCommand = new RelayCommand(() => Rotate(180));
         RotateAutoCommand = new RelayCommand(() => Rotate(-_rotation));
+        RecenterCommand = new RelayCommand(() => SetCrop(0.5, 0.5));
     }
 
     private VisualInfo _info;
 
-    /// <summary>The visual, with the turn chosen by the user (applied on the sheet after the automatic one).</summary>
-    public VisualInfo Info => _rotation == 0 ? _info : _info with { UserRotation = _rotation };
+    /// <summary>
+    /// The visual, with the turn chosen by the user (applied on the sheet after the automatic one) and the part of it
+    /// kept, moved on the preview.
+    /// </summary>
+    public VisualInfo Info => _rotation == 0 && !IsCropMoved ? _info : _info with { UserRotation = _rotation, CropX = _cropX, CropY = _cropY };
+
+    private double _cropX = 0.5, _cropY = 0.5;
+
+    /// <summary>
+    /// Part of the visual kept when it overflows its cell (<see cref="VisualInfo.CropX"/>), chosen by dragging it on the
+    /// preview: every copy of the line follows. Like the turn, it belongs to the line, not to the presets.
+    /// </summary>
+    public (double X, double Y) Crop => (_cropX, _cropY);
+
+    public bool IsCropMoved => Math.Abs(_cropX - 0.5) > 1e-9 || Math.Abs(_cropY - 0.5) > 1e-9;
+
+    public void SetCrop(double x, double y)
+    {
+        if (Math.Abs(x - _cropX) < 1e-9 && Math.Abs(y - _cropY) < 1e-9) return;
+        (_cropX, _cropY) = (x, y);
+        OnPropertyChanged(nameof(Info));
+        OnPropertyChanged(nameof(IsCropMoved));
+        _changed();
+    }
+
+    /// <summary>The visual as stored in its file (no turn), for the preview of a drag; loaded at the first drag.</summary>
+    public ImageSource? DragImage { get; set; }
 
     /// <summary>The visual as read from the file, before the user's turn (the thumbnail turns on screen).</summary>
     public VisualInfo SourceInfo => _info;
@@ -57,11 +85,16 @@ public sealed class VisualItem : ObservableObject
     /// <summary>Turned by hand: "Automatic rotation" in the context menu gives the automatic turn alone back.</summary>
     public bool IsTurnedByHand => _rotation != 0;
 
-    /// <summary>The same turn and size as <paramref name="other"/> (the visual carried over to the other mode).</summary>
+    /// <summary>
+    /// The same turn and size as <paramref name="other"/>: the visual carried over to the other mode, or a duplicated
+    /// line.
+    /// </summary>
     public void CopyChoicesOf(VisualItem other)
     {
         Rotate(other.Rotation - _rotation);
-        _format ??= other.Format;
+        if (other.Format is not null) _format = other.Format;
+        (_customWidth, _customHeight) = (other.CustomWidth, other.CustomHeight);
+        (_cropX, _cropY) = other.Crop;
     }
 
     private void Rotate(int degrees)
@@ -117,8 +150,27 @@ public sealed class VisualItem : ObservableObject
     public FormatOption? Format
     {
         get => _format;
-        set { if (value is not null && Set(ref _format, value)) _changed(); }
+        set
+        {
+            if (value is null || !Set(ref _format, value)) return;
+            OnPropertyChanged(nameof(IsCustomFormat));
+            _changed();
+        }
     }
+
+    /// <summary>A size of its own ("Custom" in the list of the line): its width and height show beside the list.</summary>
+    public bool IsCustomFormat => _format?.IsCustom == true;
+
+    private double _customWidth = 100, _customHeight = 150;
+
+    /// <summary>Width of the custom size of the line, in millimetres.</summary>
+    public double CustomWidth { get => _customWidth; set { if (Set(ref _customWidth, value)) _changed(); } }
+
+    /// <summary>Height of the custom size of the line, in millimetres.</summary>
+    public double CustomHeight { get => _customHeight; set { if (Set(ref _customHeight, value)) _changed(); } }
+
+    /// <summary>The custom size a new line starts with (that of the size section), without recomputing anything.</summary>
+    public void InitCustomSize(double width, double height) => (_customWidth, _customHeight) = (width, height);
 
     private ImageSource? _thumbnail;
     public ImageSource? Thumbnail { get => _thumbnail; set => Set(ref _thumbnail, value); }
@@ -137,6 +189,12 @@ public sealed class VisualItem : ObservableObject
     public ICommand RotateLeftCommand { get; }
     public ICommand RotateHalfCommand { get; }
     public ICommand RotateAutoCommand { get; }
+
+    /// <summary>"Centre the photo": the part kept back to the middle, as before it was dragged.</summary>
+    public ICommand RecenterCommand { get; }
+
+    /// <summary>"Duplicate the line": the same visual, page, turn and size, once, on a new line below.</summary>
+    public ICommand? DuplicateCommand { get; }
 
     public static string Describe(VisualInfo v)
     {

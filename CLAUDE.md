@@ -16,8 +16,10 @@ QuentinPerou, with Claude Code (Anthropic)".
 
 ## Project status (October 11, 2026)
 
-Version **0.5.0** adds the third mode, **Mixed** (several print sizes on a sheet, packed with guillotine cuts, the
-cutting order numbered on the preview), and widens the settings column from 430 to 470 px. Version **0.4.9** works
+Version **0.5.0** (published on October 11, 2026: commit "PageCompose 0.5.0: Mixed sizes mode and cutting plan",
+tag `v0.5.0`, GitHub release with its patch note) adds the third mode, **Mixed** (several print sizes on a sheet,
+packed with guillotine cuts, the cutting order numbered on the preview, the cutting plan), and widens the settings
+column from 430 to 470 px. Version **0.4.9** works
 end to end, developed and tested on Windows 11 (build 26200), and is installed on the shop PC. 0.4.9 drops two notices that repeated the settings column (empty cells, "Fit" mode). 0.4.8 stops photos from turning in some Polaroid frames and not others (a square image area within 1 µm turns
 nothing), turns a visual by hand from the right click menu of its line, keeps the title, the Settings button and
 the presets fixed above the settings that scroll, and lets the mouse wheel over a closed drop-down list scroll the
@@ -45,7 +47,7 @@ the photo sizes moved to exact inches.
 - Updates from GitHub Releases, as in CropPdf: check at startup (can be turned off), Stable/Beta channel, bar in the
   main window, download checked with SHA-256, silent install and relaunch. The Settings window copies CropPdf's
   (language, theme, updates, about).
-- 617 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.5.0.exe` locally (Inno Setup 6).
+- 631 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.5.0.exe` locally (Inno Setup 6).
 - The installer is not signed: the UAC prompt shows "Unknown publisher" (QuentinPerou appears in the file details
   and in Installed apps). Left as is for now (October 10, 2026). A paid certificate would show the author's legal
   name, SignPath Foundation its own name; only a self-signed certificate trusted by hand on each PC shows "QuentinPerou".
@@ -104,9 +106,13 @@ the photo sizes moved to exact inches.
   - `ViewModels/MainViewModel`: modes, `VisualItem` list (thumbnail, copies, dpi), recomputed on every change;
     the preview is regenerated 200 ms after the last change, for the displayed sheet only.
   - **Mixed mode** (`RecomputeMixed`): uses the `Visuals` list of Compose; each line has its own size
-    (`VisualItem.Format`, preset sizes only, `MixedFormats`), on a row of its own across the whole line (the author
-    chose it among three places: under the name cut long size names, on the right left no room for the file name).
-    A new line takes the size of the size section if it is a preset one, else 10 × 15. That section is hidden, as "Fill the
+    (`VisualItem.Format`, `MixedFormats`: the preset sizes and "Custom", whose width and height are typed on the line,
+    `VisualItem.CustomWidth/Height`; a custom size under 5 mm leaves the line out, which says so), on a row of its own
+    across the whole line (the author chose it among three places: under the name cut long size names, on the right
+    left no room for the file name). A new line takes the size of the size section (custom size included).
+    "Duplicate the line" (right click, lines of a list only: `VisualItem.DuplicateCommand`) adds the same visual,
+    page, turn and size once below: the same photo in another size (a file already in the list is not added again
+    by a drop, which is kept as a guard against a drop made twice). That section is hidden, as "Fill the
     last sheet" and the margins on the back (the back covers each cell). The crop marks are offered (shared with the
     grids: those of the cuts that reach the edge of the block, with a notice when fewer sheets fit without them), and
     the cut lines have a setting of their own, `MixedCutLines` ("along each cut", on by default, in the settings and
@@ -123,7 +129,17 @@ the photo sizes moved to exact inches.
     logic is duplicated in the UI.
   - **Preview zoom** (`MainWindow.xaml.cs`, "Preview zoom"): zoom 1 = the sheets fit the area (Viewbox, no scroll
     bars); above 1 the sides are laid out that many times larger in `PreviewScroll`. Buttons, Ctrl + wheel around the
-    mouse, Ctrl + / - / 0, double click; drag to move. The label is in % of the real size. The view tells the view
+    mouse, Ctrl + / - / 0, double click; to move: the middle button, or Alt + left button, anywhere, or the left
+    button from a place without photo (the left button on a photo reframes it; the author chose middle and Alt).
+    Cursor: a hand when zoomed, the move cursor over a photo, the hand again over a photo while Alt is held (updated
+    when Alt is pressed or released, asked by the author).
+  - **Reframing on the preview** (`MainWindow.xaml.cs`, "Reframing"; `MainViewModel.BeginCropDrag` / `CropDragTo` /
+    `EndCropDrag`): the left button drags a photo in its cell (front, or the shared back), every copy of its line on
+    the sheet following; meanwhile the copies are drawn over the rendered preview (`PreviewSide.Overlays`,
+    `CropOverlay`: the photo as stored, `ThumbnailLoader.LoadRawAsync`, faded around its cell, sharp inside it) until
+    the preview is rendered again with the new part kept. A double click still zooms; "Recentrer la photo" in the
+    menu of the line, which a right click on the photo in the preview opens too. The grids give each line its own
+    `VisualInfo` object (`_lineOfInfo`), so that a cell finds its line back. The label is in % of the real size. The view tells the view
     model how wide the sheet is on screen (`SetPreviewDisplayWidth`), which renders the preview from 1400 up to
     3600 px wide, in steps of 400.
   - Dialogs, drag and drop and the update bar in `MainWindow.xaml.cs`; `SettingsWindow` (language, theme,
@@ -158,7 +174,11 @@ the photo sizes moved to exact inches.
     `%TEMP%\PageCompose-Update`, then asks whether to delete `%LOCALAPPDATA%\PageCompose` (settings, presets), No by
     default; a silent uninstall keeps them. The .NET runtime stays (shared).
   - **PDF pages**: `VisualInfo.PageNumber` / `PageCount`; a page list on the file line (`VisualItem.Pages`) when
-    there are several. A PDF of exactly two pages in Repeat mode sets page 2 as the back.
+    there are several. A PDF of exactly two pages in Repeat mode sets page 2 as the back. Added to a list (Same size,
+    Mixed sizes), PDFs of several pages make the app ask once (`PdfPagesWindow`, through
+    `MainViewModel.AskPdfPages`): all their pages, one line each, or one page (chosen in a list for a single PDF;
+    the first of each for several, changed afterwards on its line). Cancel or the window closed: those PDFs are not
+    added, the other files are (the author's requests after a first version that took the first page then).
   - Every text box holds a number: an implicit style gives them `NumericInput` (Up / Down arrows, Shift: by 10,
     `NumericInput.Minimum`; "." and "," both become the decimal separator of the PC) and `TextWrapping="Wrap"`, which
     hides the Fluent clear button (it hid the digits of narrow boxes). A text box for text sets `NumericInput.Step="0"`. The settings column's `ScrollViewer` is not focusable, or a keyboard focus frame shows
@@ -221,6 +241,12 @@ the photo sizes moved to exact inches.
   (`RotatedClockwise`: the top goes to the right). With asymmetric margins (a Polaroid) and a visual that fits either
   way (square image or square image area), the visual turns with the frame so that it stays upright in it; otherwise
   the usual orientation rule applies, **frames included** (the author wants no exception).
+- **Part kept** (`VisualInfo.CropX` / `CropY`, 0 = one edge, 0.5 = centre, 1 = the other edge): which part of a
+  visual stays when it overflows its area (Fill), or where it lies when it leaves room (Fit). In the axes of the
+  visual as stored (before any turn), so that every copy keeps the same part however it is laid; `Placement` shifts
+  the draw rectangle by that share of the overflow, and `Placement.Dragged` turns a drag on the sheet into it (the
+  turn and mirror undone, kept between the edges). Chosen by dragging the photo on the preview (the author's choice
+  among three mock-ups); it belongs to the line (`VisualItem.Crop`), not to the presets.
 - **Turn by hand** (`VisualInfo.UserRotation`, right click on a file line: right, left, 180°): applied on the sheet
   after the automatic quarter turn, so it turns the visual as shown and the automatic turn never undoes it (a photo
   taken sideways). The thumbnail turns with it, the resolution and cropping checks follow (they read the final angle).

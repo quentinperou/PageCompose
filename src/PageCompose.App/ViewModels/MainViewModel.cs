@@ -47,6 +47,9 @@ public sealed record Notice(NoticeLevel Level, string Text)
     public string Icon => Level switch { NoticeLevel.Error => "", NoticeLevel.Warning => "", _ => "" };
 }
 
+/// <summary>Pages to add of PDFs of several pages: all of them, or one (from 1).</summary>
+public sealed record PdfPagesChoice(bool AllPages, int Page = 1);
+
 /// <summary>Number of a cut on the preview of a mixed sheet (cutting order), in millimetres on the sheet.</summary>
 public sealed record CutNumber(double Left, double Top, double Size, double FontSize, string Text);
 
@@ -63,6 +66,50 @@ public sealed class PreviewSide(string labelKey) : ObservableObject
 
     private bool _showLabel;
     public bool ShowLabel { get => _showLabel; set => Set(ref _showLabel, value); }
+
+    /// <summary>The copies of a visual being dragged on this side, drawn over the preview until it is rendered again.</summary>
+    public ObservableCollection<CropOverlay> Overlays { get; } = [];
+}
+
+/// <summary>
+/// A copy of a visual dragged on the preview (to choose the part kept), drawn by the window over the rendered sheet:
+/// the part kept in its cell, the rest of it faded around. In millimetres on the sheet.
+/// </summary>
+public sealed class CropOverlay(RectMm clip) : ObservableObject
+{
+    public Geometry Clip { get; } = Frozen(new RectangleGeometry(new Rect(clip.X, clip.Y, clip.Width, clip.Height)));
+
+    /// <summary>The cell, outlined while it is dragged.</summary>
+    public Rect Cell { get; } = new(clip.X, clip.Y, clip.Width, clip.Height);
+
+    private ImageSource? _image;
+    public ImageSource? Image { get => _image; set => Set(ref _image, value); }
+
+    private double _width, _height;
+    public double Width { get => _width; private set => Set(ref _width, value); }
+    public double Height { get => _height; private set => Set(ref _height, value); }
+
+    private Transform _transform = Transform.Identity;
+    public Transform Transform { get => _transform; private set => Set(ref _transform, value); }
+
+    /// <summary>Draws it as Placement places it: its rectangle mirrored, turned, then moved to the centre of its area.</summary>
+    public void Show(VisualPlacement p)
+    {
+        Width = p.DrawRect.Width;
+        Height = p.DrawRect.Height;
+        var m = Matrix.Identity;
+        m.Translate(p.DrawRect.X, p.DrawRect.Y);
+        if (p.Mirror) m.Scale(-1, 1);
+        m.Rotate(p.AngleDeg);
+        m.Translate(p.CenterX, p.CenterY);
+        Transform = Frozen(new MatrixTransform(m));
+    }
+
+    private static T Frozen<T>(T freezable) where T : Freezable
+    {
+        freezable.Freeze();
+        return freezable;
+    }
 }
 
 public sealed class MainViewModel : ObservableObject
@@ -85,7 +132,7 @@ public sealed class MainViewModel : ObservableObject
     {
         _settings = settings;
         Formats = [.. ItemFormats.All.Select(f => new FormatOption(f)), new FormatOption(null)];
-        MixedFormats = [.. Formats.Where(f => !f.IsCustom)];
+        MixedFormats = Formats;
         Sheets = [.. SheetFormats.All.Select(s => new SheetOption(s)), new SheetOption(null)];
 
         _mode = settings.Mode;
@@ -139,8 +186,17 @@ public sealed class MainViewModel : ObservableObject
     public IReadOnlyList<FormatOption> Formats { get; }
     public IReadOnlyList<SheetOption> Sheets { get; }
 
-    /// <summary>Sizes offered on each line in the Mixed mode: the preset sizes (a custom one would need its fields).</summary>
+    /// <summary>
+    /// Sizes offered on each line in the Mixed mode: the preset sizes, and "Custom", whose width and height are typed on
+    /// the line (<see cref="VisualItem.CustomWidth"/>).
+    /// </summary>
     public IReadOnlyList<FormatOption> MixedFormats { get; }
+
+    /// <summary>The lines laid in the Mixed mode, by index as packed (a line with a custom size too small is not).</summary>
+    private List<VisualItem> _mixedLines = [];
+
+    /// <summary>The line of each VisualInfo laid by the grids (Repeat, Compose): each line gives its own object.</summary>
+    private readonly Dictionary<VisualInfo, VisualItem> _lineOfInfo = new(ReferenceEqualityComparer.Instance);
 
     // ---- Presets: the settings of a usual job (no files, no quantity) ----
 
@@ -348,6 +404,12 @@ public sealed class MainViewModel : ObservableObject
     public bool CanCompleteLastSheet => _mode == LayoutMode.Compose || (_mode == LayoutMode.Repeat && _unit == QuantityUnit.Items);
 
     public ICommand ClearVisualsCommand { get; }
+
+    /// <summary>
+    /// Asks which pages to add of the PDFs of several pages added to the list (file names and page counts); null when
+    /// cancelled: they are not added. Set by the window; none: their first page.
+    /// </summary>
+    public Func<IReadOnlyList<(string FileName, int Pages)>, PdfPagesChoice?>? AskPdfPages { get; set; }
 
     private string? _filesMessage;
     public string? FilesMessage { get => _filesMessage; private set => Set(ref _filesMessage, value); }
@@ -560,6 +622,127 @@ public sealed class MainViewModel : ObservableObject
     private bool _isPreviewBusy;
     public bool IsPreviewBusy { get => _isPreviewBusy; private set => Set(ref _isPreviewBusy, value); }
 
+    // ---- The part kept, dragged on the preview ----
+    // A photo dragged in its cell keeps another part of it (Placement.Dragged); every copy of its line follows. While
+    // the mouse moves, the window draws the copies over the preview (CropOverlay); the line takes the new part when
+    // the mouse is released, and the preview is rendered again.
+
+    private sealed class CropDrag(VisualItem line, VisualInfo start, LayoutCell cell, SideOptions side, PreviewSide view,
+        List<LayoutCell> cells, double x, double y)
+    {
+        public VisualItem Line { get; } = line;
+        public VisualInfo Start { get; } = start;
+        public LayoutCell Cell { get; } = cell;
+        public SideOptions Side { get; } = side;
+        public PreviewSide View { get; } = view;
+        public List<LayoutCell> Cells { get; } = cells;
+        public double X { get; } = x;
+        public double Y { get; } = y;
+        public (double X, double Y) Crop { get; set; } = (start.CropX, start.CropY);
+    }
+
+    private CropDrag? _drag;
+
+    /// <summary>The line of the visual under a point of the sheet shown (millimetres), on the front or the back.</summary>
+    public VisualItem? LineAt(bool front, double x, double y) => FindCell(front, x, y)?.Line;
+
+    /// <summary>Starts dragging the visual under the point; false when there is none.</summary>
+    public bool BeginCropDrag(bool front, double x, double y)
+    {
+        if (FindCell(front, x, y) is not { } hit) return false;
+        var view = front ? RectoSide : VersoSide;
+        var start = hit.Line.Info;
+        var cells = CellsOf(hit.Line, front);
+        _drag = new CropDrag(hit.Line, start, hit.Cell, hit.Side, view, cells, x, y);
+
+        view.Overlays.Clear();
+        foreach (var cell in cells)
+        {
+            var p = Placement.Compute(start, cell, _fit, hit.Side);
+            var overlay = new CropOverlay(p.Clip) { Image = hit.Line.DragImage };
+            overlay.Show(p);
+            view.Overlays.Add(overlay);
+        }
+        if (hit.Line.DragImage is null)
+            _ = LoadDragImageAsync(hit.Line, view);
+        return true;
+    }
+
+    public void CropDragTo(double x, double y)
+    {
+        if (_drag is not { } d) return;
+        d.Crop = Placement.Dragged(d.Start, d.Cell, _fit, d.Side, x - d.X, y - d.Y);
+        var moved = d.Start with { CropX = d.Crop.X, CropY = d.Crop.Y };
+        for (int i = 0; i < d.Cells.Count && i < d.View.Overlays.Count; i++)
+            d.View.Overlays[i].Show(Placement.Compute(moved, d.Cells[i], _fit, d.Side));
+    }
+
+    /// <summary>The line takes the part kept; the copies drawn over the preview stay until it is rendered again.</summary>
+    public void EndCropDrag()
+    {
+        if (_drag is not { } d) return;
+        _drag = null;
+        if (Math.Abs(d.Crop.X - d.Start.CropX) < 1e-9 && Math.Abs(d.Crop.Y - d.Start.CropY) < 1e-9)
+            d.View.Overlays.Clear(); // a click, not a drag
+        else
+            d.Line.SetCrop(d.Crop.X, d.Crop.Y);
+    }
+
+    // The cell under a point, in the frame of its side (the back mirrored), with the line of its visual.
+    private (VisualItem Line, LayoutCell Cell, SideOptions Side)? FindCell(bool front, double x, double y)
+    {
+        if (Layout is not { IsEmpty: false } layout || PreviewSheetIndex >= Plan.SheetCount) return null;
+        var visuals = Plan.Sheets[PreviewSheetIndex];
+        var side = front ? SideOptions.Recto : new SideOptions(true, _flip, RotateVerso180, BackHasMargins);
+        for (int i = 0; i < layout.Cells.Count && i < visuals.Length; i++)
+        {
+            if (visuals[i] is null) continue;
+            var cell = front ? layout.Cells[i] : Placement.MirrorForVerso(layout.Cells[i], layout.Sheet, _flip);
+            var b = cell.Bleed;
+            if (x < b.X || x > b.Right || y < b.Y || y > b.Bottom) continue;
+            var line = front ? LineOfCell(PreviewSheetIndex, i) : VersoEnabled ? Verso : null;
+            return line is null ? null : (line, cell, side);
+        }
+        return null;
+    }
+
+    // Every cell of the sheet shown holding this line (on the back: the back is behind every front).
+    private List<LayoutCell> CellsOf(VisualItem line, bool front)
+    {
+        var cells = new List<LayoutCell>();
+        if (Layout is not { } layout || PreviewSheetIndex >= Plan.SheetCount) return cells;
+        var visuals = Plan.Sheets[PreviewSheetIndex];
+        for (int i = 0; i < layout.Cells.Count && i < visuals.Length; i++)
+        {
+            if (visuals[i] is null) continue;
+            if (front && LineOfCell(PreviewSheetIndex, i) == line) cells.Add(layout.Cells[i]);
+            else if (!front) cells.Add(Placement.MirrorForVerso(layout.Cells[i], layout.Sheet, _flip));
+        }
+        return cells;
+    }
+
+    private VisualItem? LineOfCell(int sheet, int cell)
+    {
+        if (_mode == LayoutMode.Mixed)
+            return sheet < _mixed.SheetCount && _mixed.Sheets[sheet].Items[cell] is var item && item < _mixedLines.Count ? _mixedLines[item] : null;
+        return sheet < Plan.SheetCount && Plan.Sheets[sheet][cell] is { } info && _lineOfInfo.TryGetValue(info, out var line) ? line : null;
+    }
+
+    private static async Task LoadDragImageAsync(VisualItem line, PreviewSide view)
+    {
+        line.DragImage = await ThumbnailLoader.LoadRawAsync(line.SourceInfo, 1400);
+        foreach (var overlay in view.Overlays)
+            overlay.Image ??= line.DragImage;
+    }
+
+    // Once the preview shows the part kept, the copies drawn over it go.
+    private void ClearOverlays()
+    {
+        if (_drag is not null) return;
+        RectoSide.Overlays.Clear();
+        VersoSide.Overlays.Clear();
+    }
+
     // ---- Export ----
 
     private bool _flattenPdf;
@@ -626,12 +809,38 @@ public sealed class MainViewModel : ObservableObject
         else
         {
             // The same page of the same file only once (another page of it is another visual).
+            bool InList(VisualInfo v) => Visuals.Any(i =>
+                string.Equals(i.Info.OriginalPath, v.OriginalPath, StringComparison.OrdinalIgnoreCase) && i.Info.PageNumber == v.PageNumber);
+
+            // PDFs of several pages: all their pages (one line each) or one page, asked once for all of them; cancelled,
+            // they are left out (the other files are added).
+            var multiPage = loaded.Where(v => v.PageCount > 1 && !InList(v)).ToList();
+            var choice = multiPage.Count > 0 && AskPdfPages is { } ask
+                ? ask([.. multiPage.Select(v => (v.FileName, v.PageCount))])
+                : new PdfPagesChoice(false);
+
             int duplicates = 0;
             foreach (var v in loaded)
             {
-                if (Visuals.Any(i => string.Equals(i.Info.OriginalPath, v.OriginalPath, StringComparison.OrdinalIgnoreCase) &&
-                                     i.Info.PageNumber == v.PageNumber)) duplicates++;
-                else Visuals.Add(CreateItem(v));
+                if (InList(v))
+                {
+                    duplicates++;
+                    continue;
+                }
+                if (v.PageCount < 2)
+                {
+                    Visuals.Add(CreateItem(v));
+                    continue;
+                }
+                if (choice is null) continue;
+
+                IEnumerable<int> pages = choice.AllPages ? Enumerable.Range(1, v.PageCount) : [Math.Clamp(choice.Page, 1, v.PageCount)];
+                foreach (int page in pages)
+                {
+                    var (info, _, error) = page == v.PageNumber ? (v, null, null) : await LoadAsync(v.OriginalPath, page);
+                    if (info is not null && !InList(info)) Visuals.Add(CreateItem(info));
+                    if (error is not null) errors.Add(error);
+                }
             }
 
             if (duplicates > 0) messages.Add(Strings.Format("FilesDuplicates", duplicates));
@@ -760,8 +969,8 @@ public sealed class MainViewModel : ObservableObject
         var texts = new CuttingPlanTexts(Strings.Get("CuttingPlanTitle"), Strings.Get("CuttingPlanSheet"), Strings.Get("CuttingPlanHint"),
             Strings.Get("CutFromTop"), Strings.Get("CutFromBottom"), Strings.Get("CutFromLeft"), Strings.Get("CutFromRight"),
             Strings.Get("CuttingPlanMeasureHint"));
-        // The size of each line, by index as packed.
-        var labels = Visuals.Select(v => (v.Format ?? DefaultMixedFormat()).Name).ToList();
+        // The size of each line laid, by index as packed.
+        var labels = _mixedLines.Select(MixedSizeName).ToList();
         var (plan, sheet, fit, logo) = (_mixed, SheetLabel, _fit, AppIconPng());
         await Task.Run(() =>
         {
@@ -872,14 +1081,41 @@ public sealed class MainViewModel : ObservableObject
     private VisualItem CreateItem(VisualInfo info, Action<VisualItem>? remove = null)
     {
         var item = new VisualItem(info, Changed, remove ?? RemoveItem, ChoosePageAsync,
-            _mode == LayoutMode.Mixed ? DefaultMixedFormat() : null);
+            _mode == LayoutMode.Mixed ? DefaultMixedFormat() : null, remove is null ? DuplicateItem : null);
+        item.InitCustomSize(CustomWidth, CustomHeight);
         _ = LoadThumbnailAsync(item);
         return item;
     }
 
-    /// <summary>Size of a new line in the Mixed mode: the size chosen in section 2 when it is a preset one, else 10 x 15.</summary>
-    private FormatOption DefaultMixedFormat() =>
-        SelectedFormat.IsCustom ? MixedFormats.First(f => f.Format == ItemFormats.Photo10x15) : SelectedFormat;
+    /// <summary>Size of a new line in the Mixed mode: the one chosen in the size section, custom size included.</summary>
+    private FormatOption DefaultMixedFormat() => SelectedFormat;
+
+    // "Duplicate the line": the same photo in another size, typically (in the Mixed mode, a file already in the list is
+    // not added again: it would be a drop made twice). Once, on a new line below; its size is then changed.
+    private void DuplicateItem(VisualItem item)
+    {
+        int index = Visuals.IndexOf(item);
+        if (index < 0) return;
+        var copy = CreateItem(item.SourceInfo);
+        copy.CopyChoicesOf(item);
+        Visuals.Insert(index + 1, copy);
+        Changed();
+    }
+
+    /// <summary>Size and white margins of a line in the Mixed mode; null when its custom size is too small.</summary>
+    private (SizeMm Size, MarginsMm Margins)? MixedSizeOf(VisualItem line)
+    {
+        var format = line.Format ?? DefaultMixedFormat();
+        if (format.Format is { } preset) return (preset.Size, preset.Margins);
+        return line.CustomWidth >= MinSizeMm && line.CustomHeight >= MinSizeMm
+            ? (new SizeMm(line.CustomWidth, line.CustomHeight), MarginsMm.None)
+            : null;
+    }
+
+    /// <summary>Name of the size of a line, on the cutting plan: that of the list, or the custom size in millimetres.</summary>
+    private string MixedSizeName(VisualItem line) => (line.Format ?? DefaultMixedFormat()) is { IsCustom: false } preset
+        ? preset.Name
+        : $"{line.CustomWidth:0.#} × {line.CustomHeight:0.#} mm";
 
     // Another page of the PDF of an item, chosen in its page list.
     private async Task ChoosePageAsync(VisualItem item, int pageNumber)
@@ -1108,17 +1344,27 @@ public sealed class MainViewModel : ObservableObject
             : null;
         int perSheet = Layout?.PerSheet ?? 0;
 
+        // Each line gives its own VisualInfo object, so that a cell of the preview finds its line back (two lines may
+        // hold equal ones: the same photo duplicated).
+        _lineOfInfo.Clear();
+        VisualInfo Own(VisualItem line)
+        {
+            var info = line.Info with { };
+            _lineOfInfo[info] = line;
+            return info;
+        }
+
         if (_mode == LayoutMode.Repeat)
         {
             // Counted in sheets, the sheets are full; counted in visuals, the last sheet is filled only on request.
             int items = _unit == QuantityUnit.Items ? Quantity : Quantity * perSheet;
             Plan = RepeatVisual is { } r
-                ? SheetFiller.Fill([new VisualCopies(r.Info, items)], perSheet, CompleteLastSheet)
+                ? SheetFiller.Fill([new VisualCopies(Own(r), items)], perSheet, CompleteLastSheet)
                 : SheetFiller.Fill([], perSheet, CompleteLastSheet);
         }
         else
         {
-            Plan = SheetFiller.Fill(Visuals.Select(v => new VisualCopies(v.Info, v.Copies)).ToList(), perSheet, CompleteLastSheet);
+            Plan = SheetFiller.Fill(Visuals.Select(v => new VisualCopies(Own(v), v.Copies)).ToList(), perSheet, CompleteLastSheet);
         }
 
         if (_previewSheetIndex >= Plan.SheetCount) _previewSheetIndex = Math.Max(0, Plan.SheetCount - 1);
@@ -1168,12 +1414,23 @@ public sealed class MainViewModel : ObservableObject
     // Mixed: each line its own size, packed on as few sheets as possible, each sheet its own layout.
     private void RecomputeMixed(bool sheetValid, double bleed, double spacing)
     {
-        var lines = Visuals.ToList();
-        var items = lines.Select(v =>
+        // A line whose custom size is too small is left out, and says so.
+        var lines = new List<VisualItem>();
+        var items = new List<MixedItem>();
+        foreach (var v in Visuals)
         {
-            var format = (v.Format ?? DefaultMixedFormat()).Format!;
-            return new MixedItem(v.Info, format.Size, v.Copies, format.Margins);
-        }).ToList();
+            if (MixedSizeOf(v) is { } size)
+            {
+                lines.Add(v);
+                items.Add(new MixedItem(v.Info, size.Size, v.Copies, size.Margins));
+            }
+            else
+            {
+                v.Quality = Strings.Format("QualitySizeTooSmall", MinSizeMm);
+                v.IsLowQuality = true;
+            }
+        }
+        _mixedLines = lines;
         _mixed = sheetValid ? Pack(items, bleed, spacing, CropMarks) : MixedPlan.Empty;
         Plan = new SheetPlan([.. _mixed.Sheets.Select(s => s.Visuals)], _mixed.Printed, _mixed.Printed, 0);
         if (_previewSheetIndex >= Plan.SheetCount) _previewSheetIndex = Math.Max(0, Plan.SheetCount - 1);
@@ -1368,6 +1625,7 @@ public sealed class MainViewModel : ObservableObject
         {
             RectoSide.Image = VersoSide.Image = null;
             IsPreviewBusy = false;
+            ClearOverlays();
             return;
         }
 
@@ -1387,6 +1645,7 @@ public sealed class MainViewModel : ObservableObject
             {
                 RectoSide.Image = recto;
                 VersoSide.Image = verso;
+                ClearOverlays();
             }
         }
         catch (Exception ex)
@@ -1394,6 +1653,7 @@ public sealed class MainViewModel : ObservableObject
             if (version == _previewVersion)
             {
                 RectoSide.Image = VersoSide.Image = null;
+                ClearOverlays();
                 Notices.Add(new Notice(NoticeLevel.Error, Strings.Format("NoticePreviewFailed", ex.Message)));
             }
         }

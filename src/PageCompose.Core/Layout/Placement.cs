@@ -91,10 +91,52 @@ public static class Placement
         double sx = target.Width / cw, sy = target.Height / ch;
         double k = fit == FitMode.Fill ? Math.Max(sx, sy) : Math.Min(sx, sy); // mm per raw unit
 
-        var draw = new RectMm(-content.CenterX * k, -content.CenterY * k, visual.FullWidth * k, visual.FullHeight * k);
+        // The part kept: the visual moved in its own axes (DrawRect is drawn before the turn), by the share of what
+        // overflows its area (or of what it leaves free, in Fit mode) given by CropX / CropY.
+        var (overX, overY) = Overflow(visual, target, angle, k);
+        var draw = new RectMm(-content.CenterX * k + (0.5 - visual.CropX) * overX, -content.CenterY * k + (0.5 - visual.CropY) * overY,
+            visual.FullWidth * k, visual.FullHeight * k);
         double dpi = visual.Kind == VisualKind.Image ? Units.MmPerInch / k : double.NaN;
 
         return new VisualPlacement(area, target.CenterX, target.CenterY, angle, visual.BaseMirror, draw, dpi);
+    }
+
+    /// <summary>
+    /// Where the part kept goes when the visual is dragged by (<paramref name="dxMm"/>, <paramref name="dyMm"/>) on the
+    /// sheet, in this cell: the drag turned back into the axes of the visual (its turn and mirror undone), then into
+    /// a share of what overflows. Kept between its edges.
+    /// </summary>
+    public static (double CropX, double CropY) Dragged(VisualInfo visual, LayoutCell cell, FitMode fit, SideOptions side,
+        double dxMm, double dyMm)
+    {
+        var p = Compute(visual, cell, fit, side);
+        var content = visual.Content;
+        var (cw, ch) = p.AngleDeg % 180 == 90 ? (content.Height, content.Width) : (content.Width, content.Height);
+        var target = Target(visual, cell, side);
+        double k = fit == FitMode.Fill ? Math.Max(target.Width / cw, target.Height / ch) : Math.Min(target.Width / cw, target.Height / ch);
+        var (overX, overY) = Overflow(visual, target, (int)p.AngleDeg, k);
+
+        double a = -p.AngleDeg * Math.PI / 180;
+        double rx = dxMm * Math.Cos(a) - dyMm * Math.Sin(a), ry = dxMm * Math.Sin(a) + dyMm * Math.Cos(a);
+        if (p.Mirror) rx = -rx;
+        double x = Math.Abs(overX) > 1e-9 ? Math.Clamp(visual.CropX - rx / overX, 0, 1) : visual.CropX;
+        double y = Math.Abs(overY) > 1e-9 ? Math.Clamp(visual.CropY - ry / overY, 0, 1) : visual.CropY;
+        return (x, y);
+    }
+
+    // The area the visual is fitted to: its trim (a PDF with its own bleed), else what it fills (bleed or image area).
+    private static RectMm Target(VisualInfo visual, LayoutCell cell, SideOptions side)
+    {
+        bool framed = side.HasMargins && !cell.Margins.IsEmpty;
+        var area = framed ? cell.ImageBleed : cell.Bleed;
+        return visual.HasOwnBleed ? (framed ? cell.ImageTrim : cell.Trim) : area;
+    }
+
+    // What the visual overflows its area by, along its own axes (negative: what it leaves free), in millimetres.
+    private static (double X, double Y) Overflow(VisualInfo visual, RectMm target, int angle, double k)
+    {
+        var (width, height) = angle % 180 == 90 ? (target.Height, target.Width) : (target.Width, target.Height);
+        return (visual.Content.Width * k - width, visual.Content.Height * k - height);
     }
 
     private static int Normalize(int angle) => ((angle % 360) + 360) % 360;

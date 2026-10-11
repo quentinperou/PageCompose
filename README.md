@@ -31,7 +31,8 @@ with any printer that prints at actual size.
   - **Same size**: several different visuals of one size on the same sheet (the 8 photos of an order, for instance), each with
     its own number of copies. The last sheet can be filled by repeating the visuals, or keep empty cells.
   - **Mixed sizes**: several sizes on the same sheet (10 × 15, 13 × 18 and 20 × 30 prints of one order, business cards…),
-    each visual with its own size and copies. They are packed on **as few sheets as possible**, each sheet its own
+    each visual with its own size (a preset one, or a custom size typed on its line) and copies; **"Duplicate the
+    line"** (right click) gives the same photo in another size. They are packed on **as few sheets as possible**, each sheet its own
     arrangement, with straight cuts only (as on a guillotine). The preview **numbers the cuts in cutting order**; the
     numbers are only on screen, the PDF gets thin cut lines (can be turned off) and, if you like, crop marks for the
     cuts that reach the edge of the block. **"Add the cutting plan"** writes, next to each export,
@@ -46,7 +47,8 @@ with any printer that prints at actual size.
   imports them, to copy them to another PC or keep them safe. A **double click** on
   a `.PageCompose` file (or dropping it on the window) imports them too; a file of a single preset applies it at once.
   The file is still JSON, readable in Notepad.
-- **PDF of several pages**: a page list on the line of the file chooses the page used. A PDF of two pages in Repeat
+- **PDF of several pages**: a page list on the line of the file chooses the page used. Added to a list of visuals,
+  the app asks whether to take all its pages (one line each) or one page, chosen in a list. A PDF of two pages in Repeat
   mode (a business card) gives its front and its back at once.
 - **Preset sizes**: business card 85 × 55, photos 9 × 13 / 10 × 15 / 13 × 18 / 15 × 20 / 20 × 30 (lab sizes, in
   inches: 10 × 15 = 4 × 6 in = 101.6 × 152.4 mm), squares (also 10 × 10 with a 5 mm white border), **instant photo frames** (classic
@@ -60,14 +62,15 @@ with any printer that prints at actual size.
 - **Best fit, automatically**: the layout that holds the most visuals, turning the size a quarter when it fits better
   (a Polaroid frame then takes its photo along, so the thick border stays under it). Each photo is turned a quarter
   when its proportions call for it; a **right click** on its line turns it by hand (right, left, 180°), for a photo
-  taken sideways.
+  taken sideways. **Drag a photo on the preview** to choose which part of it is kept when it is cropped (every copy
+  follows; "Centre the photo" in its right click menu).
 - **Cutting**: edge to edge (a single cut between two visuals), short **crop marks**, **bleed** (2 mm by default),
   an optional **space between visuals** (5 mm for instance), and **continuous cut lines** across the whole block.
 - **Double-sided**: a back shared by every visual, placed so that it lands behind its front (long or short edge
   flip, optional 180° turn). The preview shows **both sides next to each other**.
 - **True preview**: what you see is the exported PDF, rendered by Windows, with the unprintable area shown in red.
-  **Zoom** with the magnifier buttons, Ctrl + wheel or a double click (drag to move around), shown in % of the real
-  size; the fit button brings the whole sheet back in view.
+  **Zoom** with the magnifier buttons, Ctrl + wheel or a double click (move around with the middle button, or Alt +
+  click and drag), shown in % of the real size; the fit button brings the whole sheet back in view.
 - **Export as PDF or as JPG**: the PDF keeps the photos as they are (no recompression) and the designer PDFs as
   vectors; **"Flatten the PDF"** turns each sheet side into a single 300 dpi picture, leaving nothing for the printer
   to interpret. **"Export as JPG"** writes one 300 dpi picture per sheet side, handy for a photo lab. A notification
