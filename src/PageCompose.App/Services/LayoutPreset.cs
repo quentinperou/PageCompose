@@ -2,6 +2,7 @@ using System.Text.Json;
 using System.Text.Json.Serialization;
 using PageCompose.App.ViewModels;
 using PageCompose.Core.Layout;
+using PageCompose.Core.Pdf;
 
 namespace PageCompose.App.Services;
 
@@ -67,6 +68,10 @@ public sealed class LayoutPreset
 
     /// <summary>The project next to each export (presets of 0.6.x and before: no).</summary>
     public bool SaveProject { get; set; }
+
+    /// <summary>Colour of the cut lines (presets of 0.7.x and before: grey, the new default).</summary>
+    [JsonConverter(typeof(JsonStringEnumConverter<CutLineColor>))]
+    public CutLineColor CutLineColor { get; set; } = CutLineColor.Grey;
 
     public override string ToString() => Name;
 }

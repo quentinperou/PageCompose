@@ -195,6 +195,21 @@ public sealed class ImpositionPdfWriterTests : IDisposable
     }
 
     [Fact]
+    public void Cut_lines_take_their_colour_and_the_crop_marks_stay_black()
+    {
+        var jpg = VisualLoader.Load(_files.Jpeg(1063, 650));
+        var job = ImpositionJob.Repeat(CardsOnSra3(), jpg, 1) with { CutLines = true };
+
+        using var black = WriteAndOpen(job);
+        using var white = WriteAndOpen(job with { CutLineColor = CutLineColor.White });
+        using var marksOnly = WriteAndOpen(job with { CutLines = false, CutLineColor = CutLineColor.White });
+
+        Assert.Contains("1 1 1 RG", ContentText(white.Pages[0]));  // white strokes
+        Assert.DoesNotContain("1 1 1 RG", ContentText(black.Pages[0]));
+        Assert.DoesNotContain("1 1 1 RG", ContentText(marksOnly.Pages[0]));
+    }
+
+    [Fact]
     public void Cut_lines_are_drawn_on_the_front_only()
     {
         var recto = VisualLoader.Load(_files.Jpeg(1063, 650, name: "recto.jpg"));
@@ -370,6 +385,10 @@ public sealed class ImpositionPdfWriterTests : IDisposable
         }
         return count;
     }
+
+    private static string ContentText(PdfPage page) => string.Concat(page.Contents.Elements.Items.Select(item =>
+        (item as PdfReference)?.Value is PdfDictionary d && d.Stream is { } s
+            ? System.Text.Encoding.ASCII.GetString(s.UnfilteredValue) : ""));
 
     private static int ContentLength(PdfPage page) =>
         page.Contents.Elements.Items.Sum(item => (item as PdfReference)?.Value is PdfDictionary d ? d.Stream?.Value.Length ?? 0 : 0);

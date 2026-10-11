@@ -71,10 +71,13 @@ de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réel
   Polaroid pivote alors avec sa photo, la grosse bande reste dessous). Chaque photo est tournée d'un quart de tour
   quand ses proportions le demandent ; un **clic droit** sur sa ligne la fait pivoter à la main (à droite, à gauche,
   180°), pour une photo prise de travers. **Faites glisser une photo dans l'aperçu** pour choisir la partie gardée
-  quand elle est recadrée (toutes les copies suivent ; « Recentrer la photo » dans son menu du clic droit).
+  quand elle est recadrée (toutes les copies suivent ; « Recentrer la photo » dans son menu du clic droit). Le même
+  menu fait **remplir sa case ou y tenir entier** à un seul visuel, quel que soit le réglage général (« Comme le
+  réglage général » le rend).
 - **Coupe** : bord à bord (une seule coupe entre deux visuels), **traits de coupe** courts, **fond perdu**
   (2 mm par défaut) et, en option, un **espace entre les visuels** (5 mm par exemple) et des **lignes de coupe
-  continues** sur tout le bloc.
+  continues** sur tout le bloc, dans la couleur de votre choix (noir, gris, blanc pour les photos sombres, rouge, cyan
+  ou magenta).
 - **Recto verso** : chaque verso est placé pour retomber derrière son recto (retournement bord long ou bord court,
   rotation de 180° en option). Dans une liste, **chaque visuel peut avoir son propre verso**, sur sa ligne (à déposer
   sur sa case « Verso ») ; les autres reçoivent le **verso commun**. L'appli les trouve seule (un badge « auto » le
@@ -100,9 +103,11 @@ de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réel
 - **Champs numériques** : les flèches haut et bas du clavier changent la valeur (Maj : de 10 en 10) ; « 0.1 » et
   « 0,1 » fonctionnent tous les deux.
 - **Contrôles** : résolution effective de chaque visuel au format choisi (alerte sous 200 dpi), recadrage quand les
-  proportions diffèrent du format.
+  proportions diffèrent du format. Les alertes tiennent sur une ligne sous l'aperçu, qui garde sa taille : la plus
+  grave donne sa couleur, et un clic les affiche toutes.
 - **Malin avec les fichiers** : les photos de téléphone sont remises à l'endroit (EXIF), un PDF de graphiste avec fond
-  perdu est calé à 100 % sur sa zone de coupe, les JPEG sont intégrés sans recompression et stockés une seule fois.
+  perdu est calé à 100 % sur sa zone de coupe, les JPEG sont intégrés sans recompression et stockés une seule fois (un JPEG du web que la
+  bibliothèque PDF refuse est converti par Windows).
   Un PDF non standard qui ne peut pas être importé (certains logiciels de facturation en produisent) est converti en
   image 300 dpi, avec un message pour le signaler.
 - **Anglais et français** : l'application et l'installateur suivent la langue d'affichage de Windows ; la langue de

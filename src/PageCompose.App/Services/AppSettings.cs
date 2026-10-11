@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using PageCompose.App.ViewModels;
 using PageCompose.Core;
 using PageCompose.Core.Layout;
+using PageCompose.Core.Pdf;
 
 namespace PageCompose.App.Services;
 
@@ -99,6 +100,10 @@ public sealed class AppSettings
 
     /// <summary>The project (.PageComposeProject: files and settings) is written next to each export.</summary>
     public bool SaveProject { get; set; }
+
+    /// <summary>Colour of the cut lines drawn over the visuals: grey by default, seen on light and dark photos alike (the author's choice).</summary>
+    [JsonConverter(typeof(JsonStringEnumConverter<CutLineColor>))]
+    public CutLineColor CutLineColor { get; set; } = CutLineColor.Grey;
 
     // A missing or damaged file just means default settings: preferences are never worth an error message.
     public static AppSettings Load()

@@ -6,6 +6,26 @@ using PdfSharp.Pdf;
 
 namespace PageCompose.Core.Pdf;
 
+/// <summary>
+/// Colours offered for the cut lines: black, grey, white (no ink: it shows on dark photos), or a bright one that stands
+/// out on any photo.
+/// </summary>
+public enum CutLineColor { Black, Grey, White, Red, Cyan, Magenta }
+
+public static class CutLineColors
+{
+    /// <summary>The colour as printed (and shown in the list of the app).</summary>
+    public static (byte R, byte G, byte B) Rgb(this CutLineColor color) => color switch
+    {
+        CutLineColor.Grey => (128, 128, 128),
+        CutLineColor.White => (255, 255, 255),
+        CutLineColor.Red => (228, 0, 43),
+        CutLineColor.Cyan => (0, 174, 239),
+        CutLineColor.Magenta => (236, 0, 140),
+        _ => (0, 0, 0),
+    };
+}
+
 /// <param name="Layout">Computed layout.</param>
 /// <param name="Sheets">Visual of each cell, sheet by sheet (see <see cref="SheetFiller"/>); null = empty cell.</param>
 /// <param name="Verso">Back shared by every filled cell (null = single-sided).</param>
@@ -20,6 +40,7 @@ namespace PageCompose.Core.Pdf;
 /// shared back, if any).
 /// </param>
 /// <param name="Marks">The mark of each sheet, on its front outside the block (see <see cref="SheetMark"/>); null: none.</param>
+/// <param name="CutLineColor">Colour of the cut lines, drawn over the visuals (the crop marks stay black).</param>
 public sealed record ImpositionJob(
     SheetLayout Layout,
     IReadOnlyList<VisualInfo?[]> Sheets,
@@ -32,7 +53,8 @@ public sealed record ImpositionJob(
     bool VersoMargins = false,
     IReadOnlyList<SheetLayout>? SheetLayouts = null,
     IReadOnlyList<VisualInfo?[]>? Backs = null,
-    IReadOnlyList<string>? Marks = null)
+    IReadOnlyList<string>? Marks = null,
+    CutLineColor CutLineColor = CutLineColor.Black)
 {
     /// <summary>Layout of sheet <paramref name="index"/> (from 0).</summary>
     public SheetLayout LayoutOf(int index) => SheetLayouts?[index] ?? Layout;
@@ -116,13 +138,13 @@ public static class ImpositionPdfWriter
             {
                 var (layout, sheet) = (job.LayoutOf(s), job.Sheets[s]);
                 var recto = layout.Cells.Select((cell, i) => (cell, visual: sheet[i])).ToList();
-                DrawSide(doc, layout, recto, ImageOf, job.Fit, SideOptions.Recto, job.CutLines, job.Marks?[s]);
+                DrawSide(doc, layout, recto, ImageOf, job.Fit, SideOptions.Recto, job.CutLines ? job.CutLineColor : null, job.Marks?[s]);
 
                 if (job.HasBack)
                 {
                     // The back is only printed behind cells that have a front: their own back, else the shared one.
                     var back = recto.Select((r, i) => (r.cell, visual: r.visual is null ? null : job.BackOf(s, i))).ToList();
-                    DrawSide(doc, layout, back, ImageOf, job.Fit, versoSide, cutLines: false);
+                    DrawSide(doc, layout, back, ImageOf, job.Fit, versoSide, cutLines: null);
                 }
             }
 
@@ -147,7 +169,7 @@ public static class ImpositionPdfWriter
     }
 
     private static void DrawSide(PdfDocument doc, SheetLayout layout, List<(LayoutCell cell, VisualInfo? visual)> cells,
-        Func<VisualInfo, XImage> imageOf, FitMode fit, SideOptions side, bool cutLines, string? mark = null)
+        Func<VisualInfo, XImage> imageOf, FitMode fit, SideOptions side, CutLineColor? cutLines, string? mark = null)
     {
         var page = doc.AddPage();
         page.Width = XUnit.FromMillimeter(layout.Sheet.Width);
@@ -181,26 +203,29 @@ public static class ImpositionPdfWriter
 
         // A mixed sheet: its own cuts, each across the piece it cuts (the numbers of the cutting order are only on screen:
         // printed, they would land on the visuals).
-        if (cutLines && layout.IsMixed)
+        var linePen = cutLines is { } color ? new XPen(ColorOf(color), CropMarkWidthPt) : null;
+        if (linePen is not null && layout.IsMixed)
         {
             foreach (var c in layout.CutSegments)
-                gfx.DrawLine(pen, Units.MmToPt(c.X1), Units.MmToPt(c.Y1), Units.MmToPt(c.X2), Units.MmToPt(c.Y2));
+                gfx.DrawLine(linePen, Units.MmToPt(c.X1), Units.MmToPt(c.Y1), Units.MmToPt(c.X2), Units.MmToPt(c.Y2));
         }
         // Continuous cut lines over the visuals, from one side of the block of trims to the other. The cells form a
         // grid: a line along the edge of one cell runs along the edges of its whole row or column.
-        else if (cutLines && layout.Cells.Count > 0)
+        else if (linePen is not null && layout.Cells.Count > 0)
         {
             double top = layout.Cells[0].Trim.Y, bottom = layout.Cells[^1].Trim.Bottom;
             double left = layout.Cells[0].Trim.X, right = layout.Cells[^1].Trim.Right;
             foreach (var x in layout.CutsX)
-                gfx.DrawLine(pen, Units.MmToPt(x), Units.MmToPt(top), Units.MmToPt(x), Units.MmToPt(bottom));
+                gfx.DrawLine(linePen, Units.MmToPt(x), Units.MmToPt(top), Units.MmToPt(x), Units.MmToPt(bottom));
             foreach (var y in layout.CutsY)
-                gfx.DrawLine(pen, Units.MmToPt(left), Units.MmToPt(y), Units.MmToPt(right), Units.MmToPt(y));
+                gfx.DrawLine(linePen, Units.MmToPt(left), Units.MmToPt(y), Units.MmToPt(right), Units.MmToPt(y));
         }
 
         if (!side.IsVerso && !string.IsNullOrWhiteSpace(mark) && SheetMark.Place(layout) is { } at)
             DrawMark(gfx, mark, at.Band, at.Side);
     }
+
+    private static XColor ColorOf(CutLineColor color) => color.Rgb() is var (r, g, b) ? XColor.FromArgb(r, g, b) : XColors.Black;
 
     // Small grey text, centred along its band; shrunk down to SheetMark.MinFontSizePt when longer than the band.
     private static void DrawMark(XGraphics gfx, string text, RectMm band, SheetMark.Side side)

@@ -32,6 +32,23 @@ public class PlacementTests
         Assert.True(p.DrawRect.Width >= 85 - 1e-9 && p.DrawRect.Height >= 55 - 1e-9);
     }
 
+    [Fact]
+    public void A_visual_with_its_own_fit_ignores_the_layout_s()
+    {
+        var photo = Image(1200, 800); // 3:2 in an 85 x 55 cell: cropped when filled, white bands when fitted
+
+        var filled = Placement.Compute(photo, LandscapeCard, FitMode.Fill);
+        var fitted = Placement.Compute(photo with { Fit = FitMode.Fit }, LandscapeCard, FitMode.Fill);
+        var filledAnyway = Placement.Compute(photo with { Fit = FitMode.Fill }, LandscapeCard, FitMode.Fit);
+
+        Assert.Equal(55, fitted.DrawRect.Height, 6);       // whole: its height fits the cell, bands left and right
+        Assert.True(fitted.DrawRect.Width < 85);
+        Assert.True(filled.DrawRect.Height > 55);          // the layout's Fill
+        Assert.Equal(filled.DrawRect, filledAnyway.DrawRect);
+        Assert.Equal(Placement.Dragged(photo with { Fit = FitMode.Fit }, LandscapeCard, FitMode.Fill, SideOptions.Recto, 5, 0),
+            Placement.Dragged(photo, LandscapeCard, FitMode.Fit, SideOptions.Recto, 5, 0));
+    }
+
     // ---- The part kept (dragged on the preview) ----
 
     private static readonly LayoutCell PortraitPhoto = new(0, 0, new RectMm(10, 10, 100, 150), new RectMm(10, 10, 100, 150));

@@ -1,3 +1,4 @@
+using PdfSharp.Drawing;
 using PdfSharp.Pdf.IO;
 
 namespace PageCompose.Core.Visuals;
@@ -32,7 +33,7 @@ public static class VisualLoader
         {
             return ext switch
             {
-                ".jpg" or ".jpeg" => LoadImage(path, ImageHeaderReader.ReadJpeg),
+                ".jpg" or ".jpeg" => LoadJpeg(path),
                 ".png" => LoadImage(path, ImageHeaderReader.ReadPng),
                 ".pdf" => LoadPdf(path, pageNumber),
                 _ => throw new VisualLoadException(VisualLoadError.Unsupported, path, ext),
@@ -45,6 +46,37 @@ public static class VisualLoader
         catch (Exception ex)
         {
             throw new VisualLoadException(VisualLoadError.Unreadable, path, ex.Message, ex);
+        }
+    }
+
+    private static VisualInfo LoadJpeg(string path)
+    {
+        var info = LoadImage(path, ImageHeaderReader.ReadJpeg);
+        if (!PdfSharpTakes(path))
+            throw new VisualLoadException(VisualLoadError.NeedsConversion, path);
+        return info;
+    }
+
+    /// <summary>
+    /// PDFsharp embeds a JPEG as it is, but refuses one that does not start with a JFIF, Exif or ICC segment ("Unsupported
+    /// image format" when the PDF is written; images saved by some web sites and tools). Those start, the others are
+    /// tried with PDFsharp itself.
+    /// </summary>
+    private static bool PdfSharpTakes(string path)
+    {
+        var start = new byte[4];
+        using (var s = File.OpenRead(path))
+            s.ReadExactly(start);
+        if (start[0] == 0xFF && start[1] == 0xD8 && start[2] == 0xFF && start[3] is 0xE0 or 0xE1 or 0xE2)
+            return true;
+        try
+        {
+            using var image = XImage.FromFile(path);
+            return true;
+        }
+        catch (InvalidOperationException)
+        {
+            return false;
         }
     }
 

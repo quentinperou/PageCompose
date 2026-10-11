@@ -81,4 +81,11 @@ public class LocalizationTests
         Assert.All(ItemFormats.All, f => Assert.Contains("Format_" + f.Id, keys));
         Assert.All(SheetFormats.All, s => Assert.Contains("Sheet_" + s.Id, keys));
     }
+
+    [Fact]
+    public void EveryCutLineColour_HasAName()
+    {
+        var keys = ReadStrings("Strings.resx").Keys.ToHashSet();
+        Assert.All(Enum.GetValues<Pdf.CutLineColor>(), c => Assert.Contains("CutColor_" + c, keys));
+    }
 }

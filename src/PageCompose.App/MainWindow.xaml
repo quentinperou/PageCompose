@@ -8,7 +8,8 @@
         FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="14"
         Foreground="{DynamicResource TextFillColorPrimaryBrush}" Background="{DynamicResource ApplicationBackgroundBrush}"
         AllowDrop="True" DragEnter="Window_DragOver" DragOver="Window_DragOver" DragLeave="Window_DragLeave"
-        Drop="Window_Drop" Closing="Window_Closing" PreviewKeyDown="Window_PreviewKeyDown" PreviewKeyUp="Window_PreviewKeyUp">
+        Drop="Window_Drop" Closing="Window_Closing" PreviewKeyDown="Window_PreviewKeyDown" PreviewKeyUp="Window_PreviewKeyUp"
+        PreviewMouseDown="Window_PreviewMouseDown">
 
     <Window.Resources>
         <!-- Rounded thumbnail -->
@@ -53,6 +54,11 @@
                 </MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="{local:Tr RotateHalf}" Command="{Binding RotateHalfCommand}" />
+            <!-- How it lies in its cell: the general setting, or its own (asked by the author) -->
+            <Separator />
+            <MenuItem Header="{local:Tr LineFitDefault}" Command="{Binding FitDefaultCommand}" IsCheckable="True" IsChecked="{Binding IsFitDefault, Mode=OneWay}" />
+            <MenuItem Header="{local:Tr LineFitFill}" Command="{Binding OwnFillCommand}" IsCheckable="True" IsChecked="{Binding IsOwnFill, Mode=OneWay}" />
+            <MenuItem Header="{local:Tr LineFitFit}" Command="{Binding OwnFitCommand}" IsCheckable="True" IsChecked="{Binding IsOwnFit, Mode=OneWay}" />
             <!-- Back to the automatic turn alone (it is kept through every change of the settings until then) -->
             <Separator />
             <MenuItem Header="{local:Tr RotateAuto}" Command="{Binding RotateAutoCommand}" IsEnabled="{Binding IsTurnedByHand}">
@@ -193,6 +199,28 @@
             </Border>
         </DataTemplate>
 
+        <!-- A notice in full (the details of the line under the preview): Windows 11 InfoBar colours -->
+        <DataTemplate x:Key="NoticeItem" DataType="{x:Type vm:Notice}">
+            <!-- Windows 11 InfoBar colours -->
+            <Border x:Name="Box" CornerRadius="6" Padding="12,7" Margin="0,3,0,0" BorderThickness="1"
+                    Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
+                <DockPanel>
+                    <TextBlock x:Name="Glyph" Text="{Binding Icon}" FontFamily="{StaticResource IconFont}" FontSize="16" Margin="0,1,10,0"
+                               VerticalAlignment="Top" Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
+                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
+                </DockPanel>
+            </Border>
+            <DataTemplate.Triggers>
+                <DataTrigger Binding="{Binding Level}" Value="{x:Static vm:NoticeLevel.Warning}">
+                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" />
+                    <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Level}" Value="{x:Static vm:NoticeLevel.Error}">
+                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
+                    <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                </DataTrigger>
+            </DataTemplate.Triggers>
+        </DataTemplate>
     </Window.Resources>
 
     <Grid>
@@ -439,6 +467,23 @@
                                       Visibility="{Binding IsMixedMode, Converter={StaticResource InverseBoolToVisibility}}" />
                             <CheckBox Content="{local:Tr MixedCutLines}" IsChecked="{Binding MixedCutLines}"
                                       Visibility="{Binding IsMixedMode, Converter={StaticResource BoolToVisibility}}" />
+                            <!-- The colour of the cut lines, over the visuals (asked by the author): white shows on dark photos -->
+                            <DockPanel Margin="28,2,0,6" Visibility="{Binding ShowCutLineColor, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Text="{local:Tr CutLineColor}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <ComboBox ItemsSource="{Binding CutLineColors}" SelectedItem="{Binding SelectedCutLineColor}" MinWidth="150"
+                                          HorizontalAlignment="Left" AutomationProperties.Name="{local:Tr CutLineColor}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:CutLineColorOption}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="14" Height="14" CornerRadius="3" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                        Background="{Binding Swatch}" BorderThickness="1"
+                                                        BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}" />
+                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </DockPanel>
                             <!-- Bleed and spacing: values aligned in one column -->
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -695,6 +740,23 @@
                     </ItemsControl>
                 </ScrollViewer>
 
+                <!-- The notices in full, opened from their line below, over the bottom of the preview (which does not move) -->
+                <Grid x:Name="NoticePanel" VerticalAlignment="Bottom" Margin="0,0,0,-6"
+                      Visibility="{Binding NoticesOpen, Converter={StaticResource BoolToVisibility}}">
+                    <!-- The shadow on a separate layer: an effect on the card itself would blur its text -->
+                    <Border CornerRadius="8" Background="{DynamicResource FlyoutBackground}">
+                        <Border.Effect>
+                            <DropShadowEffect BlurRadius="18" ShadowDepth="4" Opacity="0.28" />
+                        </Border.Effect>
+                    </Border>
+                    <Border CornerRadius="8" BorderThickness="1" Padding="8,5,8,8"
+                            Background="{DynamicResource FlyoutBackground}" BorderBrush="{DynamicResource FlyoutBorderBrush}">
+                        <ScrollViewer MaxHeight="280" VerticalScrollBarVisibility="Auto" Focusable="False">
+                            <ItemsControl ItemsSource="{Binding Notices}" ItemTemplate="{StaticResource NoticeItem}" />
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+
                 <ProgressBar IsIndeterminate="True" Height="3" VerticalAlignment="Top"
                              Visibility="{Binding IsPreviewBusy, Converter={StaticResource BoolToVisibility}}" />
 
@@ -712,31 +774,67 @@
             </Grid>
 
             <StackPanel Grid.Row="3">
-                <ItemsControl ItemsSource="{Binding Notices}">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate DataType="{x:Type vm:Notice}">
-                            <!-- Windows 11 InfoBar colours -->
-                            <Border x:Name="Box" CornerRadius="6" Padding="12,7" Margin="0,3,0,0" BorderThickness="1"
-                                    Background="{DynamicResource SystemFillColorAttentionBackgroundBrush}" BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}">
-                                <DockPanel>
-                                    <TextBlock x:Name="Glyph" Text="{Binding Icon}" FontFamily="{StaticResource IconFont}" FontSize="16" Margin="0,1,10,0"
-                                               VerticalAlignment="Top" Foreground="{DynamicResource SystemFillColorAttentionBrush}" />
-                                    <TextBlock Text="{Binding Text}" TextWrapping="Wrap" />
-                                </DockPanel>
-                            </Border>
-                            <DataTemplate.Triggers>
-                                <DataTrigger Binding="{Binding Level}" Value="{x:Static vm:NoticeLevel.Warning}">
-                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" />
-                                    <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                <!-- The notices on one line of a fixed height (asked by the author: their list changed the height of the
+                     preview with each change). Hidden, not collapsed, when there is none: the preview keeps its size. -->
+                <Border x:Name="NoticeBar" CornerRadius="6" Padding="12,0,10,0" Height="36" BorderThickness="1"
+                        BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" MouseLeftButtonUp="NoticeBar_MouseLeftButtonUp"
+                        ToolTip="{Binding NoticeBarTooltip}" AutomationProperties.Name="{Binding NoticeDetail}">
+                    <Border.Style>
+                        <Style TargetType="Border">
+                            <Setter Property="Background" Value="{DynamicResource SystemFillColorAttentionBackgroundBrush}" />
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding WorstNoticeLevel}" Value="{x:Static vm:NoticeLevel.Warning}">
+                                    <Setter Property="Background" Value="{DynamicResource SystemFillColorCautionBackgroundBrush}" />
                                 </DataTrigger>
-                                <DataTrigger Binding="{Binding Level}" Value="{x:Static vm:NoticeLevel.Error}">
-                                    <Setter TargetName="Box" Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
-                                    <Setter TargetName="Glyph" Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                <DataTrigger Binding="{Binding WorstNoticeLevel}" Value="{x:Static vm:NoticeLevel.Error}">
+                                    <Setter Property="Background" Value="{DynamicResource SystemFillColorCriticalBackgroundBrush}" />
                                 </DataTrigger>
-                            </DataTemplate.Triggers>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
+                                <DataTrigger Binding="{Binding HasNotices}" Value="False">
+                                    <Setter Property="Visibility" Value="Hidden" />
+                                </DataTrigger>
+                                <DataTrigger Binding="{Binding CanOpenNotices}" Value="True">
+                                    <Setter Property="Cursor" Value="Hand" />
+                                </DataTrigger>
+                            </Style.Triggers>
+                        </Style>
+                    </Border.Style>
+                    <DockPanel>
+                        <TextBlock DockPanel.Dock="Left" Text="{Binding WorstNoticeIcon}" FontFamily="{StaticResource IconFont}" FontSize="16"
+                                   Margin="0,0,10,0" VerticalAlignment="Center">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="{DynamicResource SystemFillColorAttentionBrush}" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding WorstNoticeLevel}" Value="{x:Static vm:NoticeLevel.Warning}">
+                                            <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCautionBrush}" />
+                                        </DataTrigger>
+                                        <DataTrigger Binding="{Binding WorstNoticeLevel}" Value="{x:Static vm:NoticeLevel.Error}">
+                                            <Setter Property="Foreground" Value="{DynamicResource SystemFillColorCriticalBrush}" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <!-- Up: the notices open above it; down: they close -->
+                        <TextBlock DockPanel.Dock="Right" FontFamily="{StaticResource IconFont}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center"
+                                   Visibility="{Binding CanOpenNotices, Converter={StaticResource BoolToVisibility}}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Text" Value="&#xE70E;" />
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding NoticesOpen}" Value="True">
+                                            <Setter Property="Text" Value="&#xE70D;" />
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                        </TextBlock>
+                        <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                            <Run Text="{Binding NoticeTitle, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="  " /><Run
+                                Text="{Binding NoticeDetail, Mode=OneWay}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        </TextBlock>
+                    </DockPanel>
+                </Border>
                 <TextBlock Style="{StaticResource Hint}" Text="{Binding PreviewHint}" />
             </StackPanel>
 

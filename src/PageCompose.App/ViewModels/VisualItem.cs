@@ -1,6 +1,7 @@
 using System.Windows.Input;
 using System.Windows.Media;
 using PageCompose.Core;
+using PageCompose.Core.Layout;
 using PageCompose.Core.Visuals;
 
 namespace PageCompose.App.ViewModels;
@@ -16,7 +17,7 @@ public sealed record PageOption(int Number, string Name)
 /// project. Its back is captured with it.
 /// </summary>
 public sealed record LineState(VisualItem Item, VisualInfo Info, int Copies, int Rotation, FormatOption? Format,
-    double CustomWidth, double CustomHeight, double CropX, double CropY, LineState? Back, bool BackAuto);
+    double CustomWidth, double CustomHeight, double CropX, double CropY, LineState? Back, bool BackAuto, FitMode? Fit);
 
 /// <summary>A visual of the list, with its number of copies, and its page when it is a PDF of several pages.</summary>
 public sealed class VisualItem : ObservableObject
@@ -45,6 +46,9 @@ public sealed class VisualItem : ObservableObject
         RotateHalfCommand = new RelayCommand(() => Rotate(180));
         RotateAutoCommand = new RelayCommand(() => Rotate(-_rotation));
         RecenterCommand = new RelayCommand(() => SetCrop(0.5, 0.5));
+        FitDefaultCommand = new RelayCommand(() => SetFit(null));
+        OwnFillCommand = new RelayCommand(() => SetFit(FitMode.Fill));
+        OwnFitCommand = new RelayCommand(() => SetFit(FitMode.Fit));
     }
 
     private VisualInfo _info;
@@ -53,7 +57,30 @@ public sealed class VisualItem : ObservableObject
     /// The visual, with the turn chosen by the user (applied on the sheet after the automatic one) and the part of it
     /// kept, moved on the preview.
     /// </summary>
-    public VisualInfo Info => _rotation == 0 && !IsCropMoved ? _info : _info with { UserRotation = _rotation, CropX = _cropX, CropY = _cropY };
+    public VisualInfo Info => _rotation == 0 && !IsCropMoved && _fit is null
+        ? _info
+        : _info with { UserRotation = _rotation, CropX = _cropX, CropY = _cropY, Fit = _fit };
+
+    private FitMode? _fit;
+
+    /// <summary>
+    /// How it lies in its cell, chosen for it alone (right click on its line): filled or whole; null: as the general
+    /// setting says. Like the turn, it belongs to the line, not to the presets.
+    /// </summary>
+    public FitMode? Fit => _fit;
+
+    public bool IsFitDefault => _fit is null;
+    public bool IsOwnFill => _fit == FitMode.Fill;
+    public bool IsOwnFit => _fit == FitMode.Fit;
+
+    private void SetFit(FitMode? fit)
+    {
+        if (_fit == fit) return;
+        _fit = fit;
+        foreach (var name in new[] { nameof(Fit), nameof(IsFitDefault), nameof(IsOwnFill), nameof(IsOwnFit), nameof(Info) })
+            OnPropertyChanged(name);
+        _changed();
+    }
 
     private double _cropX = 0.5, _cropY = 0.5;
 
@@ -102,10 +129,11 @@ public sealed class VisualItem : ObservableObject
         if (other.Format is not null) _format = other.Format;
         (_customWidth, _customHeight) = (other.CustomWidth, other.CustomHeight);
         (_cropX, _cropY) = other.Crop;
+        _fit = other.Fit;
     }
 
     public LineState Capture() => new(this, _info, _copies, _rotation, _format, _customWidth, _customHeight, _cropX, _cropY,
-        _back?.Capture(), _isBackAuto);
+        _back?.Capture(), _isBackAuto, _fit);
 
     /// <summary>
     /// Takes back what <see cref="Capture"/> saw (or a project opened), its back included, without recomputing
@@ -115,8 +143,8 @@ public sealed class VisualItem : ObservableObject
     {
         if (s.Info.PageNumber != _info.PageNumber) (ThumbnailOutdated, DragImage) = (true, null);
         _info = s.Info;
-        (_copies, _rotation, _format, _customWidth, _customHeight, _cropX, _cropY) =
-            (s.Copies, s.Rotation, s.Format, s.CustomWidth, s.CustomHeight, s.CropX, s.CropY);
+        (_copies, _rotation, _format, _customWidth, _customHeight, _cropX, _cropY, _fit) =
+            (s.Copies, s.Rotation, s.Format, s.CustomWidth, s.CustomHeight, s.CropX, s.CropY, s.Fit);
         _back = s.Back?.Item;
         if (s.Back is { } back) back.Item.Restore(back);
         _isBackAuto = s.BackAuto;
@@ -261,6 +289,15 @@ public sealed class VisualItem : ObservableObject
 
     /// <summary>"Centre the photo": the part kept back to the middle, as before it was dragged.</summary>
     public ICommand RecenterCommand { get; }
+
+    /// <summary>Back to the general setting "The visual in its cell".</summary>
+    public ICommand FitDefaultCommand { get; }
+
+    /// <summary>This visual fills its cell (cropped if need be), whatever the general setting.</summary>
+    public ICommand OwnFillCommand { get; }
+
+    /// <summary>This visual lies whole in its cell, whatever the general setting.</summary>
+    public ICommand OwnFitCommand { get; }
 
     /// <summary>"Duplicate the line": the same visual, page, turn and size, once, on a new line below.</summary>
     public ICommand? DuplicateCommand { get; }

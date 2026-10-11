@@ -44,6 +44,9 @@ public sealed class ProjectLine
     public ProjectLine? Back { get; set; }
     public bool BackAuto { get; set; }
 
+    /// <summary>"Fill" or "Fit" when the line lies in its cell its own way; none: as the settings say.</summary>
+    public string? Fit { get; set; }
+
     public IEnumerable<ProjectLine> WithBack() => Back is null ? [this] : [this, Back];
 }
 

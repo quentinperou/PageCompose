@@ -494,8 +494,32 @@ public partial class MainWindow : Window
         e.Handled = true;
     }
 
+    // ---- The line of the notices ----
+
+    private void NoticeBar_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => ViewModel.NoticesOpen = !ViewModel.NoticesOpen;
+
+    // A click anywhere else closes the notices opened over the preview (the click still does what it does).
+    private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (ViewModel.NoticesOpen && e.OriginalSource is DependencyObject source && !IsWithin(source, NoticePanel) && !IsWithin(source, NoticeBar))
+            ViewModel.NoticesOpen = false;
+    }
+
+    private static bool IsWithin(DependencyObject element, DependencyObject ancestor)
+    {
+        for (var e = element; e is not null; e = e is Visual or System.Windows.Media.Media3D.Visual3D ? VisualTreeHelper.GetParent(e) : LogicalTreeHelper.GetParent(e))
+            if (e == ancestor) return true;
+        return false;
+    }
+
     private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        if (e.Key == Key.Escape && ViewModel.NoticesOpen)
+        {
+            ViewModel.NoticesOpen = false;
+            e.Handled = true;
+            return;
+        }
         if (e.Key == Key.System && e.SystemKey is Key.LeftAlt or Key.RightAlt)
         {
             UpdateSheetCursor(alt: true); // not handled: Alt keeps its usual part in Windows

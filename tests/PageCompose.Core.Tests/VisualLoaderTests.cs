@@ -107,6 +107,20 @@ public sealed class VisualLoaderTests : IDisposable
         Assert.Equal("fake.jpg", unreadable.FileName);
     }
 
+    [Fact]
+    public void A_jpeg_that_the_pdf_cannot_take_as_it_is_asks_for_a_conversion()
+    {
+        var path = _files.Jpeg(300, 200, name: "web.jpg");
+        var jpeg = File.ReadAllBytes(path);
+        Assert.Equal(0xE0, jpeg[3]); // written with a JFIF segment
+        int end = 4 + (jpeg[4] << 8 | jpeg[5]);
+        var web = _files.Path("web-image.jpg");
+        File.WriteAllBytes(web, [0xFF, 0xD8, .. jpeg[end..]]); // the same picture, without it
+
+        Assert.Equal(300, VisualLoader.Load(path).FullWidth);
+        Assert.Equal(VisualLoadError.NeedsConversion, Assert.Throws<VisualLoadException>(() => VisualLoader.Load(web)).Error);
+    }
+
     [Theory]
     [InlineData("photo.jpg", true, false)]
     [InlineData("scan.PDF", true, false)]

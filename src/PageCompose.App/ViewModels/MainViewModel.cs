@@ -20,6 +20,24 @@ public enum LayoutMode { Repeat, Compose, Mixed }
 public enum QuantityUnit { Items, Sheets }
 
 /// <summary>Entry of the visual size list; <see cref="Format"/> is null for "Custom".</summary>
+/// <summary>A colour of the cut lines, with its name and its swatch in the list.</summary>
+public sealed class CutLineColorOption(CutLineColor value)
+{
+    public CutLineColor Value { get; } = value;
+    public string Name => Strings.Get("CutColor_" + Value);
+
+    public Brush Swatch { get; } = Freeze(value.Rgb());
+
+    public override string ToString() => Name; // what screen readers say
+
+    private static SolidColorBrush Freeze((byte R, byte G, byte B) c)
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B)); // the colour printed, not a theme colour
+        brush.Freeze();
+        return brush;
+    }
+}
+
 public sealed class FormatOption(PaperFormat? format)
 {
     public PaperFormat? Format { get; } = format;
@@ -41,10 +59,13 @@ public sealed class SheetOption(PaperFormat? sheet)
 
 public enum NoticeLevel { Info, Warning, Error }
 
-public sealed record Notice(NoticeLevel Level, string Text)
+/// <param name="Key">One or two words for the line that sums the notices up ("Cropping").</param>
+public sealed record Notice(NoticeLevel Level, string Text, string Key)
 {
     /// <summary>Segoe Fluent Icons glyph, as in the Windows 11 InfoBar.</summary>
-    public string Icon => Level switch { NoticeLevel.Error => "", NoticeLevel.Warning => "", _ => "" };
+    public string Icon => IconOf(Level);
+
+    public static string IconOf(NoticeLevel level) => level switch { NoticeLevel.Error => "", NoticeLevel.Warning => "", _ => "" };
 }
 
 /// <summary>Pages to add of PDFs of several pages: all of them, or one (from 1).</summary>
@@ -163,10 +184,22 @@ public sealed class MainViewModel : ObservableObject
         _cuttingPlan = settings.CuttingPlan;
         _sheetMark = settings.SheetMark;
         _saveProject = settings.SaveProject;
+        _cutLineColor = settings.CutLineColor;
+        CutLineColors = [.. Enum.GetValues<CutLineColor>().Select(c => new CutLineColorOption(c))];
 
         ClearVisualsCommand = new RelayCommand(ClearVisuals);
         PreviousSheetCommand = new RelayCommand(() => PreviewSheetIndex--);
         NextSheetCommand = new RelayCommand(() => PreviewSheetIndex++);
+        Notices.CollectionChanged += (_, _) =>
+        {
+            foreach (var name in new[]
+                     {
+                         nameof(HasNotices), nameof(WorstNoticeLevel), nameof(WorstNoticeIcon), nameof(NoticeTitle), nameof(NoticeDetail),
+                         nameof(CanOpenNotices), nameof(NoticeBarTooltip),
+                     })
+                OnPropertyChanged(name);
+            if (!CanOpenNotices) NoticesOpen = false;
+        };
         Visuals.CollectionChanged += (_, _) =>
         {
             OnPropertyChanged(nameof(HasVisuals));
@@ -305,6 +338,7 @@ public sealed class MainViewModel : ObservableObject
         CuttingPlan = CuttingPlan,
         SheetMark = SheetMark,
         SaveProject = SaveProject,
+        CutLineColor = _cutLineColor,
     };
 
     private bool _applyingPreset;
@@ -362,6 +396,7 @@ public sealed class MainViewModel : ObservableObject
         CuttingPlan = p.CuttingPlan;
         SheetMark = p.SheetMark;
         SaveProject = p.SaveProject;
+        SelectedCutLineColor = CutLineColors.First(c => c.Value == p.CutLineColor);
     }
 
     // ---- Mode ----
@@ -463,6 +498,25 @@ public sealed class MainViewModel : ObservableObject
     public bool RotateVerso180 { get => _rotateVerso180; set { if (Set(ref _rotateVerso180, value)) Changed(); } }
 
     // ---- Size, sheet, cutting ----
+
+    /// <summary>The colours offered for the cut lines (the crop marks stay black, on the white paper).</summary>
+    public IReadOnlyList<CutLineColorOption> CutLineColors { get; }
+
+    private CutLineColor _cutLineColor;
+    public CutLineColorOption SelectedCutLineColor
+    {
+        get => CutLineColors.First(c => c.Value == _cutLineColor);
+        set
+        {
+            if (value is null || value.Value == _cutLineColor) return;
+            _cutLineColor = value.Value;
+            OnPropertyChanged();
+            Changed();
+        }
+    }
+
+    /// <summary>The colour list shows while the cut lines of the mode are on.</summary>
+    public bool ShowCutLineColor => _mode == LayoutMode.Mixed ? MixedCutLines : CutLines;
 
     private FormatOption _selectedFormat;
     public FormatOption SelectedFormat
@@ -583,6 +637,33 @@ public sealed class MainViewModel : ObservableObject
     public string PlanText { get; private set; } = "";
 
     public ObservableCollection<Notice> Notices { get; } = [];
+
+    // ---- The line of the notices under the preview (asked by the author: a list of notices changed the height of the
+    // preview with each change). One line of a fixed height: the icon of the worst, how many and their key words, or the
+    // notice itself when alone; a click shows them all over the bottom of the preview.
+
+    public bool HasNotices => Notices.Count > 0;
+    public NoticeLevel WorstNoticeLevel => Notices.Count == 0 ? NoticeLevel.Info : Notices.Max(n => n.Level);
+    public string WorstNoticeIcon => Notice.IconOf(WorstNoticeLevel);
+
+    /// <summary>"3 notices", or nothing when there is one (<see cref="NoticeDetail"/> is the notice).</summary>
+    public string NoticeTitle => Notices.Count > 1 ? Strings.Count("NoticesCount", Notices.Count) : "";
+
+    /// <summary>Their key words ("Cropping · Back"), or the notice itself when alone.</summary>
+    public string NoticeDetail => Notices.Count == 1 ? Notices[0].Text : string.Join(" · ", Notices.Select(n => n.Key).Distinct());
+
+    /// <summary>
+    /// Several notices open over the preview; a single one is the line itself, nothing to unfold (the author's remark):
+    /// its whole text is its tooltip.
+    /// </summary>
+    public bool CanOpenNotices => Notices.Count > 1;
+
+    public string NoticeBarTooltip => CanOpenNotices ? Strings.Get("NoticeBarTooltip") : NoticeDetail;
+
+    private bool _noticesOpen;
+
+    /// <summary>The notices shown in full, over the bottom of the preview.</summary>
+    public bool NoticesOpen { get => _noticesOpen; set => Set(ref _noticesOpen, value && CanOpenNotices); }
 
     /// <summary>Sheet of the layout. A custom sheet out of range falls back to SRA3 for the drawing (an error is shown).</summary>
     private PaperFormat Sheet => SelectedSheet.Sheet ?? CustomSheet() ?? SheetFormats.Sra3;
@@ -918,6 +999,7 @@ public sealed class MainViewModel : ObservableObject
             CustomHeight = s.CustomHeight,
             Back = s.Back is null ? null : Line(s.Back),
             BackAuto = s.BackAuto,
+            Fit = s.Fit?.ToString(),
         };
 
         var state = CaptureState();
@@ -950,7 +1032,8 @@ public sealed class MainViewModel : ObservableObject
             var back = l.Back is { } b ? await Line(b, i => CreateBackItem(item, i)) : null;
             var format = l.FormatId is null ? null : MixedFormats.FirstOrDefault(f => (f.Format?.Id ?? AppSettings.CustomFormatId) == l.FormatId);
             return new LineState(item, info, Math.Clamp(l.Copies, 1, 100_000), (l.Rotation % 360 + 360) % 360 / 90 * 90, format,
-                l.CustomWidth, l.CustomHeight, Math.Clamp(l.CropX, 0, 1), Math.Clamp(l.CropY, 0, 1), back, back is not null && l.BackAuto);
+                l.CustomWidth, l.CustomHeight, Math.Clamp(l.CropX, 0, 1), Math.Clamp(l.CropY, 0, 1), back, back is not null && l.BackAuto,
+                Enum.TryParse<FitMode>(l.Fit, out var fit) ? fit : null);
         }
 
         var lines = new List<LineState>();
@@ -1151,6 +1234,10 @@ public sealed class MainViewModel : ObservableObject
                 // Windows cannot read it either: damaged, or protected by a password.
                 return (null, null, Strings.Format("LoadPdfDamaged", ex.FileName));
             }
+        }
+        catch (VisualLoadException ex) when (ex.Error == VisualLoadError.NeedsConversion)
+        {
+            return await ConvertAsync(path); // a JPEG the PDF cannot take as it is: decoded and saved again by Windows
         }
         catch (VisualLoadException ex)
         {
@@ -1381,6 +1468,7 @@ public sealed class MainViewModel : ObservableObject
         _settings.CuttingPlan = CuttingPlan;
         _settings.SheetMark = SheetMark;
         _settings.SaveProject = SaveProject;
+        _settings.CutLineColor = _cutLineColor;
         _settings.Save();
     }
 
@@ -1648,7 +1736,7 @@ public sealed class MainViewModel : ObservableObject
 
         PlanText = BuildPlanText();
         if (MarkHasNoRoom() && Plan.SheetCount > 0)
-            Notices.Add(new Notice(NoticeLevel.Warning, Strings.Get("NoticeNoRoomForMark")));
+            Notices.Add(new Notice(NoticeLevel.Warning, Strings.Get("NoticeNoRoomForMark"), Strings.Get("NoticeKey_Mark")));
         double edge = Sheet.Margins.Top;
         PreviewHint = edge > 0 ? Strings.Format("PreviewHintMargin", edge.ToString("0.#")) : Strings.Get("PreviewHint");
 
@@ -1665,7 +1753,7 @@ public sealed class MainViewModel : ObservableObject
                      nameof(Layout), nameof(Plan), nameof(Headline), nameof(Details), nameof(PlanText), nameof(CanExport),
                      nameof(SheetWidth), nameof(SheetHeight), nameof(MarginGeometry), nameof(PlaceholderCells), nameof(PreviewHint),
                      nameof(PreviewSheetIndex), nameof(PreviewSheetLabel), nameof(HasSeveralSheets), nameof(CutNumbers),
-                     nameof(HasAnyVisual),
+                     nameof(HasAnyVisual), nameof(ShowCutLineColor),
                  })
             OnPropertyChanged(name);
     }
@@ -1713,25 +1801,25 @@ public sealed class MainViewModel : ObservableObject
         {
             Headline = Strings.Get("InvalidSize");
             Details = Strings.Get("InvalidSizeDetails");
-            Notices.Add(new Notice(NoticeLevel.Error, Details));
+            Notices.Add(new Notice(NoticeLevel.Error, Details, Strings.Get("NoticeKey_Size")));
         }
         else if (!marginsFit)
         {
             Headline = Strings.Get("MarginsTooLarge");
             Details = Strings.Format("MarginsTooLargeDetails", MinSizeMm);
-            Notices.Add(new Notice(NoticeLevel.Error, Details));
+            Notices.Add(new Notice(NoticeLevel.Error, Details, Strings.Get("NoticeKey_Margins")));
         }
         else if (!sheetValid)
         {
             Headline = Strings.Get("InvalidSheet");
             Details = Strings.Format("InvalidSheetDetails", MinSheetMm, MaxSheetMm);
-            Notices.Add(new Notice(NoticeLevel.Error, Details));
+            Notices.Add(new Notice(NoticeLevel.Error, Details, Strings.Get("NoticeKey_Sheet")));
         }
         else if (Layout!.IsEmpty)
         {
             Headline = Strings.Get("DoesNotFit");
             Details = Strings.Format("DoesNotFitDetails", SelectedFormat.Name, SheetLabel);
-            Notices.Add(new Notice(NoticeLevel.Error, Strings.Get("DoesNotFitNotice")));
+            Notices.Add(new Notice(NoticeLevel.Error, Strings.Get("DoesNotFitNotice"), Strings.Get("NoticeKey_Size")));
             AddCropMarksNotice(Layout);
         }
         else
@@ -1780,7 +1868,7 @@ public sealed class MainViewModel : ObservableObject
         {
             Headline = Strings.Get("InvalidSheet");
             Details = Strings.Format("InvalidSheetDetails", MinSheetMm, MaxSheetMm);
-            Notices.Add(new Notice(NoticeLevel.Error, Details));
+            Notices.Add(new Notice(NoticeLevel.Error, Details, Strings.Get("NoticeKey_Sheet")));
             return;
         }
 
@@ -1794,7 +1882,7 @@ public sealed class MainViewModel : ObservableObject
         // Crop marks keep room around the block (none on a lab print): say how many sheets it takes without them,
         // when fewer.
         if (CropMarks && _mixed.SheetCount > 0 && Pack(items, bleed, spacing, false).SheetCount is var without && without < _mixed.SheetCount)
-            Notices.Add(new Notice(NoticeLevel.Info, Strings.Format("NoticeWithoutCropMarksSheets", Strings.Count("Sheets", without))));
+            Notices.Add(new Notice(NoticeLevel.Info, Strings.Format("NoticeWithoutCropMarksSheets", Strings.Count("Sheets", without)), Strings.Get("NoticeKey_CropMarks")));
 
         foreach (int i in _mixed.TooLarge)
         {
@@ -1802,7 +1890,7 @@ public sealed class MainViewModel : ObservableObject
             lines[i].IsLowQuality = true;
         }
         if (_mixed.TooLarge.Count > 0)
-            Notices.Add(new Notice(NoticeLevel.Error, Strings.Format("NoticeTooLarge", List(_mixed.TooLarge.Select(i => lines[i].FileName)), SheetLabel)));
+            Notices.Add(new Notice(NoticeLevel.Error, Strings.Format("NoticeTooLarge", List(_mixed.TooLarge.Select(i => lines[i].FileName)), SheetLabel), Strings.Get("NoticeKey_TooLarge")));
 
         // Each line is checked in its own cell, the back in the largest one (where its resolution is lowest).
         var cells = new SortedDictionary<int, LayoutCell>();
@@ -1872,7 +1960,7 @@ public sealed class MainViewModel : ObservableObject
     {
         if (!ActiveVisuals().Any())
         {
-            Notices.Add(new Notice(NoticeLevel.Info, Strings.Get(_mode == LayoutMode.Repeat ? "NoticeAddVisual" : "NoticeAddVisuals")));
+            Notices.Add(new Notice(NoticeLevel.Info, Strings.Get(_mode == LayoutMode.Repeat ? "NoticeAddVisual" : "NoticeAddVisuals"), Strings.Get("NoticeKey_Visuals")));
             return;
         }
 
@@ -1895,25 +1983,25 @@ public sealed class MainViewModel : ObservableObject
         var critical = lowDpi.Where(d => d.Dpi < CriticalDpi).ToList();
         var low = lowDpi.Where(d => d.Dpi >= CriticalDpi).ToList();
         if (critical.Count > 0)
-            Notices.Add(new Notice(NoticeLevel.Error, Strings.Format("NoticeDpiCritical", List(critical.Select(d => $"{d.Name} ({d.Dpi} dpi)")), MinDpi)));
+            Notices.Add(new Notice(NoticeLevel.Error, Strings.Format("NoticeDpiCritical", List(critical.Select(d => $"{d.Name} ({d.Dpi} dpi)")), MinDpi), Strings.Get("NoticeKey_Resolution")));
         if (low.Count > 0)
-            Notices.Add(new Notice(NoticeLevel.Warning, Strings.Format("NoticeDpiLow", List(low.Select(d => $"{d.Name} ({d.Dpi} dpi)")), MinDpi)));
+            Notices.Add(new Notice(NoticeLevel.Warning, Strings.Format("NoticeDpiLow", List(low.Select(d => $"{d.Name} ({d.Dpi} dpi)")), MinDpi), Strings.Get("NoticeKey_Resolution")));
         if (cropped.Count > 0)
-            Notices.Add(new Notice(NoticeLevel.Warning, Strings.Format("NoticeCropped", List(cropped.Select(c => $"{c.Name} ({c.Ratio:P0})")))));
+            Notices.Add(new Notice(NoticeLevel.Warning, Strings.Format("NoticeCropped", List(cropped.Select(c => $"{c.Name} ({c.Ratio:P0})"))), Strings.Get("NoticeKey_Cropping")));
         foreach (var (name, mm) in ownBleed.Distinct())
         {
-            Notices.Add(new Notice(NoticeLevel.Info, Strings.Format("NoticeOwnBleed", name, mm.ToString("0.#"))));
+            Notices.Add(new Notice(NoticeLevel.Info, Strings.Format("NoticeOwnBleed", name, mm.ToString("0.#")), Strings.Get("NoticeKey_Bleed")));
             if (bleed > mm + 0.05)
                 Notices.Add(new Notice(NoticeLevel.Warning,
-                    Strings.Format("NoticeOwnBleedTooSmall", name, mm.ToString("0.#"), bleed.ToString("0.#"))));
+                    Strings.Format("NoticeOwnBleedTooSmall", name, mm.ToString("0.#"), bleed.ToString("0.#")), Strings.Get("NoticeKey_Bleed")));
         }
 
         // No notice for what the settings column already says (asked by the author): the empty cells are in the
         // quantity summary, the "Fit" mode in its own label.
         if (VersoEnabled && Verso is null && withoutBack == ActiveVisuals().Count())
-            Notices.Add(new Notice(NoticeLevel.Warning, Strings.Get("NoticeNoBack")));
+            Notices.Add(new Notice(NoticeLevel.Warning, Strings.Get("NoticeNoBack"), Strings.Get("NoticeKey_Back")));
         else if (VersoEnabled && Verso is null && withoutBack > 0)
-            Notices.Add(new Notice(NoticeLevel.Warning, Strings.Count("NoticeWithoutBack", withoutBack)));
+            Notices.Add(new Notice(NoticeLevel.Warning, Strings.Count("NoticeWithoutBack", withoutBack), Strings.Get("NoticeKey_Back")));
     }
 
     private void Assess(VisualItem item, LayoutCell cell, SideOptions side,
@@ -1924,18 +2012,18 @@ public sealed class MainViewModel : ObservableObject
 
         if (double.IsNaN(p.EffectiveDpi))
         {
-            item.Quality = Strings.Get("QualityPdf");
+            item.Quality = Strings.Get("QualityPdf") + OwnFitText(item);
             item.IsLowQuality = false;
         }
         else
         {
             int dpi = (int)Math.Round(p.EffectiveDpi);
-            item.Quality = Strings.Format("QualityDpi", dpi);
+            item.Quality = Strings.Format("QualityDpi", dpi) + OwnFitText(item);
             item.IsLowQuality = dpi < MinDpi;
             if (dpi < MinDpi) lowDpi.Add((v.FileName, dpi));
         }
 
-        if (_fit == FitMode.Fill)
+        if ((v.Fit ?? _fit) == FitMode.Fill)
         {
             // Only the proportion mismatch with the finished image matters: the bleed is cut off anyway.
             var image = side.HasMargins ? cell.ImageTrim : cell.Trim;
@@ -1952,13 +2040,21 @@ public sealed class MainViewModel : ObservableObject
             }.Min())));
     }
 
+    // " · Fitted": the line lies in its cell its own way (right click on the line).
+    private static string OwnFitText(VisualItem item) => item.Fit switch
+    {
+        FitMode.Fill => Strings.Get("QualityOwnFill"),
+        FitMode.Fit => Strings.Get("QualityOwnFit"),
+        _ => "",
+    };
+
     // Crop marks need room around the block (none on a lab print): say how many fit without them, when that is more.
     private void AddCropMarksNotice(SheetLayout layout)
     {
         if (!layout.Options.CropMarks) return;
         int without = LayoutEngine.Compute(layout.Options with { CropMarks = false }).PerSheet;
         if (without > layout.PerSheet)
-            Notices.Add(new Notice(NoticeLevel.Info, Strings.Format("NoticeWithoutCropMarks", without)));
+            Notices.Add(new Notice(NoticeLevel.Info, Strings.Format("NoticeWithoutCropMarks", without), Strings.Get("NoticeKey_CropMarks")));
     }
 
     // Each file once: the same file can be a front and the back, or be added twice.
@@ -2004,7 +2100,7 @@ public sealed class MainViewModel : ObservableObject
             {
                 RectoSide.Image = VersoSide.Image = null;
                 ClearOverlays();
-                Notices.Add(new Notice(NoticeLevel.Error, Strings.Format("NoticePreviewFailed", ex.Message)));
+                Notices.Add(new Notice(NoticeLevel.Error, Strings.Format("NoticePreviewFailed", ex.Message), Strings.Get("NoticeKey_Preview")));
             }
         }
         finally
@@ -2031,6 +2127,7 @@ public sealed class MainViewModel : ObservableObject
                 ? [.. sheets.Select((s, k) => Enumerable.Range(0, job.Sheets[k].Length).Select(c => LineOfCell(s, c)?.Back?.Info).ToArray())]
                 : null,
             Marks = SheetMark ? MarksOf(sheets, jobName ?? Path.GetFileNameWithoutExtension(SuggestedFileName())) : null,
+            CutLineColor = _cutLineColor,
             Fit = _fit,
             Flip = _flip,
             RotateVerso180 = RotateVerso180,

@@ -66,9 +66,11 @@ with any printer that prints at actual size.
   (a Polaroid frame then takes its photo along, so the thick border stays under it). Each photo is turned a quarter
   when its proportions call for it; a **right click** on its line turns it by hand (right, left, 180°), for a photo
   taken sideways. **Drag a photo on the preview** to choose which part of it is kept when it is cropped (every copy
-  follows; "Centre the photo" in its right click menu).
+  follows; "Centre the photo" in its right click menu). The same menu makes one visual **fill its cell or lie whole**
+  in it, whatever the general setting ("As the general setting" gives it back).
 - **Cutting**: edge to edge (a single cut between two visuals), short **crop marks**, **bleed** (2 mm by default),
-  an optional **space between visuals** (5 mm for instance), and **continuous cut lines** across the whole block.
+  an optional **space between visuals** (5 mm for instance), and **continuous cut lines** across the whole block, in
+  the colour of your choice (black, grey, white for dark photos, red, cyan or magenta).
 - **Double-sided**: each back is placed so that it lands behind its front (long or short edge flip, optional 180°
   turn). In a list, **each visual may have its own back**, on its line (drop it on its "Back" slot); the others get
   the **shared back**. The app finds them itself (an "auto" badge says so): page 2 of a PDF of two pages, or
@@ -90,9 +92,11 @@ with any printer that prints at actual size.
 - **Undo, redo**: Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z) undo and redo the changes of the settings and of the list.
 - **Number fields**: the Up and Down arrows change the value (Shift: by 10); "0.1" and "0,1" both work.
 - **Checks**: effective resolution of each visual at the chosen size (warning below 200 dpi), cropping when the
-  proportions differ from the size.
+  proportions differ from the size. The notices fit on one line under the preview, which keeps its size: the worst
+  one gives its colour, and a click shows them all.
 - **Smart with files**: phone photos are turned upright (EXIF), a designer PDF with built-in bleed is placed at
-  100 % on its trim box, JPEG files are embedded without recompression and stored only once in the PDF. A
+  100 % on its trim box, JPEG files are embedded without recompression and stored only once in the PDF (a JPEG from
+  the web that the PDF library refuses is converted by Windows instead). A
   non-standard PDF that cannot be imported (some billing software makes them) is converted to a 300 dpi image,
   with a note saying so.
 - **English and French**: the app and the installer follow the Windows display language; the app language can

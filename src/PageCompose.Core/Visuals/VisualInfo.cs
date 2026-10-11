@@ -63,6 +63,12 @@ public sealed record VisualInfo
     /// <summary>As <see cref="CropX"/>, from its top edge (0) to its bottom edge (1).</summary>
     public double CropY { get; init; } = 0.5;
 
+    /// <summary>
+    /// How it lies in its cell when chosen for it alone (right click on its line): filled or whole; null: as the
+    /// layout says.
+    /// </summary>
+    public Layout.FitMode? Fit { get; init; }
+
     /// <summary>Size of the trim area once the visual is upright, in raw units.</summary>
     public (double Width, double Height) UprightContentSize =>
         BaseRotation % 180 == 90 ? (Content.Height, Content.Width) : (Content.Width, Content.Height);
@@ -86,6 +92,12 @@ public enum VisualLoadError
     Unsupported,
     NoPages,
     Unreadable,
+
+    /// <summary>
+    /// Read, but PDFsharp would refuse to embed it as it is (a JPEG from the web that does not start with a JFIF, Exif
+    /// or ICC segment): the app converts it first.
+    /// </summary>
+    NeedsConversion,
 }
 
 /// <summary>A visual that cannot be used. The UI turns <see cref="Error"/> into a message in its own language.</summary>

@@ -49,9 +49,11 @@ public static class Placement
         ? cell with { Trim = cell.Trim.MirrorX(sheet.Width), Bleed = cell.Bleed.MirrorX(sheet.Width), Margins = cell.Margins.MirrorX }
         : cell with { Trim = cell.Trim.MirrorY(sheet.Height), Bleed = cell.Bleed.MirrorY(sheet.Height), Margins = cell.Margins.MirrorY };
 
+    /// <param name="fit">How the visuals lie in their cells, unless the visual has its own (<see cref="VisualInfo.Fit"/>).</param>
     public static VisualPlacement Compute(VisualInfo visual, LayoutCell cell, FitMode fit, SideOptions? side = null)
     {
         side ??= SideOptions.Recto;
+        fit = visual.Fit ?? fit;
 
         // White margins are on the front; the back covers the whole cell unless asked to keep them. On the back, the
         // cell and its margins are mirrored (MirrorForVerso): the thick border of a Polaroid stays under the visual.
@@ -109,6 +111,7 @@ public static class Placement
     public static (double CropX, double CropY) Dragged(VisualInfo visual, LayoutCell cell, FitMode fit, SideOptions side,
         double dxMm, double dyMm)
     {
+        fit = visual.Fit ?? fit;
         var p = Compute(visual, cell, fit, side);
         var content = visual.Content;
         var (cw, ch) = p.AngleDeg % 180 == 90 ? (content.Height, content.Width) : (content.Width, content.Height);

@@ -980,4 +980,85 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
   <data name="OpenProjectReplaceTooltip" xml:space="preserve">
     <value>À la place du travail en cours (Ctrl+Z le rend)</value>
   </data>
+  <data name="LineFitDefault" xml:space="preserve">
+    <value>Comme le réglage général</value>
+  </data>
+  <data name="LineFitFill" xml:space="preserve">
+    <value>Remplir la case</value>
+  </data>
+  <data name="LineFitFit" xml:space="preserve">
+    <value>Ajuster (image entière)</value>
+  </data>
+  <data name="QualityOwnFill" xml:space="preserve">
+    <value> · Remplie</value>
+  </data>
+  <data name="QualityOwnFit" xml:space="preserve">
+    <value> · Ajustée</value>
+  </data>
+  <data name="CutLineColor" xml:space="preserve">
+    <value>Couleur</value>
+  </data>
+  <data name="CutColor_Black" xml:space="preserve">
+    <value>Noir</value>
+  </data>
+  <data name="CutColor_Grey" xml:space="preserve">
+    <value>Gris</value>
+  </data>
+  <data name="CutColor_White" xml:space="preserve">
+    <value>Blanc</value>
+  </data>
+  <data name="CutColor_Red" xml:space="preserve">
+    <value>Rouge</value>
+  </data>
+  <data name="CutColor_Cyan" xml:space="preserve">
+    <value>Cyan</value>
+  </data>
+  <data name="CutColor_Magenta" xml:space="preserve">
+    <value>Magenta</value>
+  </data>
+  <data name="NoticesCountOne" xml:space="preserve">
+    <value>{0} alerte</value>
+  </data>
+  <data name="NoticesCountMany" xml:space="preserve">
+    <value>{0} alertes</value>
+  </data>
+  <data name="NoticeBarTooltip" xml:space="preserve">
+    <value>Afficher ou masquer les alertes</value>
+  </data>
+  <data name="NoticeKey_Mark" xml:space="preserve">
+    <value>Repère de feuille</value>
+  </data>
+  <data name="NoticeKey_Size" xml:space="preserve">
+    <value>Format</value>
+  </data>
+  <data name="NoticeKey_Margins" xml:space="preserve">
+    <value>Marges</value>
+  </data>
+  <data name="NoticeKey_Sheet" xml:space="preserve">
+    <value>Feuille</value>
+  </data>
+  <data name="NoticeKey_CropMarks" xml:space="preserve">
+    <value>Traits de coupe</value>
+  </data>
+  <data name="NoticeKey_TooLarge" xml:space="preserve">
+    <value>Trop grand</value>
+  </data>
+  <data name="NoticeKey_Visuals" xml:space="preserve">
+    <value>Visuels</value>
+  </data>
+  <data name="NoticeKey_Resolution" xml:space="preserve">
+    <value>Résolution</value>
+  </data>
+  <data name="NoticeKey_Cropping" xml:space="preserve">
+    <value>Recadrage</value>
+  </data>
+  <data name="NoticeKey_Bleed" xml:space="preserve">
+    <value>Fond perdu</value>
+  </data>
+  <data name="NoticeKey_Back" xml:space="preserve">
+    <value>Verso</value>
+  </data>
+  <data name="NoticeKey_Preview" xml:space="preserve">
+    <value>Aperçu</value>
+  </data>
 </root>

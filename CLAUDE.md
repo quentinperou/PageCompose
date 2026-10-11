@@ -16,6 +16,10 @@ QuentinPerou, with Claude Code (Anthropic)".
 
 ## Project status (October 11, 2026)
 
+Version **0.8.0** (October 11, 2026: commit "PageCompose 0.8.0", tag `v0.8.0`, GitHub release with its patch note)
+adds fill or fit per visual (right click on its line), the colour of the cut lines (grey by default), the notices on
+one line under the preview (the preview no longer changes size), and converts the JPEG files from the web that
+PDFsharp refused ("Unsupported image format").
 Version **0.7.0** (October 11, 2026: commit "PageCompose 0.7.0", tag `v0.7.0`, GitHub release with its patch note)
 adds iPhone HEIC, WebP and TIFF photos (converted by Windows), the ID photo size 35 × 45, the mark of each sheet,
 the projects (`.PageComposeProject`: files and settings, saved with an export or alone, opened again by a double click
@@ -55,7 +59,7 @@ the photo sizes moved to exact inches.
 - Updates from GitHub Releases, as in CropPdf: check at startup (can be turned off), Stable/Beta channel, bar in the
   main window, download checked with SHA-256, silent install and relaunch. The Settings window copies CropPdf's
   (language, theme, updates, about).
-- 1118 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.7.0.exe` locally (Inno Setup 6).
+- 1122 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.8.0.exe` locally (Inno Setup 6).
 - The installer is not signed: the UAC prompt shows "Unknown publisher" (QuentinPerou appears in the file details
   and in Installed apps). Left as is for now (October 10, 2026). A paid certificate would show the author's legal
   name, SignPath Foundation its own name; only a self-signed certificate trusted by hand on each PC shows "QuentinPerou".
@@ -161,7 +165,9 @@ the photo sizes moved to exact inches.
     `%TEMP%\PageCompose\Converted` (files older than a day deleted at startup: another window may be using its
     own) and used as an image; `VisualInfo.SourcePath` keeps the
     original file for the name, the folder and the "PDF · … px" line.
-  - `Services/PhotoConverter`: an iPhone HEIC, a WebP or a TIFF is decoded by Windows (WinRT
+  - `Services/PhotoConverter`: an iPhone HEIC, a WebP or a TIFF, or a JPEG that PDFsharp refuses (one that does not
+    start with a JFIF, Exif or ICC segment, as some web images: `VisualLoadError.NeedsConversion`, found at loading,
+    else the whole preview failed with "Unsupported image format"), is decoded by Windows (WinRT
     `BitmapDecoder`: EXIF orientation applied, colours managed to sRGB, since an iPhone HEIC is in Display P3),
     flattened on white where transparent, and saved full size as a JPEG of quality 95 in the same `Converted`
     folder (once per file version); `SourcePath` keeps the original ("HEIC · 4032 × 3024 px"). HEIC needs the
@@ -234,7 +240,13 @@ the photo sizes moved to exact inches.
     ("Flatten the PDF", "Add the cutting plan" in the Mixed mode, "Mark each sheet", "Save the project") are in the last
     section, "Export", at the end of the scroll (asked by the author in 0.5.0); all are saved in the settings and in the
     presets; the first two are on by default (the author's choice), the last two off.
-  - **Notices under the preview** (`MainViewModel.AddVisualNotices`): only what the settings column does not already
+  - **Notices under the preview** (`MainViewModel.AddVisualNotices`), on **one line of a fixed height** (asked by the
+    author: their list changed the height of the preview with each change; variant A of his mock-ups): the icon and
+    colour of the worst, "3 alertes" and their key words (`Notice.Key`, "Recadrage · Verso"), or the notice itself when
+    alone (then nothing to unfold, its whole text as tooltip: the author's remark); a click shows them all
+    (`NoticesOpen`, `NoticePanel`) over the bottom of the preview, which does not move;
+    a click elsewhere or Escape closes them; nothing opens by itself, even for an error (his choice). With no notice the
+    line is hidden, its room kept. Only what the settings column does not already
     show (resolution, cropping, own bleed, missing back, how many fit without crop marks). The author removed those
     that repeated it: the empty cells (in the quantity summary) and the "Fit" mode (in its own label).
   - Settings in `%LOCALAPPDATA%\PageCompose\settings.json` (`Services/AppSettings`, one shared instance `App.Settings`).
@@ -298,6 +310,13 @@ the photo sizes moved to exact inches.
   the draw rectangle by that share of the overflow, and `Placement.Dragged` turns a drag on the sheet into it (the
   turn and mirror undone, kept between the edges). Chosen by dragging the photo on the preview (the author's choice
   among three mock-ups); it belongs to the line (`VisualItem.Crop`), not to the presets.
+- **Fill or fit, per visual** (`VisualInfo.Fit`, asked by the author): right click on a line, "As the general setting" /
+  "Fill the cell" / "Fit (whole image)" (checked in the menu); `Placement.Compute` and `Dragged` take it before the
+  layout's. The line says " · Fitted" or " · Filled" after its resolution; the cropping check follows it. It belongs
+  to the line (undo, projects), not to the presets.
+- **Colour of the cut lines** (`ImpositionJob.CutLineColor`, `CutLineColors.Rgb`; asked by the author): black, grey,
+  white, red, cyan or magenta, from a list under the cut lines box (shown while they are on), in the settings and the
+  presets; **grey by default** (the author's choice: seen on light and dark photos). The crop marks stay black (they are on the white paper; the author's choice).
 - **Turn by hand** (`VisualInfo.UserRotation`, right click on a file line: right, left, 180°): applied on the sheet
   after the automatic quarter turn, so it turns the visual as shown and the automatic turn never undoes it (a photo
   taken sideways). The thumbnail turns with it, the resolution and cropping checks follow (they read the final angle).
