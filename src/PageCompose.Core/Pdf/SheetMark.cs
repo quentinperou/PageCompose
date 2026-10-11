@@ -33,7 +33,7 @@ public static class SheetMark
 
         // The crop marks may reach further than the block.
         double left = block.X, top = block.Y, right = block.Right, bottom = block.Bottom;
-        foreach (var m in layout.CropMarks)
+        foreach (var m in layout.CropMarks.Concat(layout.FoldMarks))
         {
             left = Math.Min(left, Math.Min(m.X1, m.X2));
             top = Math.Min(top, Math.Min(m.Y1, m.Y2));

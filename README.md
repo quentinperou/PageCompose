@@ -29,7 +29,8 @@ with any printer that prints at actual size.
   - **Repeat**: one visual repeated over the whole sheet (business cards, flyers…). Enter the quantity in visuals
     or in sheets; the last sheet can be filled, or hold just the visuals asked for.
   - **Same size**: several different visuals of one size on the same sheet (the 8 photos of an order, for instance), each with
-    its own number of copies. The last sheet can be filled by repeating the visuals, or keep empty cells.
+    its own number of copies ("For all lines" sets them all at once). The last sheet can be filled by repeating the
+    visuals, or keep empty cells.
   - **Mixed sizes**: several sizes on the same sheet (10 × 15, 13 × 18 and 20 × 30 prints of one order, business cards…),
     each visual with its own size (a preset one, or a custom size typed on its line) and copies; **"Duplicate the
     line"** (right click) gives the same photo in another size. They are packed on **as few sheets as possible**, each sheet its own
@@ -56,9 +57,12 @@ with any printer that prints at actual size.
 - **Preset sizes**: business card 85 × 55, ID photo 35 × 45 (eight on a 10 × 15 print), photos 9 × 13 / 10 × 15 / 13 × 18 / 15 × 20 / 20 × 30 (lab sizes, in
   inches: 10 × 15 = 4 × 6 in = 101.6 × 152.4 mm), squares (also 10 × 10 with a 5 mm white border), **instant photo frames** (classic
   Polaroid, Instax Mini, Square and Wide, with their thick border at the bottom), A6 postcard, DL and A5 flyers, A4,
-  or any custom size.
+  **folded cards** laid open (A6 folded / A5 open, 10 × 15 folded, square 14 × 14 folded, trifold A4 leaflet) with dashed
+  fold marks outside the visuals, or any custom size.
 - **White margins**: a white band inside each visual, set side by side (top, bottom, left, right). The framed sizes
-  set it themselves; it applies to the front, and to the back too if you tick it.
+  set it themselves; it applies to the front, and to the back too if you tick it. A **text in the band** of a Polaroid
+  or an Instax frame (a name, a date): common to the photos or line by line, in a font of the PC (the handwriting ones
+  of Windows first) and a dark colour, sized to the band; the font is embedded in the PDF.
 - **Sheets**: SRA3 (320 × 450), A3 and A4 for the ApeosPro (4.1 mm unprintable margin), **lab prints** 10 × 15,
   20 × 30 and 30 × 45 (printed to the edge: four 10 × 15 on a 20 × 30), or a **custom sheet** with its own
   unprintable margin.
@@ -68,7 +72,8 @@ with any printer that prints at actual size.
   taken sideways. **Drag a photo on the preview** to choose which part of it is kept when it is cropped (every copy
   follows; "Centre the photo" in its right click menu). The same menu makes one visual **fill its cell or lie whole**
   in it, whatever the general setting ("As the general setting" gives it back).
-- **Cutting**: edge to edge (a single cut between two visuals), short **crop marks**, **bleed** (2 mm by default),
+- **Cutting**: edge to edge (a single cut between two visuals), short **crop marks**, **bleed** (2 mm by default: the
+  photo is enlarged to cover it, or keeps its size with its edges **mirrored** into the bleed),
   an optional **space between visuals** (5 mm for instance), and **continuous cut lines** across the whole block, in
   the colour of your choice (black, grey, white for dark photos, red, cyan or magenta).
 - **Double-sided**: each back is placed so that it lands behind its front (long or short edge flip, optional 180°

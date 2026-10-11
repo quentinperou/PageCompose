@@ -2,6 +2,7 @@ using System.Diagnostics;
 using System.Globalization;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using System.Windows.Navigation;
 using Microsoft.Win32;
 using PageCompose.App.Services;
@@ -14,11 +15,15 @@ public partial class SettingsWindow : Window
     private readonly AppSettings _settings = App.Settings;
     private readonly bool _initialized;
     private bool _updating; // an update check or download is running
+    private readonly ScrollViewer[] _pages;
 
     public SettingsWindow()
     {
         InitializeComponent();
         MicaBackdrop.Apply(this);
+        _pages = [GeneralPage, PresetsPage, UpdatesPage, AboutPage];
+        // The pages scroll rather than the window going past the screen.
+        MaxHeight = SystemParameters.WorkArea.Height;
 
         LanguageBox.Items.Add(new LanguageOption(AppSettings.SystemLanguage, Strings.Get("LanguageSystem")));
         foreach (string code in AppSettings.SupportedLanguages)
@@ -41,6 +46,14 @@ public partial class SettingsWindow : Window
         VersionText.Text = Strings.Format("AboutVersion", Updater.CurrentVersion);
         ShowPresetCount();
         _initialized = true;
+    }
+
+    // The page chosen in the menu; the others stay in place, hidden, so that the window keeps its height.
+    private void PageList_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (_pages is null) return; // the first page is chosen while the window is built
+        for (int i = 0; i < _pages.Length; i++)
+            _pages[i].Visibility = i == PageList.SelectedIndex ? Visibility.Visible : Visibility.Hidden;
     }
 
     /// <summary>True when the user picked another language: the main window must be rebuilt.</summary>
@@ -80,14 +93,19 @@ public partial class SettingsWindow : Window
 
     private void Updater_Checked(object? sender, EventArgs e) => ShowUpdateState();
 
-    /// <summary>Shows what the last check found, or <paramref name="status"/> (progress, error) instead.</summary>
+    /// <summary>
+    /// The installed version, then what the last check found (nothing before a check), or <paramref name="status"/>
+    /// (progress, error) instead.
+    /// </summary>
     private void ShowUpdateState(string? status = null)
     {
         var available = Updater.Available;
+        InstalledVersionText.Text = Strings.Format("UpdateStatusIdle", Updater.CurrentVersion);
         UpdateStatusText.Text = status
-            ?? (available is not null ? Strings.Format("UpdateStatusAvailable", Updater.CurrentVersion, available.Version)
-                : Updater.HasChecked ? Strings.Format("UpdateStatusUpToDate", Updater.CurrentVersion)
-                : Strings.Format("UpdateStatusIdle", Updater.CurrentVersion));
+            ?? (available is not null ? Strings.Format("UpdateAvailableBar", available.Version)
+                : Updater.HasChecked ? Strings.Get("UpdateUpToDate")
+                : "");
+        UpdateStatusText.Visibility = UpdateStatusText.Text.Length > 0 ? Visibility.Visible : Visibility.Collapsed;
         UpdateNotesLink.Visibility = available is not null && status is null ? Visibility.Visible : Visibility.Collapsed;
 
         UpdateButton.Content = available is null ? Strings.Get("UpdateCheck") : Strings.Get("UpdateInstall");
@@ -117,7 +135,7 @@ public partial class SettingsWindow : Window
         }
         catch (Exception ex)
         {
-            error = Strings.Format("UpdateStatusFailed", Updater.CurrentVersion, Updater.Describe(ex));
+            error = Strings.Format("UpdateCheckFailed", Updater.Describe(ex));
         }
         _updating = false;
         ShowUpdateState(error);
@@ -137,7 +155,7 @@ public partial class SettingsWindow : Window
                 return;
             // Downloaded: the installer now waits for the UAC prompt, then installs.
             UpdateProgress.IsIndeterminate = true;
-            UpdateStatusText.Text = Strings.Get("UpdateStarting");
+            ShowUpdateState(Strings.Get("UpdateStarting"));
         });
 
         string status;
@@ -182,12 +200,14 @@ public partial class SettingsWindow : Window
 
     // ---------------------------------------------------------------- Presets
 
-    // The count, and what can be exported: all the presets first, then each one (the choice is kept when the list
-    // changes).
+    // The count, the result of the last import or export under it, and what can be exported: all the presets first,
+    // then each one (the choice is kept when the list changes).
     private void ShowPresetCount(string? result = null)
     {
         var presets = PresetStore.Load();
-        PresetsStatus.Text = result ?? (presets.Count == 0 ? Strings.Get("PresetNone") : Strings.Count("PresetsCount", presets.Count));
+        PresetsCountText.Text = presets.Count == 0 ? Strings.Get("PresetNone") : Strings.Count("PresetsCount", presets.Count);
+        PresetsStatus.Text = result ?? "";
+        PresetsStatus.Visibility = result is null ? Visibility.Collapsed : Visibility.Visible;
 
         var chosen = ExportPresetBox.SelectedItem as ExportChoice;
         ExportPresetBox.Items.Clear();
@@ -247,7 +267,13 @@ public partial class SettingsWindow : Window
 
     // ---------------------------------------------------------------- Other
 
-    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+    // No Close button (the cross of the title bar, as in Windows 11): Escape still closes. An open list closes first.
+    private void Window_KeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape) return;
+        e.Handled = true;
+        Close();
+    }
 
     private void Link_RequestNavigate(object sender, RequestNavigateEventArgs e)
     {

@@ -41,6 +41,8 @@ public static class CutLineColors
 /// </param>
 /// <param name="Marks">The mark of each sheet, on its front outside the block (see <see cref="SheetMark"/>); null: none.</param>
 /// <param name="CutLineColor">Colour of the cut lines, drawn over the visuals (the crop marks stay black).</param>
+/// <param name="MirrorBleed">The bleed takes the edges of the visuals, mirrored, instead of enlarging them (see <see cref="SideOptions.MirrorBleed"/>).</param>
+/// <param name="Caption">How the captions of the visuals (<see cref="VisualInfo.Caption"/>) are written in the band of their frame; null: none.</param>
 public sealed record ImpositionJob(
     SheetLayout Layout,
     IReadOnlyList<VisualInfo?[]> Sheets,
@@ -54,7 +56,9 @@ public sealed record ImpositionJob(
     IReadOnlyList<SheetLayout>? SheetLayouts = null,
     IReadOnlyList<VisualInfo?[]>? Backs = null,
     IReadOnlyList<string>? Marks = null,
-    CutLineColor CutLineColor = CutLineColor.Black)
+    CutLineColor CutLineColor = CutLineColor.Black,
+    bool MirrorBleed = false,
+    CaptionStyle? Caption = null)
 {
     /// <summary>Layout of sheet <paramref name="index"/> (from 0).</summary>
     public SheetLayout LayoutOf(int index) => SheetLayouts?[index] ?? Layout;
@@ -93,6 +97,9 @@ public static class ImpositionPdfWriter
 {
     /// <summary>Crop mark line width, in points.</summary>
     public const double CropMarkWidthPt = 0.3;
+
+    /// <summary>How far the mirrored copies reach under the visual, so that renderers leave no hairline between them.</summary>
+    private const double MirrorOverlapMm = 0.05;
 
     public static void Write(ImpositionJob job, string path)
     {
@@ -133,12 +140,13 @@ public static class ImpositionPdfWriter
                 return image;
             }
 
-            var versoSide = new SideOptions(true, job.Flip, job.RotateVerso180, job.VersoMargins);
+            var rectoSide = SideOptions.Recto with { MirrorBleed = job.MirrorBleed };
+            var versoSide = new SideOptions(true, job.Flip, job.RotateVerso180, job.VersoMargins, job.MirrorBleed);
             for (int s = 0; s < job.Sheets.Count; s++)
             {
                 var (layout, sheet) = (job.LayoutOf(s), job.Sheets[s]);
                 var recto = layout.Cells.Select((cell, i) => (cell, visual: sheet[i])).ToList();
-                DrawSide(doc, layout, recto, ImageOf, job.Fit, SideOptions.Recto, job.CutLines ? job.CutLineColor : null, job.Marks?[s]);
+                DrawSide(doc, layout, recto, ImageOf, job.Fit, rectoSide, job.CutLines ? job.CutLineColor : null, job.Marks?[s], job.Caption);
 
                 if (job.HasBack)
                 {
@@ -169,7 +177,8 @@ public static class ImpositionPdfWriter
     }
 
     private static void DrawSide(PdfDocument doc, SheetLayout layout, List<(LayoutCell cell, VisualInfo? visual)> cells,
-        Func<VisualInfo, XImage> imageOf, FitMode fit, SideOptions side, CutLineColor? cutLines, string? mark = null)
+        Func<VisualInfo, XImage> imageOf, FitMode fit, SideOptions side, CutLineColor? cutLines, string? mark = null,
+        CaptionStyle? caption = null)
     {
         var page = doc.AddPage();
         page.Width = XUnit.FromMillimeter(layout.Sheet.Width);
@@ -177,6 +186,14 @@ public static class ImpositionPdfWriter
 
         using var gfx = XGraphics.FromPdfPage(page);
         DrawVisuals(gfx, layout, cells, imageOf, fit, side);
+
+        // The captions, in the bands of the frames, on the front.
+        if (!side.IsVerso && caption is not null)
+        {
+            foreach (var (cell, visual) in cells)
+                if (visual?.Caption is { Length: > 0 } text && !string.IsNullOrWhiteSpace(text))
+                    DrawCaption(gfx, cell, text.Trim(), caption);
+        }
 
         // A space wider than the bleed leaves a white band between two visuals. Painting it white changes nothing on
         // paper, but Windows (preview, JPG export, flattened PDF) rounds clipping paths to whole pixels: a band of one
@@ -193,12 +210,22 @@ public static class ImpositionPdfWriter
                 : layout.Cells);
         }
 
-        // Crop marks on the front only: that is the side facing up on the guillotine.
+        // Crop marks on the front only: that is the side facing up on the guillotine. Fold marks dashed beside them.
         var pen = new XPen(XColors.Black, CropMarkWidthPt);
         if (!side.IsVerso && layout.CropMarks.Count > 0)
         {
             foreach (var m in layout.CropMarks)
                 gfx.DrawLine(pen, Units.MmToPt(m.X1), Units.MmToPt(m.Y1), Units.MmToPt(m.X2), Units.MmToPt(m.Y2));
+        }
+        if (!side.IsVerso && layout.FoldMarks.Count > 0)
+        {
+            // Dashes of 0.8 mm, 0.6 mm apart (the pattern counts in line widths): seen at a glance on paper.
+            var dashed = new XPen(XColors.Black, CropMarkWidthPt)
+            {
+                DashPattern = [Units.MmToPt(0.8) / CropMarkWidthPt, Units.MmToPt(0.6) / CropMarkWidthPt],
+            };
+            foreach (var m in layout.FoldMarks)
+                gfx.DrawLine(dashed, Units.MmToPt(m.X1), Units.MmToPt(m.Y1), Units.MmToPt(m.X2), Units.MmToPt(m.Y2));
         }
 
         // A mixed sheet: its own cuts, each across the piece it cuts (the numbers of the cutting order are only on screen:
@@ -226,6 +253,29 @@ public static class ImpositionPdfWriter
     }
 
     private static XColor ColorOf(CutLineColor color) => color.Rgb() is var (r, g, b) ? XColor.FromArgb(r, g, b) : XColors.Black;
+
+    // Centred in the band, as large as its thickness allows (shrunk to its length), turned with the frame.
+    private static void DrawCaption(XGraphics gfx, LayoutCell cell, string text, CaptionStyle style)
+    {
+        if (Caption.BandOf(cell) is not { } at) return;
+        GlobalFontSettings.FontResolver ??= new WindowsFonts();
+        WindowsFonts.Register(style.Family, style.FontFile);
+
+        var band = at.Band;
+        bool across = at.Side is Caption.Side.Bottom or Caption.Side.Top;
+        double thick = across ? band.Height : band.Width, length = across ? band.Width : band.Height;
+        double size = Units.MmToPt(thick * Caption.HeightShare);
+        var font = new XFont(style.Family, size);
+        double width = gfx.MeasureString(text, font).Width, room = Units.MmToPt(length * Caption.LengthShare);
+        if (width > room) font = new XFont(style.Family, size * room / width);
+
+        var (r, g, b) = style.Color.Rgb();
+        double cx = Units.MmToPt(band.CenterX), cy = Units.MmToPt(band.CenterY), w = Units.MmToPt(length), h = Units.MmToPt(thick);
+        var state = gfx.Save();
+        if (Caption.AngleOf(at.Side) is var angle and not 0) gfx.RotateAtTransform(angle, new XPoint(cx, cy));
+        gfx.DrawString(text, font, new XSolidBrush(XColor.FromArgb(r, g, b)), new XRect(cx - w / 2, cy - h / 2, w, h), XStringFormats.Center);
+        gfx.Restore(state);
+    }
 
     // Small grey text, centred along its band; shrunk down to SheetMark.MinFontSizePt when longer than the band.
     private static void DrawMark(XGraphics gfx, string text, RectMm band, SheetMark.Side side)
@@ -261,7 +311,19 @@ public static class ImpositionPdfWriter
             gfx.TranslateTransform(Units.MmToPt(p.CenterX), Units.MmToPt(p.CenterY));
             if (p.AngleDeg != 0) gfx.RotateTransform(p.AngleDeg);
             if (p.Mirror) gfx.ScaleTransform(-1, 1);
-            gfx.DrawImage(imageOf(visual), ToPt(p.DrawRect));
+            var image = imageOf(visual);
+
+            // Mirrored bleed: the copies first, a hair larger, under the visual: no seam shows between them.
+            var r = p.DrawRect;
+            foreach (var (dx, dy) in p.MirrorCopies)
+            {
+                var copy = gfx.Save();
+                gfx.TranslateTransform(Units.MmToPt(r.CenterX + dx * r.Width), Units.MmToPt(r.CenterY + dy * r.Height));
+                gfx.ScaleTransform(dx != 0 ? -1 : 1, dy != 0 ? -1 : 1);
+                gfx.DrawImage(image, ToPt(new RectMm(-r.Width / 2, -r.Height / 2, r.Width, r.Height).Inflate(MirrorOverlapMm)));
+                gfx.Restore(copy);
+            }
+            gfx.DrawImage(image, ToPt(r));
             gfx.Restore(state);
         }
     }

@@ -26,6 +26,9 @@ public sealed class ProjectFile
 
     /// <summary>The lines of the list (Same size, Mixed sizes).</summary>
     public List<ProjectLine> Visuals { get; set; } = [];
+
+    /// <summary>The common text in the band of framed sizes.</summary>
+    public string CaptionText { get; set; } = "";
 }
 
 public sealed class ProjectLine
@@ -46,6 +49,9 @@ public sealed class ProjectLine
 
     /// <summary>"Fill" or "Fit" when the line lies in its cell its own way; none: as the settings say.</summary>
     public string? Fit { get; set; }
+
+    /// <summary>Its own text in the band of its frame; empty: the common one.</summary>
+    public string Caption { get; set; } = "";
 
     public IEnumerable<ProjectLine> WithBack() => Back is null ? [this] : [this, Back];
 }

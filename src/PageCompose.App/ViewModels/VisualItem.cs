@@ -17,7 +17,8 @@ public sealed record PageOption(int Number, string Name)
 /// project. Its back is captured with it.
 /// </summary>
 public sealed record LineState(VisualItem Item, VisualInfo Info, int Copies, int Rotation, FormatOption? Format,
-    double CustomWidth, double CustomHeight, double CropX, double CropY, LineState? Back, bool BackAuto, FitMode? Fit);
+    double CustomWidth, double CustomHeight, double CropX, double CropY, LineState? Back, bool BackAuto, FitMode? Fit,
+    string Caption = "");
 
 /// <summary>A visual of the list, with its number of copies, and its page when it is a PDF of several pages.</summary>
 public sealed class VisualItem : ObservableObject
@@ -68,6 +69,19 @@ public sealed class VisualItem : ObservableObject
     /// setting says. Like the turn, it belongs to the line, not to the presets.
     /// </summary>
     public FitMode? Fit => _fit;
+
+    private string _caption = "";
+
+    /// <summary>
+    /// The text of this photo in the band of its frame; empty: the common text of the "Text in the band" card. Like its
+    /// turn, it belongs to the line.
+    /// </summary>
+    public string Caption { get => _caption; set { if (Set(ref _caption, value ?? "")) _changed(); } }
+
+    private bool _hasCaptionBand;
+
+    /// <summary>Its size has a band to write in (set by the view model): its caption field shows.</summary>
+    public bool HasCaptionBand { get => _hasCaptionBand; set => Set(ref _hasCaptionBand, value); }
 
     public bool IsFitDefault => _fit is null;
     public bool IsOwnFill => _fit == FitMode.Fill;
@@ -130,10 +144,11 @@ public sealed class VisualItem : ObservableObject
         (_customWidth, _customHeight) = (other.CustomWidth, other.CustomHeight);
         (_cropX, _cropY) = other.Crop;
         _fit = other.Fit;
+        _caption = other.Caption;
     }
 
     public LineState Capture() => new(this, _info, _copies, _rotation, _format, _customWidth, _customHeight, _cropX, _cropY,
-        _back?.Capture(), _isBackAuto, _fit);
+        _back?.Capture(), _isBackAuto, _fit, _caption);
 
     /// <summary>
     /// Takes back what <see cref="Capture"/> saw (or a project opened), its back included, without recomputing
@@ -143,8 +158,8 @@ public sealed class VisualItem : ObservableObject
     {
         if (s.Info.PageNumber != _info.PageNumber) (ThumbnailOutdated, DragImage) = (true, null);
         _info = s.Info;
-        (_copies, _rotation, _format, _customWidth, _customHeight, _cropX, _cropY, _fit) =
-            (s.Copies, s.Rotation, s.Format, s.CustomWidth, s.CustomHeight, s.CropX, s.CropY, s.Fit);
+        (_copies, _rotation, _format, _customWidth, _customHeight, _cropX, _cropY, _fit, _caption) =
+            (s.Copies, s.Rotation, s.Format, s.CustomWidth, s.CustomHeight, s.CropX, s.CropY, s.Fit, s.Caption);
         _back = s.Back?.Item;
         if (s.Back is { } back) back.Item.Restore(back);
         _isBackAuto = s.BackAuto;

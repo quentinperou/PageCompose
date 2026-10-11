@@ -5,11 +5,29 @@ namespace PageCompose.Core;
 /// Where nothing is printed: for a visual, the white border built into the size (instant photo frames); for a sheet,
 /// the unprintable margin of the printer. None for most sizes.
 /// </param>
-public sealed record PaperFormat(string Id, double Width, double Height, MarginsMm Margins = default)
+/// <param name="Folds">Where a folded card folds, on its open size; none for a flat one.</param>
+public sealed record PaperFormat(string Id, double Width, double Height, MarginsMm Margins = default, FoldsMm? Folds = null)
 {
     public SizeMm Size => new(Width, Height);
 
     public override string ToString() => Id;
+}
+
+/// <summary>
+/// The folds of a card, on its open size as defined: <see cref="X"/> the vertical folds (from its left edge),
+/// <see cref="Y"/> the horizontal ones (from its top edge), in millimetres.
+/// </summary>
+public sealed record FoldsMm(IReadOnlyList<double> X, IReadOnlyList<double> Y)
+{
+    public static FoldsMm None { get; } = new([], []);
+
+    public bool IsEmpty => X.Count == 0 && Y.Count == 0;
+
+    /// <summary>
+    /// The folds of the size laid a quarter turn clockwise (as its margins, <see cref="MarginsMm.RotatedClockwise"/>): a
+    /// horizontal fold at y becomes a vertical one at <paramref name="height"/> − y, a vertical one at x a horizontal one at x.
+    /// </summary>
+    public FoldsMm RotatedClockwise(double height) => new([.. Y.Select(y => height - y)], [.. X]);
 }
 
 /// <summary>Photo lab sizes are in inches: 10 x 15 is 4 x 6 in, so that four of them make exactly one 20 x 30.</summary>
@@ -65,10 +83,18 @@ public static class ItemFormats
     public static readonly PaperFormat FlyerA5 = new("FlyerA5", 148, 210);
     public static readonly PaperFormat A4 = new("A4", 210, 297);
 
+    // Folded cards, laid open (asked by the author): the fold in the middle of the long side; the leaflet in three has its
+    // folded-in flap 3 mm narrower, so that it closes (outside face: flap 97 | back 100 | front 100).
+    public static readonly PaperFormat FoldedA6 = new("FoldedA6", 148, 210, Folds: new([], [105]));                          // A5 open
+    public static readonly PaperFormat Folded10x15 = new("Folded10x15", Inches.Mm(4), Inches.Mm(12), Folds: new([], [Inches.Mm(6)]));
+    public static readonly PaperFormat FoldedSquare14 = new("FoldedSquare14", 140, 280, Folds: new([], [140]));
+    public static readonly PaperFormat TrifoldA4 = new("TrifoldA4", 297, 210, Folds: new([97, 197], []));
+
     public static IReadOnlyList<PaperFormat> All { get; } =
     [
         BusinessCard, IdPhoto, Photo9x13, Photo10x15, Photo13x18, Photo15x20, Photo20x30,
         Square10, Square15, Square10Border, Polaroid, InstaxMini, InstaxSquare, InstaxWide,
         PostcardA6, FlyerDl, FlyerA5, A4,
+        FoldedA6, Folded10x15, FoldedSquare14, TrifoldA4,
     ];
 }

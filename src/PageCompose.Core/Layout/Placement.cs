@@ -23,8 +23,12 @@ public enum DuplexFlip
 
 /// <summary>Side of the sheet, and flip rules for the back.</summary>
 /// <param name="VersoMargins">The back keeps the white margins of the cell too (by default it covers the whole cell).</param>
+/// <param name="MirrorBleed">
+/// A visual without its own bleed keeps its size in its trim, and the bleed takes its edges, mirrored (by default it is
+/// enlarged to cover the bleed, and its edges go with the cut).
+/// </param>
 public sealed record SideOptions(bool IsVerso = false, DuplexFlip Flip = DuplexFlip.LongEdge, bool Rotate180 = false,
-    bool VersoMargins = false)
+    bool VersoMargins = false, bool MirrorBleed = false)
 {
     /// <summary>The white margins of the cell apply on this side.</summary>
     public bool HasMargins => !IsVerso || VersoMargins;
@@ -37,7 +41,14 @@ public sealed record SideOptions(bool IsVerso = false, DuplexFlip Flip = DuplexF
 /// apply the mirror if any, then draw the raw visual in DrawRect, clipped by Clip. All values in millimetres.
 /// </summary>
 public sealed record VisualPlacement(RectMm Clip, double CenterX, double CenterY, double AngleDeg, bool Mirror,
-    RectMm DrawRect, double EffectiveDpi);
+    RectMm DrawRect, double EffectiveDpi)
+{
+    /// <summary>
+    /// Mirrored bleed: the copies of the visual drawn around it, flipped (-1 or 1: beside DrawRect on that side, 0:
+    /// in line with it), in the axes of the drawing; only those the clip shows.
+    /// </summary>
+    public IReadOnlyList<(int Dx, int Dy)> MirrorCopies { get; init; } = [];
+}
 
 public static class Placement
 {
@@ -60,8 +71,10 @@ public static class Placement
         bool framed = side.HasMargins && !cell.Margins.IsEmpty;
         var area = framed ? cell.ImageBleed : cell.Bleed;
 
-        // A PDF that already has its bleed is aligned on the trim; anything else fills the bleed area.
-        var target = visual.HasOwnBleed ? (framed ? cell.ImageTrim : cell.Trim) : area;
+        // A PDF that already has its bleed is aligned on the trim; anything else fills the bleed area, unless its edges
+        // are mirrored into the bleed (then it fills its trim).
+        bool mirrored = Mirrored(visual, side, fit);
+        var target = Target(visual, cell, side, fit);
 
         var (uw, uh) = visual.UprightContentSize;
         // The edges of a cell are sums: a square image area (Polaroid, 79 x 79) comes out a hair wider or taller
@@ -100,7 +113,38 @@ public static class Placement
             visual.FullWidth * k, visual.FullHeight * k);
         double dpi = visual.Kind == VisualKind.Image ? Units.MmPerInch / k : double.NaN;
 
-        return new VisualPlacement(area, target.CenterX, target.CenterY, angle, visual.BaseMirror, draw, dpi);
+        var placement = new VisualPlacement(area, target.CenterX, target.CenterY, angle, visual.BaseMirror, draw, dpi);
+        return mirrored ? placement with { MirrorCopies = MirrorCopiesOf(placement) } : placement;
+    }
+
+    private static bool Mirrored(VisualInfo visual, SideOptions side, FitMode fit) =>
+        side.MirrorBleed && !visual.HasOwnBleed && fit == FitMode.Fill;
+
+    // The copies the clip shows: the clip turned back into the axes of the drawing (the turn, then the mirror, undone:
+    // quarter turns keep it a rectangle), compared with the visual drawn there.
+    private static List<(int Dx, int Dy)> MirrorCopiesOf(VisualPlacement p)
+    {
+        double a = -p.AngleDeg * Math.PI / 180, cos = Math.Round(Math.Cos(a)), sin = Math.Round(Math.Sin(a));
+        double minX = double.MaxValue, minY = double.MaxValue, maxX = double.MinValue, maxY = double.MinValue;
+        foreach (var (x, y) in new[] { (p.Clip.X, p.Clip.Y), (p.Clip.Right, p.Clip.Y), (p.Clip.X, p.Clip.Bottom), (p.Clip.Right, p.Clip.Bottom) })
+        {
+            double dx = x - p.CenterX, dy = y - p.CenterY;
+            double lx = dx * cos - dy * sin, ly = dx * sin + dy * cos;
+            if (p.Mirror) lx = -lx;
+            (minX, maxX, minY, maxY) = (Math.Min(minX, lx), Math.Max(maxX, lx), Math.Min(minY, ly), Math.Max(maxY, ly));
+        }
+
+        const double eps = 1e-6;
+        var r = p.DrawRect;
+        bool left = minX < r.X - eps, right = maxX > r.Right + eps, top = minY < r.Y - eps, bottom = maxY > r.Bottom + eps;
+        var copies = new List<(int, int)>();
+        foreach (int dy in new[] { -1, 0, 1 })
+        foreach (int dx in new[] { -1, 0, 1 })
+        {
+            if ((dx, dy) == (0, 0) || (dx == -1 && !left) || (dx == 1 && !right) || (dy == -1 && !top) || (dy == 1 && !bottom)) continue;
+            copies.Add((dx, dy));
+        }
+        return copies;
     }
 
     /// <summary>
@@ -115,7 +159,7 @@ public static class Placement
         var p = Compute(visual, cell, fit, side);
         var content = visual.Content;
         var (cw, ch) = p.AngleDeg % 180 == 90 ? (content.Height, content.Width) : (content.Width, content.Height);
-        var target = Target(visual, cell, side);
+        var target = Target(visual, cell, side, fit);
         double k = fit == FitMode.Fill ? Math.Max(target.Width / cw, target.Height / ch) : Math.Min(target.Width / cw, target.Height / ch);
         var (overX, overY) = Overflow(visual, target, (int)p.AngleDeg, k);
 
@@ -127,12 +171,13 @@ public static class Placement
         return (x, y);
     }
 
-    // The area the visual is fitted to: its trim (a PDF with its own bleed), else what it fills (bleed or image area).
-    private static RectMm Target(VisualInfo visual, LayoutCell cell, SideOptions side)
+    // The area the visual is fitted to: its trim (a PDF with its own bleed, or edges mirrored into the bleed), else what
+    // it fills (bleed or image area).
+    private static RectMm Target(VisualInfo visual, LayoutCell cell, SideOptions side, FitMode fit)
     {
         bool framed = side.HasMargins && !cell.Margins.IsEmpty;
         var area = framed ? cell.ImageBleed : cell.Bleed;
-        return visual.HasOwnBleed ? (framed ? cell.ImageTrim : cell.Trim) : area;
+        return visual.HasOwnBleed || Mirrored(visual, side, fit) ? (framed ? cell.ImageTrim : cell.Trim) : area;
     }
 
     // What the visual overflows its area by, along its own axes (negative: what it leaves free), in millimetres.

@@ -49,6 +49,45 @@ public class PlacementTests
             Placement.Dragged(photo, LandscapeCard, FitMode.Fit, SideOptions.Recto, 5, 0));
     }
 
+    // ---- Mirrored bleed ----
+
+    private static readonly LayoutCell CardWithBleed = new(0, 0, new RectMm(10, 10, 85, 55), new RectMm(9.5, 9.5, 86, 56));
+    private static readonly SideOptions MirrorSide = SideOptions.Recto with { MirrorBleed = true };
+
+    [Fact]
+    public void Mirrored_bleed_keeps_the_photo_to_its_trim_and_mirrors_the_sides_it_does_not_cover()
+    {
+        // 3:2 in 85 x 55: filled, it overflows the trim by 0.8 mm above and below (more than the 0.5 mm bleed), and
+        // its sides end on the trim.
+        var p = Placement.Compute(Image(1200, 800), CardWithBleed, FitMode.Fill, MirrorSide);
+
+        Assert.Equal(85, p.DrawRect.Width, 6);
+        Assert.Equal(CardWithBleed.Bleed, p.Clip);
+        Assert.Equal(new[] { (-1, 0), (1, 0) }, p.MirrorCopies);
+        Assert.Equal(25.4 / (85.0 / 1200), p.EffectiveDpi, 6);
+    }
+
+    [Fact]
+    public void Mirrored_copies_follow_the_turn_of_the_photo()
+    {
+        // A portrait photo turned a quarter: its own sides, above and below in its axes, lie left and right on the sheet.
+        var p = Placement.Compute(Image(800, 1200), CardWithBleed, FitMode.Fill, MirrorSide);
+
+        Assert.Equal(90, p.AngleDeg % 180);
+        Assert.Equal(new[] { (0, -1), (0, 1) }, p.MirrorCopies);
+    }
+
+    [Fact]
+    public void Without_the_option_or_when_fitted_nothing_is_mirrored()
+    {
+        var enlarged = Placement.Compute(Image(1200, 800), CardWithBleed, FitMode.Fill);
+        var fitted = Placement.Compute(Image(1200, 800), CardWithBleed, FitMode.Fit, MirrorSide);
+
+        Assert.Empty(enlarged.MirrorCopies);
+        Assert.True(enlarged.DrawRect.Width > 85.9); // enlarged to cover the bleed
+        Assert.Empty(fitted.MirrorCopies);
+    }
+
     // ---- The part kept (dragged on the preview) ----
 
     private static readonly LayoutCell PortraitPhoto = new(0, 0, new RectMm(10, 10, 100, 150), new RectMm(10, 10, 100, 150));

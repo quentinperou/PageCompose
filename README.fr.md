@@ -29,7 +29,7 @@ de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réel
   - **Répétition** : un seul visuel répété sur toute la feuille (cartes de visite, flyers…). La quantité se saisit
     en visuels ou en feuilles ; la dernière feuille peut être complétée, ou ne porter que les visuels demandés.
   - **Même format** : plusieurs visuels différents d'un même format sur la feuille (les 8 photos d'une commande, par exemple),
-    chacun avec son nombre d'exemplaires. La dernière feuille peut être complétée en répétant les visuels, ou
+    chacun avec son nombre d'exemplaires (« Pour toutes » les règle toutes d'un coup). La dernière feuille peut être complétée en répétant les visuels, ou
     garder ses cases vides.
   - **Multi-formats** : plusieurs formats sur la même feuille (des tirages 10 × 15, 13 × 18 et 20 × 30 d'une même commande,
     des cartes de visite…), chaque visuel avec son format (prédéfini, ou une taille libre saisie sur sa ligne) et ses
@@ -60,10 +60,13 @@ de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réel
 - **Formats prédéfinis** : carte de visite 85 × 55, photo d'identité 35 × 45 (huit sur un tirage 10 × 15), photos 9 × 13 / 10 × 15 / 13 × 18 / 15 × 20 / 20 × 30 (tailles
   de labo, en pouces : 10 × 15 = 4 × 6 po = 101,6 × 152,4 mm), carrés (dont un 10 × 10 avec une marge blanche de 5 mm), **cadres photo
   instantanée** (Polaroid classique, Instax Mini, Square et Wide, avec leur grosse bande en bas), carte postale A6,
-  flyers DL et A5, A4, ou une taille libre.
+  flyers DL et A5, A4, **cartes pliées** posées ouvertes (A6 pliée / A5 ouverte, 10 × 15 pliée, carrée 14 × 14 pliée,
+  dépliant 3 volets A4) avec des traits de pliage en pointillés hors des visuels, ou une taille libre.
 - **Marges blanches** : une bande blanche à l'intérieur de chaque visuel, réglable côté par côté (haut, bas, gauche,
   droite). Les formats à cadre la règlent d'eux-mêmes ; elle s'applique au recto, et aussi au verso si vous cochez
-  la case.
+  la case. Un **texte dans la bande** d'un Polaroid ou d'un Instax (un prénom, une date) : commun aux photos ou ligne
+  par ligne, dans une police du PC (les manuscrites de Windows d'abord) et une couleur sombre, à la taille de la bande ;
+  la police est intégrée au PDF.
 - **Feuilles** : SRA3 (320 × 450), A3 et A4 pour l'ApeosPro (marge non imprimable de 4,1 mm), **tirages labo**
   10 × 15, 20 × 30 et 30 × 45 (imprimés jusqu'au bord : quatre 10 × 15 sur un 20 × 30), ou une **feuille
   personnalisée** avec sa propre marge non imprimable.
@@ -75,7 +78,7 @@ de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réel
   menu fait **remplir sa case ou y tenir entier** à un seul visuel, quel que soit le réglage général (« Comme le
   réglage général » le rend).
 - **Coupe** : bord à bord (une seule coupe entre deux visuels), **traits de coupe** courts, **fond perdu**
-  (2 mm par défaut) et, en option, un **espace entre les visuels** (5 mm par exemple) et des **lignes de coupe
+  (2 mm par défaut : la photo est agrandie pour le couvrir, ou garde sa taille avec ses bords **en miroir**) et, en option, un **espace entre les visuels** (5 mm par exemple) et des **lignes de coupe
   continues** sur tout le bloc, dans la couleur de votre choix (noir, gris, blanc pour les photos sombres, rouge, cyan
   ou magenta).
 - **Recto verso** : chaque verso est placé pour retomber derrière son recto (retournement bord long ou bord court,

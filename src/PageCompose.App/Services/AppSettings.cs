@@ -59,12 +59,24 @@ public sealed class AppSettings
     /// <summary>Unprintable margin of a custom sheet: 4.1 mm on the ApeosPro, 0 for a lab print.</summary>
     public double CustomSheetMargin { get; set; } = Core.SheetFormats.PrinterMarginMm;
     public bool CropMarks { get; set; } = true;
+
+    /// <summary>Folded cards: dashed marks in line with the folds, outside the block.</summary>
+    public bool FoldMarks { get; set; } = true;
     public bool CutLines { get; set; }
 
     /// <summary>Cut lines along each cut in the Mixed mode (apart from those of the grids: on by default).</summary>
     public bool MixedCutLines { get; set; } = true;
     public bool BleedEnabled { get; set; }
     public double BleedMm { get; set; } = 2;
+
+    /// <summary>The bleed of a photo takes its edges, mirrored, instead of enlarging it (off by default: the author's choice).</summary>
+    public bool MirrorBleed { get; set; }
+
+    /// <summary>Captions in the band of framed sizes: the font (a family name of the PC) and the colour. The text belongs to the job, not here.</summary>
+    public string CaptionFont { get; set; } = FontList.DefaultFont;
+
+    [JsonConverter(typeof(JsonStringEnumConverter<CaptionColor>))]
+    public CaptionColor CaptionColor { get; set; } = CaptionColor.Black; // black by default (the author's choice)
     public bool SpacingEnabled { get; set; }
     public double SpacingMm { get; set; } = 5;
 

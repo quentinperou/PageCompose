@@ -20,6 +20,23 @@ public enum LayoutMode { Repeat, Compose, Mixed }
 public enum QuantityUnit { Items, Sheets }
 
 /// <summary>Entry of the visual size list; <see cref="Format"/> is null for "Custom".</summary>
+/// <summary>A colour of the captions, with its name and its swatch in the list.</summary>
+public sealed class CaptionColorOption(CaptionColor value)
+{
+    public CaptionColor Value { get; } = value;
+    public string Name => Strings.Get("CaptionColor_" + Value);
+    public Brush Swatch { get; } = Freeze(value.Rgb());
+
+    public override string ToString() => Name;
+
+    private static SolidColorBrush Freeze((byte R, byte G, byte B) c)
+    {
+        var brush = new SolidColorBrush(Color.FromRgb(c.R, c.G, c.B)); // the colour printed, not a theme colour
+        brush.Freeze();
+        return brush;
+    }
+}
+
 /// <summary>A colour of the cut lines, with its name and its swatch in the list.</summary>
 public sealed class CutLineColorOption(CutLineColor value)
 {
@@ -164,9 +181,15 @@ public sealed class MainViewModel : ObservableObject
         (_customSheetWidth, _customSheetHeight, _customSheetMargin) =
             (settings.CustomSheetWidth, settings.CustomSheetHeight, settings.CustomSheetMargin);
         _cropMarks = settings.CropMarks;
+        _foldMarks = settings.FoldMarks;
         _cutLines = settings.CutLines;
         _mixedCutLines = settings.MixedCutLines;
         _bleedEnabled = settings.BleedEnabled;
+        _mirrorBleed = settings.MirrorBleed;
+        CaptionFonts = FontList.Load();
+        _captionFont = FontOf(settings.CaptionFont);
+        _captionColor = settings.CaptionColor;
+        CaptionColors = [.. Enum.GetValues<CaptionColor>().Select(c => new CaptionColorOption(c))];
         _bleedMm = settings.BleedMm;
         _spacingEnabled = settings.SpacingEnabled;
         _spacingMm = settings.SpacingMm;
@@ -188,6 +211,8 @@ public sealed class MainViewModel : ObservableObject
         CutLineColors = [.. Enum.GetValues<CutLineColor>().Select(c => new CutLineColorOption(c))];
 
         ClearVisualsCommand = new RelayCommand(ClearVisuals);
+        MoreForAllCommand = new RelayCommand(() => AllLines(line => line.Copies++));
+        LessForAllCommand = new RelayCommand(() => AllLines(line => line.Copies--));
         PreviousSheetCommand = new RelayCommand(() => PreviewSheetIndex--);
         NextSheetCommand = new RelayCommand(() => PreviewSheetIndex++);
         Notices.CollectionChanged += (_, _) =>
@@ -322,9 +347,13 @@ public sealed class MainViewModel : ObservableObject
         CustomSheetHeight = CustomSheetHeight,
         CustomSheetMargin = CustomSheetMargin,
         CropMarks = CropMarks,
+        FoldMarks = FoldMarks,
         CutLines = CutLines,
         MixedCutLines = MixedCutLines,
         BleedEnabled = BleedEnabled,
+        MirrorBleed = MirrorBleed,
+        CaptionFont = SelectedCaptionFont?.Name ?? FontList.DefaultFont,
+        CaptionColor = _captionColor,
         BleedMm = BleedMm,
         SpacingEnabled = SpacingEnabled,
         SpacingMm = SpacingMm,
@@ -380,9 +409,13 @@ public sealed class MainViewModel : ObservableObject
         CustomSheetHeight = p.CustomSheetHeight;
         CustomSheetMargin = p.CustomSheetMargin;
         CropMarks = p.CropMarks;
+        FoldMarks = p.FoldMarks;
         CutLines = p.CutLines;
         MixedCutLines = p.MixedCutLines;
         BleedEnabled = p.BleedEnabled;
+        MirrorBleed = p.MirrorBleed;
+        SelectedCaptionFont = FontOf(p.CaptionFont) ?? SelectedCaptionFont;
+        SelectedCaptionColor = CaptionColors.First(c => c.Value == p.CaptionColor);
         BleedMm = p.BleedMm;
         SpacingEnabled = p.SpacingEnabled;
         SpacingMm = p.SpacingMm;
@@ -448,6 +481,32 @@ public sealed class MainViewModel : ObservableObject
     public bool CanCompleteLastSheet => _mode == LayoutMode.Compose || (_mode == LayoutMode.Repeat && _unit == QuantityUnit.Items);
 
     public ICommand ClearVisualsCommand { get; }
+
+    // ---- The copies of every line at once (asked by the author: 2 prints of each of 40 photos) ----
+
+    public bool ShowCopiesForAll => Visuals.Count > 1;
+
+    /// <summary>The copies of every line when they all have the same; null (an empty box) while they differ. Typed: every line takes it.</summary>
+    public int? CopiesForAll
+    {
+        get => Visuals.Count > 0 && Visuals.All(v => v.Copies == Visuals[0].Copies) ? Visuals[0].Copies : null;
+        set
+        {
+            if (value is int n) AllLines(line => line.Copies = n);
+        }
+    }
+
+    public ICommand MoreForAllCommand { get; }
+    public ICommand LessForAllCommand { get; }
+
+    // Every line changed, then one recomputation (not one per line: packing mixed sizes is the costly part).
+    private void AllLines(Action<VisualItem> change)
+    {
+        _restoring = true;
+        try { foreach (var line in Visuals) change(line); }
+        finally { _restoring = false; }
+        Changed();
+    }
 
     /// <summary>
     /// Asks which pages to add of the PDFs of several pages added to the list (file names and page counts); null when
@@ -587,6 +646,14 @@ public sealed class MainViewModel : ObservableObject
     private bool _cropMarks;
     public bool CropMarks { get => _cropMarks; set { if (Set(ref _cropMarks, value)) Changed(); } }
 
+    private bool _foldMarks;
+
+    /// <summary>Folded cards: dashed marks in line with each fold, outside the block, as the crop marks (asked by the author).</summary>
+    public bool FoldMarks { get => _foldMarks; set { if (Set(ref _foldMarks, value)) Changed(); } }
+
+    /// <summary>The size chosen folds (a folded card): its marks can be drawn. Not in the Mixed mode, where each line has its size.</summary>
+    public bool ShowFoldMarks => _mode != LayoutMode.Mixed && SelectedFormat.Format?.Folds is { IsEmpty: false };
+
     private bool _cutLines;
     public bool CutLines { get => _cutLines; set { if (Set(ref _cutLines, value)) Changed(); } }
 
@@ -600,6 +667,75 @@ public sealed class MainViewModel : ObservableObject
 
     private bool _bleedEnabled;
     public bool BleedEnabled { get => _bleedEnabled; set { if (Set(ref _bleedEnabled, value)) Changed(); } }
+
+    private bool _mirrorBleed;
+
+    /// <summary>
+    /// The bleed of a photo takes its edges, mirrored: the photo keeps its size in its trim (asked by the author; the
+    /// default enlarges it to cover the bleed, its edges going with the cut).
+    /// </summary>
+    public bool MirrorBleed
+    {
+        get => _mirrorBleed;
+        set
+        {
+            if (!Set(ref _mirrorBleed, value)) return;
+            OnPropertyChanged(nameof(EnlargeForBleed));
+            Changed();
+        }
+    }
+
+    public bool EnlargeForBleed { get => !_mirrorBleed; set { if (value) MirrorBleed = false; } }
+
+    // ---- The text in the band of framed sizes (a Polaroid, an Instax), asked by the author ----
+
+    private string _captionText = "";
+
+    /// <summary>The text common to every photo; a line may have its own. It belongs to the job (undo, projects), not to the settings.</summary>
+    public string CaptionText { get => _captionText; set { if (Set(ref _captionText, value ?? "")) Changed(); } }
+
+    /// <summary>The TrueType fonts of the PC, the handwriting ones of Windows first.</summary>
+    public IReadOnlyList<FontChoice> CaptionFonts { get; }
+
+    private FontChoice? _captionFont;
+    public FontChoice? SelectedCaptionFont { get => _captionFont; set { if (value is not null && Set(ref _captionFont, value)) Changed(); } }
+
+    public IReadOnlyList<CaptionColorOption> CaptionColors { get; }
+
+    private CaptionColor _captionColor;
+    public CaptionColorOption SelectedCaptionColor
+    {
+        get => CaptionColors.First(c => c.Value == _captionColor);
+        set
+        {
+            if (value is null || value.Value == _captionColor) return;
+            _captionColor = value.Value;
+            OnPropertyChanged();
+            Changed();
+        }
+    }
+
+    /// <summary>A size laid has a band to write in: the "Text in the band" card shows.</summary>
+    public bool ShowCaption => _mode == LayoutMode.Mixed
+        ? Visuals.Any(v => MixedSizeOf(v) is { } size && HasBand(size.Margins))
+        : HasBand(CurrentMargins());
+
+    private static bool HasBand(MarginsMm m) => Math.Max(Math.Max(m.Top, m.Bottom), Math.Max(m.Left, m.Right)) >= Core.Pdf.Caption.MinBandMm;
+
+    private FontChoice? FontOf(string? name) =>
+        CaptionFonts.FirstOrDefault(f => string.Equals(f.Name, name, StringComparison.OrdinalIgnoreCase)) ?? CaptionFonts.FirstOrDefault();
+
+    // The text written in the band of a line: its own, else the common one; none without a band.
+    private string? CaptionOf(VisualItem line, bool band)
+    {
+        if (!band) return null;
+        string text = string.IsNullOrWhiteSpace(line.Caption) ? CaptionText : line.Caption;
+        return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
+    }
+
+    // The sides as the PDF draws them: the dpi, the cropping and the drags on the preview follow the mirrored bleed.
+    private SideOptions FrontSide => SideOptions.Recto with { MirrorBleed = BleedEnabled && MirrorBleed };
+    private SideOptions BackSide => new(true, _flip, RotateVerso180, BackHasMargins, BleedEnabled && MirrorBleed);
 
     private double _bleedMm;
     public double BleedMm { get => _bleedMm; set { if (Set(ref _bleedMm, value)) Changed(); } }
@@ -646,17 +782,40 @@ public sealed class MainViewModel : ObservableObject
     public NoticeLevel WorstNoticeLevel => Notices.Count == 0 ? NoticeLevel.Info : Notices.Max(n => n.Level);
     public string WorstNoticeIcon => Notice.IconOf(WorstNoticeLevel);
 
-    /// <summary>"3 notices", or nothing when there is one (<see cref="NoticeDetail"/> is the notice).</summary>
-    public string NoticeTitle => Notices.Count > 1 ? Strings.Count("NoticesCount", Notices.Count) : "";
+    private bool _singleNoticeFits = true;
 
-    /// <summary>Their key words ("Cropping · Back"), or the notice itself when alone.</summary>
-    public string NoticeDetail => Notices.Count == 1 ? Notices[0].Text : string.Join(" · ", Notices.Select(n => n.Key).Distinct());
+    /// <summary>
+    /// A notice alone fits its line (measured by the view, which knows the width): it is then the line itself; too
+    /// long, it is summed up as several are (the author's remark).
+    /// </summary>
+    public bool SingleNoticeFits
+    {
+        get => _singleNoticeFits;
+        set
+        {
+            if (!Set(ref _singleNoticeFits, value)) return;
+            foreach (var name in new[] { nameof(NoticeTitle), nameof(NoticeDetail), nameof(CanOpenNotices), nameof(NoticeBarTooltip) })
+                OnPropertyChanged(name);
+            if (!CanOpenNotices) NoticesOpen = false;
+        }
+    }
+
+    // Summed up: "2 notices" and their key words, the details opened from the line.
+    private bool NoticesSummed => Notices.Count > 1 || (Notices.Count == 1 && !_singleNoticeFits);
+
+    /// <summary>"3 notices" and the space before their key words, or nothing when one fits the line (<see cref="NoticeDetail"/> is the notice).</summary>
+    public string NoticeTitle => NoticesSummed ? Strings.Count("NoticesCount", Notices.Count) + "  " : "";
+
+    /// <summary>Their key words ("Cropping · Back"), or the notice itself when alone and short enough.</summary>
+    public string NoticeDetail => NoticesSummed
+        ? string.Join(" · ", Notices.Select(n => n.Key).Distinct())
+        : Notices.Count == 1 ? Notices[0].Text : "";
 
     /// <summary>
     /// Several notices open over the preview; a single one is the line itself, nothing to unfold (the author's remark):
     /// its whole text is its tooltip.
     /// </summary>
-    public bool CanOpenNotices => Notices.Count > 1;
+    public bool CanOpenNotices => NoticesSummed;
 
     public string NoticeBarTooltip => CanOpenNotices ? Strings.Get("NoticeBarTooltip") : NoticeDetail;
 
@@ -783,7 +942,7 @@ public sealed class MainViewModel : ObservableObject
     {
         if (Layout is not { IsEmpty: false } layout || PreviewSheetIndex >= Plan.SheetCount) return null;
         var visuals = Plan.Sheets[PreviewSheetIndex];
-        var side = front ? SideOptions.Recto : new SideOptions(true, _flip, RotateVerso180, BackHasMargins);
+        var side = front ? FrontSide : BackSide;
         for (int i = 0; i < layout.Cells.Count && i < visuals.Length; i++)
         {
             if (visuals[i] is null) continue;
@@ -888,9 +1047,9 @@ public sealed class MainViewModel : ObservableObject
     // HistoryLength steps are kept. A step taken back puts the same lines back, their thumbnails with them.
 
     private sealed record JobState(string SettingsJson, LayoutPreset Settings, int Quantity, LineState? Repeat, LineState? SharedBack,
-        IReadOnlyList<LineState> Lines)
+        IReadOnlyList<LineState> Lines, string CaptionText = "")
     {
-        public bool SameAs(JobState other) => SettingsJson == other.SettingsJson && Quantity == other.Quantity &&
+        public bool SameAs(JobState other) => SettingsJson == other.SettingsJson && Quantity == other.Quantity && CaptionText == other.CaptionText &&
                                               Repeat == other.Repeat && SharedBack == other.SharedBack && Lines.SequenceEqual(other.Lines);
     }
 
@@ -904,7 +1063,7 @@ public sealed class MainViewModel : ObservableObject
     {
         var settings = CapturePreset("");
         return new JobState(System.Text.Json.JsonSerializer.Serialize(settings), settings, Quantity, RepeatVisual?.Capture(),
-            Verso?.Capture(), [.. Visuals.Select(v => v.Capture())]);
+            Verso?.Capture(), [.. Visuals.Select(v => v.Capture())], CaptionText);
     }
 
     private void RememberLater()
@@ -948,6 +1107,7 @@ public sealed class MainViewModel : ObservableObject
         {
             ApplyPresetValues(state.Settings);
             _quantity = state.Quantity;
+            _captionText = state.CaptionText;
             Visuals.Clear();
             foreach (var line in state.Lines)
             {
@@ -963,7 +1123,7 @@ public sealed class MainViewModel : ObservableObject
             _restoring = false;
         }
 
-        foreach (var name in new[] { nameof(Quantity), nameof(RepeatVisual), nameof(HasRepeatVisual), nameof(Verso), nameof(HasVerso) })
+        foreach (var name in new[] { nameof(Quantity), nameof(RepeatVisual), nameof(HasRepeatVisual), nameof(Verso), nameof(HasVerso), nameof(CaptionText) })
             OnPropertyChanged(name);
         foreach (var item in AllItems().Where(i => i.ThumbnailOutdated))
         {
@@ -1000,6 +1160,7 @@ public sealed class MainViewModel : ObservableObject
             Back = s.Back is null ? null : Line(s.Back),
             BackAuto = s.BackAuto,
             Fit = s.Fit?.ToString(),
+            Caption = s.Caption,
         };
 
         var state = CaptureState();
@@ -1010,6 +1171,7 @@ public sealed class MainViewModel : ObservableObject
             Repeat = state.Repeat is null ? null : Line(state.Repeat),
             SharedBack = state.SharedBack is null ? null : Line(state.SharedBack),
             Visuals = [.. state.Lines.Select(Line)],
+            CaptionText = state.CaptionText,
         };
     }
 
@@ -1033,7 +1195,7 @@ public sealed class MainViewModel : ObservableObject
             var format = l.FormatId is null ? null : MixedFormats.FirstOrDefault(f => (f.Format?.Id ?? AppSettings.CustomFormatId) == l.FormatId);
             return new LineState(item, info, Math.Clamp(l.Copies, 1, 100_000), (l.Rotation % 360 + 360) % 360 / 90 * 90, format,
                 l.CustomWidth, l.CustomHeight, Math.Clamp(l.CropX, 0, 1), Math.Clamp(l.CropY, 0, 1), back, back is not null && l.BackAuto,
-                Enum.TryParse<FitMode>(l.Fit, out var fit) ? fit : null);
+                Enum.TryParse<FitMode>(l.Fit, out var fit) ? fit : null, l.Caption ?? "");
         }
 
         var lines = new List<LineState>();
@@ -1043,7 +1205,7 @@ public sealed class MainViewModel : ObservableObject
         var shared = job.SharedBack is { } sb ? await Line(sb, i => CreateItem(i, _ => Verso = null)) : null;
 
         if (_historyDebounce.IsEnabled) Remember();
-        RestoreState(new JobState("", job.Settings, Math.Clamp(job.Quantity, 0, 100_000), repeat, shared, lines));
+        RestoreState(new JobState("", job.Settings, Math.Clamp(job.Quantity, 0, 100_000), repeat, shared, lines, job.CaptionText ?? ""));
         Remember(); // one step: Ctrl+Z gives the job before it back
         (_projectFolder, _projectName) = (Path.GetDirectoryName(Path.GetFullPath(path)), Path.GetFileNameWithoutExtension(path));
         FilesMessage = errors.Count > 0 ? string.Join(" ", errors.Take(3)) : null;
@@ -1451,9 +1613,13 @@ public sealed class MainViewModel : ObservableObject
         (_settings.CustomSheetWidth, _settings.CustomSheetHeight, _settings.CustomSheetMargin) =
             (CustomSheetWidth, CustomSheetHeight, CustomSheetMargin);
         _settings.CropMarks = CropMarks;
+        _settings.FoldMarks = FoldMarks;
         _settings.CutLines = CutLines;
         _settings.MixedCutLines = MixedCutLines;
         _settings.BleedEnabled = BleedEnabled;
+        _settings.MirrorBleed = MirrorBleed;
+        _settings.CaptionFont = SelectedCaptionFont?.Name ?? FontList.DefaultFont;
+        _settings.CaptionColor = _captionColor;
         _settings.BleedMm = BleedMm;
         _settings.SpacingEnabled = SpacingEnabled;
         _settings.SpacingMm = SpacingMm;
@@ -1753,7 +1919,8 @@ public sealed class MainViewModel : ObservableObject
                      nameof(Layout), nameof(Plan), nameof(Headline), nameof(Details), nameof(PlanText), nameof(CanExport),
                      nameof(SheetWidth), nameof(SheetHeight), nameof(MarginGeometry), nameof(PlaceholderCells), nameof(PreviewHint),
                      nameof(PreviewSheetIndex), nameof(PreviewSheetLabel), nameof(HasSeveralSheets), nameof(CutNumbers),
-                     nameof(HasAnyVisual), nameof(ShowCutLineColor),
+                     nameof(HasAnyVisual), nameof(ShowCutLineColor), nameof(ShowCopiesForAll), nameof(CopiesForAll), nameof(ShowFoldMarks),
+                     nameof(ShowCaption),
                  })
             OnPropertyChanged(name);
     }
@@ -1768,16 +1935,18 @@ public sealed class MainViewModel : ObservableObject
         bool marginsFit = item is not { } s ||
                           (s.Width - margins.Left - margins.Right >= MinSizeMm && s.Height - margins.Top - margins.Bottom >= MinSizeMm);
         Layout = item is { } size && marginsFit && sheetValid
-            ? LayoutEngine.Compute(new LayoutOptions(Sheet, size, bleed, CropMarks, spacing, margins))
+            ? LayoutEngine.Compute(new LayoutOptions(Sheet, size, bleed, CropMarks, spacing, margins, SelectedFormat.Format?.Folds, FoldMarks))
             : null;
         int perSheet = Layout?.PerSheet ?? 0;
 
         // Each line gives its own VisualInfo object, so that a cell of the preview finds its line back (two lines may
         // hold equal ones: the same photo duplicated).
         _lineOfInfo.Clear();
+        bool band = HasBand(margins);
         VisualInfo Own(VisualItem line)
         {
-            var info = line.Info with { };
+            line.HasCaptionBand = band && _mode != LayoutMode.Repeat;
+            var info = line.Info with { Caption = CaptionOf(line, band) };
             _lineOfInfo[info] = line;
             return info;
         }
@@ -1832,6 +2001,7 @@ public sealed class MainViewModel : ObservableObject
                           : spacing > 0 ? "" : Strings.Get("DetailsEdgeToEdge")) +
                       (margins.IsEmpty ? "" : Strings.Get("DetailsMargins")) +
                       (CropMarks ? Strings.Get("DetailsCropMarks") : "") +
+                      (Layout.FoldMarks.Count > 0 ? Strings.Get("DetailsFoldMarks") : "") +
                       (CutLines ? Strings.Get("DetailsCutLines") : "");
             var first = Layout.Cells[0];
             AddVisualNotices([.. ActiveVisuals().Select(v => (v, first))], first, bleed);
@@ -1847,10 +2017,11 @@ public sealed class MainViewModel : ObservableObject
         var items = new List<MixedItem>();
         foreach (var v in Visuals)
         {
+            v.HasCaptionBand = MixedSizeOf(v) is { } sized && HasBand(sized.Margins);
             if (MixedSizeOf(v) is { } size)
             {
                 lines.Add(v);
-                items.Add(new MixedItem(v.Info, size.Size, v.Copies, size.Margins));
+                items.Add(new MixedItem(v.Info with { Caption = CaptionOf(v, v.HasCaptionBand) }, size.Size, v.Copies, size.Margins));
             }
             else
             {
@@ -1968,11 +2139,11 @@ public sealed class MainViewModel : ObservableObject
         var cropped = new List<(string Name, double Ratio)>();
         var ownBleed = new List<(string Name, double Mm)>();
         // Each back in the cell of its front; the shared one, when some visual has no back of its own, in the cell given.
-        var versoSide = new SideOptions(true, _flip, RotateVerso180, BackHasMargins);
+        var versoSide = BackSide;
         bool ownBacks = VersoEnabled && _mode != LayoutMode.Repeat;
         foreach (var (item, cell) in fronts)
         {
-            Assess(item, cell, SideOptions.Recto, lowDpi, cropped, ownBleed);
+            Assess(item, cell, FrontSide, lowDpi, cropped, ownBleed);
             if (ownBacks && item.Back is { } own)
                 Assess(own, cell, versoSide, lowDpi, cropped, ownBleed);
         }
@@ -2128,6 +2299,8 @@ public sealed class MainViewModel : ObservableObject
                 : null,
             Marks = SheetMark ? MarksOf(sheets, jobName ?? Path.GetFileNameWithoutExtension(SuggestedFileName())) : null,
             CutLineColor = _cutLineColor,
+            MirrorBleed = BleedEnabled && MirrorBleed,
+            Caption = SelectedCaptionFont is { } font ? new CaptionStyle(font.Name, font.File, _captionColor) : null,
             Fit = _fit,
             Flip = _flip,
             RotateVerso180 = RotateVerso180,

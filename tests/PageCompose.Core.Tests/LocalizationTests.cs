@@ -87,5 +87,6 @@ public class LocalizationTests
     {
         var keys = ReadStrings("Strings.resx").Keys.ToHashSet();
         Assert.All(Enum.GetValues<Pdf.CutLineColor>(), c => Assert.Contains("CutColor_" + c, keys));
+        Assert.All(Enum.GetValues<Pdf.CaptionColor>(), c => Assert.Contains("CaptionColor_" + c, keys));
     }
 }

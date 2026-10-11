@@ -3,11 +3,12 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:PageCompose.App"
         Title="{local:Tr SettingsTitle}"
-        Width="700" SizeToContent="Height" ResizeMode="NoResize"
-        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Width="880" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False" KeyDown="Window_KeyDown"
         Foreground="{DynamicResource TextFillColorPrimaryBrush}" Background="{DynamicResource ApplicationBackgroundBrush}">
 
-  <!-- Same layout as the Settings page of CropPdf (github.com/quentinperou/CropPdf), plus the theme. -->
+  <!-- The cards of the Settings page of CropPdf (github.com/quentinperou/CropPdf), on pages chosen from a menu on the
+       left, as in the Windows 11 Settings app (the author's choice among two mock-ups). -->
   <Window.Resources>
     <!-- A settings row, like the cards of the Windows 11 Settings app. -->
     <Style x:Key="Card" TargetType="Border">
@@ -41,6 +42,60 @@
       <Setter Property="TextWrapping" Value="Wrap" />
       <Setter Property="Margin" Value="0,2,0,0" />
       <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+    </Style>
+
+    <!-- A page: its cards scroll when the window reaches the height of the screen. -->
+    <Style x:Key="Page" TargetType="ScrollViewer">
+      <Setter Property="VerticalScrollBarVisibility" Value="Auto" />
+      <Setter Property="HorizontalScrollBarVisibility" Value="Disabled" />
+      <Setter Property="Focusable" Value="False" />
+      <Setter Property="Visibility" Value="Hidden" />
+    </Style>
+
+    <Style x:Key="PageContent" TargetType="StackPanel">
+      <Setter Property="Margin" Value="0,0,24,24" />
+    </Style>
+
+    <!-- An entry of the menu: a pale background when chosen or pointed at, an accent bar on the left of the chosen one
+         (the navigation of Windows 11). -->
+    <Style x:Key="MenuItem" TargetType="ListBoxItem">
+      <Setter Property="FocusVisualStyle" Value="{DynamicResource DefaultControlFocusVisualStyle}" />
+      <Setter Property="Margin" Value="0,0,0,4" />
+      <Setter Property="Template">
+        <Setter.Value>
+          <ControlTemplate TargetType="ListBoxItem">
+            <Grid Height="36" Background="Transparent">
+              <Border x:Name="Back" CornerRadius="4" Background="Transparent" />
+              <Border x:Name="Bar" Width="3" Height="16" CornerRadius="1.5" HorizontalAlignment="Left"
+                      Background="{DynamicResource AccentFillColorDefaultBrush}" Visibility="Hidden" />
+              <ContentPresenter Margin="14,0,12,0" VerticalAlignment="Center" />
+            </Grid>
+            <ControlTemplate.Triggers>
+              <Trigger Property="IsMouseOver" Value="True">
+                <Setter TargetName="Back" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+              </Trigger>
+              <Trigger Property="IsSelected" Value="True">
+                <Setter TargetName="Back" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                <Setter TargetName="Bar" Property="Visibility" Value="Visible" />
+              </Trigger>
+              <MultiTrigger>
+                <MultiTrigger.Conditions>
+                  <Condition Property="IsSelected" Value="True" />
+                  <Condition Property="IsMouseOver" Value="True" />
+                </MultiTrigger.Conditions>
+                <Setter TargetName="Back" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+              </MultiTrigger>
+            </ControlTemplate.Triggers>
+          </ControlTemplate>
+        </Setter.Value>
+      </Setter>
+    </Style>
+
+    <Style x:Key="MenuIcon" TargetType="TextBlock">
+      <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+      <Setter Property="FontSize" Value="16" />
+      <Setter Property="Margin" Value="0,0,14,0" />
+      <Setter Property="VerticalAlignment" Value="Center" />
     </Style>
 
     <!-- Windows 11 toggle switch: the Fluent theme has its brushes but no style for it. -->
@@ -82,120 +137,182 @@
     </Style>
   </Window.Resources>
 
-  <StackPanel Margin="24,20,24,24">
-    <TextBlock Text="{local:Tr SettingsTitle}" FontSize="24" FontWeight="SemiBold" Margin="0,0,0,16" />
+  <Grid>
+    <Grid.ColumnDefinitions>
+      <ColumnDefinition Width="232" />
+      <ColumnDefinition Width="*" />
+    </Grid.ColumnDefinitions>
+    <Grid.RowDefinitions>
+      <RowDefinition Height="Auto" />
+      <RowDefinition Height="*" />
+    </Grid.RowDefinitions>
 
-    <Border Style="{StaticResource Card}">
-      <DockPanel>
-        <TextBlock DockPanel.Dock="Left" Style="{StaticResource CardIcon}" Text="&#xE774;" />
-        <ComboBox x:Name="LanguageBox" DockPanel.Dock="Right" MinWidth="220" VerticalAlignment="Center"
-                  Margin="16,0,0,0" SelectionChanged="LanguageBox_SelectionChanged"
-                  AutomationProperties.Name="{local:Tr SettingsLanguage}" />
-        <StackPanel VerticalAlignment="Center">
-          <TextBlock Text="{local:Tr SettingsLanguage}" />
-          <TextBlock Style="{StaticResource CardDescription}" Text="{local:Tr SettingsLanguageDescription}" />
+    <!-- The menu: one page each. No "Settings" heading over it: the title bar says it (as in Windows 11). -->
+    <ListBox x:Name="PageList" Grid.RowSpan="2" Margin="16,16,16,24" VerticalAlignment="Top"
+             Background="Transparent" BorderThickness="0" Padding="0" SelectedIndex="0"
+             ItemContainerStyle="{StaticResource MenuItem}" ScrollViewer.VerticalScrollBarVisibility="Disabled"
+             SelectionChanged="PageList_SelectionChanged" AutomationProperties.Name="{local:Tr SettingsTitle}">
+      <ListBoxItem AutomationProperties.Name="{local:Tr SettingsGeneral}">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Style="{StaticResource MenuIcon}" Text="&#xE713;" />
+          <TextBlock Text="{local:Tr SettingsGeneral}" VerticalAlignment="Center" />
         </StackPanel>
-      </DockPanel>
-    </Border>
-
-    <Border Style="{StaticResource Card}">
-      <DockPanel>
-        <TextBlock DockPanel.Dock="Left" Style="{StaticResource CardIcon}" Text="&#xE790;" />
-        <ComboBox x:Name="ThemeBox" DockPanel.Dock="Right" MinWidth="220" VerticalAlignment="Center"
-                  Margin="16,0,0,0" SelectionChanged="ThemeBox_SelectionChanged"
-                  AutomationProperties.Name="{local:Tr SettingsTheme}" />
-        <StackPanel VerticalAlignment="Center">
-          <TextBlock Text="{local:Tr SettingsTheme}" />
-          <TextBlock Style="{StaticResource CardDescription}" Text="{local:Tr SettingsThemeDescription}" />
+      </ListBoxItem>
+      <ListBoxItem AutomationProperties.Name="{local:Tr SettingsPresets}">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Style="{StaticResource MenuIcon}" Text="&#xE8F1;" />
+          <TextBlock Text="{local:Tr SettingsPresets}" VerticalAlignment="Center" />
         </StackPanel>
-      </DockPanel>
-    </Border>
-
-    <!-- Presets: to a file and back (another PC, a backup); all of them in one file, or a single one. -->
-    <Border Style="{StaticResource Card}" Padding="0">
-      <StackPanel>
-        <DockPanel Margin="16,14">
-          <TextBlock DockPanel.Dock="Left" Style="{StaticResource CardIcon}" Text="&#xE8F1;" />
-          <Button DockPanel.Dock="Right" Content="{local:Tr PresetsImport}" MinWidth="106" VerticalAlignment="Center"
-                  Margin="16,0,0,0" Click="ImportPresets_Click" />
-          <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="{local:Tr SettingsPresets}" />
-            <TextBlock Style="{StaticResource CardDescription}" Text="{local:Tr SettingsPresetsDescription}" />
-            <TextBlock x:Name="PresetsStatus" Style="{StaticResource CardDescription}" />
-          </StackPanel>
-        </DockPanel>
-
-        <Rectangle Style="{StaticResource CardDivider}" />
-        <DockPanel Style="{StaticResource CardSubRow}">
-          <Button x:Name="ExportPresetsButton" DockPanel.Dock="Right" Content="{local:Tr PresetsExport}" MinWidth="106"
-                  VerticalAlignment="Center" Margin="8,0,0,0" Click="ExportPresets_Click" />
-          <ComboBox x:Name="ExportPresetBox" DockPanel.Dock="Right" Width="240" VerticalAlignment="Center"
-                    Margin="16,0,0,0" AutomationProperties.Name="{local:Tr PresetsExportWhich}" />
-          <TextBlock Text="{local:Tr PresetsExportWhich}" VerticalAlignment="Center" />
-        </DockPanel>
-      </StackPanel>
-    </Border>
-
-    <!-- Updates: status and check/install button, then the startup check and the channel. -->
-    <Border Style="{StaticResource Card}" Padding="0">
-      <StackPanel>
-        <DockPanel Margin="16,14">
-          <TextBlock DockPanel.Dock="Left" Style="{StaticResource CardIcon}" Text="&#xE895;" />
-          <Button x:Name="UpdateButton" DockPanel.Dock="Right" MinWidth="220" VerticalAlignment="Center"
-                  Margin="16,0,0,0" Click="UpdateButton_Click" />
-          <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="{local:Tr UpdatesTitle}" />
-            <TextBlock x:Name="UpdateStatusText" Style="{StaticResource CardDescription}" />
-            <TextBlock x:Name="UpdateNotesLink" Style="{StaticResource CardDescription}" Visibility="Collapsed">
-              <Hyperlink Click="UpdateNotes_Click"><Run Text="{local:Tr UpdateWhatsNew}" /></Hyperlink>
-            </TextBlock>
-            <ProgressBar x:Name="UpdateProgress" Maximum="1" Margin="0,8,0,2" Visibility="Collapsed" />
-          </StackPanel>
-        </DockPanel>
-
-        <Rectangle Style="{StaticResource CardDivider}" />
-        <DockPanel Style="{StaticResource CardSubRow}">
-          <CheckBox x:Name="CheckAtStartupBox" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}"
-                    VerticalAlignment="Center" Margin="16,0,0,0" Click="CheckAtStartup_Click"
-                    AutomationProperties.Name="{local:Tr UpdateCheckAtStartup}" />
-          <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="{local:Tr UpdateCheckAtStartup}" />
-            <TextBlock Style="{StaticResource CardDescription}" Text="{local:Tr UpdateCheckAtStartupDescription}" />
-          </StackPanel>
-        </DockPanel>
-
-        <Rectangle Style="{StaticResource CardDivider}" />
-        <DockPanel Style="{StaticResource CardSubRow}">
-          <ComboBox x:Name="ChannelBox" DockPanel.Dock="Right" MinWidth="220" VerticalAlignment="Center"
-                    Margin="16,0,0,0" SelectionChanged="ChannelBox_SelectionChanged"
-                    AutomationProperties.Name="{local:Tr UpdateChannel}" />
-          <StackPanel VerticalAlignment="Center">
-            <TextBlock Text="{local:Tr UpdateChannel}" />
-            <TextBlock Style="{StaticResource CardDescription}" Text="{local:Tr UpdateChannelDescription}" />
-          </StackPanel>
-        </DockPanel>
-      </StackPanel>
-    </Border>
-
-    <Border Style="{StaticResource Card}">
-      <DockPanel>
-        <TextBlock DockPanel.Dock="Left" Style="{StaticResource CardIcon}" Text="&#xE946;" />
-        <StackPanel VerticalAlignment="Center">
-          <TextBlock Text="{local:Tr SettingsAbout}" />
-          <TextBlock x:Name="VersionText" Style="{StaticResource CardDescription}" />
-          <TextBlock Style="{StaticResource CardDescription}">
-            <Run Text="{local:Tr AboutDevelopedBy}" /><Hyperlink NavigateUri="https://github.com/quentinperou"
-                RequestNavigate="Link_RequestNavigate">QuentinPerou</Hyperlink>
-          </TextBlock>
-          <TextBlock Style="{StaticResource CardDescription}">
-            <Hyperlink NavigateUri="https://github.com/quentinperou/PageCompose" RequestNavigate="Link_RequestNavigate"><Run
-                Text="{local:Tr AboutSourceCode}" /></Hyperlink>
-          </TextBlock>
+      </ListBoxItem>
+      <ListBoxItem AutomationProperties.Name="{local:Tr UpdatesTitle}">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Style="{StaticResource MenuIcon}" Text="&#xE895;" />
+          <TextBlock Text="{local:Tr UpdatesTitle}" VerticalAlignment="Center" />
         </StackPanel>
-      </DockPanel>
-    </Border>
+      </ListBoxItem>
+      <ListBoxItem AutomationProperties.Name="{local:Tr SettingsAbout}">
+        <StackPanel Orientation="Horizontal">
+          <TextBlock Style="{StaticResource MenuIcon}" Text="&#xE946;" />
+          <TextBlock Text="{local:Tr SettingsAbout}" VerticalAlignment="Center" />
+        </StackPanel>
+      </ListBoxItem>
+    </ListBox>
 
-    <Button Content="{local:Tr Close}" HorizontalAlignment="Right" MinWidth="96" Margin="0,16,0,0"
-            IsCancel="True" Click="Close_Click" />
-  </StackPanel>
+    <TextBlock Grid.Column="1" FontSize="20" FontWeight="SemiBold" Margin="0,18,24,14"
+               Text="{Binding SelectedItem.(AutomationProperties.Name), ElementName=PageList}" />
+
+    <!-- The pages share one place: the hidden ones keep their room, so the window takes the height of the tallest and
+         does not jump from page to page. -->
+    <Grid Grid.Row="1" Grid.Column="1">
+      <ScrollViewer x:Name="GeneralPage" Style="{StaticResource Page}" Visibility="Visible">
+        <StackPanel Style="{StaticResource PageContent}">
+          <Border Style="{StaticResource Card}">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Left" Style="{StaticResource CardIcon}" Text="&#xE774;" />
+              <ComboBox x:Name="LanguageBox" DockPanel.Dock="Right" MinWidth="220" VerticalAlignment="Center"
+                        Margin="16,0,0,0" SelectionChanged="LanguageBox_SelectionChanged"
+                        AutomationProperties.Name="{local:Tr SettingsLanguage}" />
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="{local:Tr SettingsLanguage}" />
+                <TextBlock Style="{StaticResource CardDescription}" Text="{local:Tr SettingsLanguageDescription}" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
+
+          <Border Style="{StaticResource Card}">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Left" Style="{StaticResource CardIcon}" Text="&#xE790;" />
+              <ComboBox x:Name="ThemeBox" DockPanel.Dock="Right" MinWidth="220" VerticalAlignment="Center"
+                        Margin="16,0,0,0" SelectionChanged="ThemeBox_SelectionChanged"
+                        AutomationProperties.Name="{local:Tr SettingsTheme}" />
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="{local:Tr SettingsTheme}" />
+                <TextBlock Style="{StaticResource CardDescription}" Text="{local:Tr SettingsThemeDescription}" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Presets: to a file and back (another PC, a backup); all of them in one file, or a single one. The count is
+           the title, the result of the last import or export a line under it. -->
+      <ScrollViewer x:Name="PresetsPage" Style="{StaticResource Page}">
+        <StackPanel Style="{StaticResource PageContent}">
+          <Border Style="{StaticResource Card}" Padding="0">
+            <StackPanel>
+              <DockPanel Margin="16,14">
+                <TextBlock DockPanel.Dock="Left" Style="{StaticResource CardIcon}" Text="&#xE8F1;" />
+                <Button DockPanel.Dock="Right" Content="{local:Tr PresetsImport}" MinWidth="106" VerticalAlignment="Center"
+                        Margin="16,0,0,0" Click="ImportPresets_Click" />
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock x:Name="PresetsCountText" />
+                  <TextBlock Style="{StaticResource CardDescription}" Text="{local:Tr SettingsPresetsDescription}" />
+                  <TextBlock x:Name="PresetsStatus" Style="{StaticResource CardDescription}" Visibility="Collapsed" />
+                </StackPanel>
+              </DockPanel>
+
+              <Rectangle Style="{StaticResource CardDivider}" />
+              <DockPanel Style="{StaticResource CardSubRow}">
+                <Button x:Name="ExportPresetsButton" DockPanel.Dock="Right" Content="{local:Tr PresetsExport}" MinWidth="106"
+                        VerticalAlignment="Center" Margin="8,0,0,0" Click="ExportPresets_Click" />
+                <ComboBox x:Name="ExportPresetBox" DockPanel.Dock="Right" Width="240" VerticalAlignment="Center"
+                          Margin="16,0,0,0" AutomationProperties.Name="{local:Tr PresetsExportWhich}" />
+                <TextBlock Text="{local:Tr PresetsExportWhich}" VerticalAlignment="Center" />
+              </DockPanel>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- Updates: the version and what the last check found, the check/install button, then the startup check and
+           the channel. -->
+      <ScrollViewer x:Name="UpdatesPage" Style="{StaticResource Page}">
+        <StackPanel Style="{StaticResource PageContent}">
+          <Border Style="{StaticResource Card}" Padding="0">
+            <StackPanel>
+              <DockPanel Margin="16,14">
+                <TextBlock DockPanel.Dock="Left" Style="{StaticResource CardIcon}" Text="&#xE895;" />
+                <Button x:Name="UpdateButton" DockPanel.Dock="Right" MinWidth="220" VerticalAlignment="Center"
+                        Margin="16,0,0,0" Click="UpdateButton_Click" />
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock x:Name="InstalledVersionText" />
+                  <TextBlock x:Name="UpdateStatusText" Style="{StaticResource CardDescription}" />
+                  <TextBlock x:Name="UpdateNotesLink" Style="{StaticResource CardDescription}" Visibility="Collapsed">
+                    <Hyperlink Click="UpdateNotes_Click"><Run Text="{local:Tr UpdateWhatsNew}" /></Hyperlink>
+                  </TextBlock>
+                  <ProgressBar x:Name="UpdateProgress" Maximum="1" Margin="0,8,0,2" Visibility="Collapsed" />
+                </StackPanel>
+              </DockPanel>
+
+              <Rectangle Style="{StaticResource CardDivider}" />
+              <DockPanel Style="{StaticResource CardSubRow}">
+                <CheckBox x:Name="CheckAtStartupBox" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}"
+                          VerticalAlignment="Center" Margin="16,0,0,0" Click="CheckAtStartup_Click"
+                          AutomationProperties.Name="{local:Tr UpdateCheckAtStartup}" />
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="{local:Tr UpdateCheckAtStartup}" />
+                  <TextBlock Style="{StaticResource CardDescription}" Text="{local:Tr UpdateCheckAtStartupDescription}" />
+                </StackPanel>
+              </DockPanel>
+
+              <Rectangle Style="{StaticResource CardDivider}" />
+              <DockPanel Style="{StaticResource CardSubRow}">
+                <ComboBox x:Name="ChannelBox" DockPanel.Dock="Right" MinWidth="220" VerticalAlignment="Center"
+                          Margin="16,0,0,0" SelectionChanged="ChannelBox_SelectionChanged"
+                          AutomationProperties.Name="{local:Tr UpdateChannel}" />
+                <StackPanel VerticalAlignment="Center">
+                  <TextBlock Text="{local:Tr UpdateChannel}" />
+                  <TextBlock Style="{StaticResource CardDescription}" Text="{local:Tr UpdateChannelDescription}" />
+                </StackPanel>
+              </DockPanel>
+            </StackPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+
+      <!-- About: the app, its icon in high definition (the .ico starts at 16 px and looks blurry). -->
+      <ScrollViewer x:Name="AboutPage" Style="{StaticResource Page}">
+        <StackPanel Style="{StaticResource PageContent}">
+          <Border Style="{StaticResource Card}">
+            <DockPanel>
+              <Image DockPanel.Dock="Left" Source="/Assets/PageCompose.png" Width="40" Height="40" Margin="0,0,16,0"
+                     VerticalAlignment="Top" RenderOptions.BitmapScalingMode="HighQuality" />
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="{local:Tr AppTitle}" FontWeight="SemiBold" />
+                <TextBlock x:Name="VersionText" Style="{StaticResource CardDescription}" />
+                <TextBlock Style="{StaticResource CardDescription}">
+                  <Run Text="{local:Tr AboutDevelopedBy}" /><Hyperlink NavigateUri="https://github.com/quentinperou"
+                      RequestNavigate="Link_RequestNavigate">QuentinPerou</Hyperlink>
+                </TextBlock>
+                <TextBlock Style="{StaticResource CardDescription}">
+                  <Hyperlink NavigateUri="https://github.com/quentinperou/PageCompose" RequestNavigate="Link_RequestNavigate"><Run
+                      Text="{local:Tr AboutSourceCode}" /></Hyperlink>
+                </TextBlock>
+              </StackPanel>
+            </DockPanel>
+          </Border>
+        </StackPanel>
+      </ScrollViewer>
+    </Grid>
+  </Grid>
 </Window>

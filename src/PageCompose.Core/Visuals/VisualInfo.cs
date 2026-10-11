@@ -69,6 +69,9 @@ public sealed record VisualInfo
     /// </summary>
     public Layout.FitMode? Fit { get; init; }
 
+    /// <summary>The text written in the thick white band of its frame (a Polaroid), if any (see <see cref="Pdf.Caption"/>).</summary>
+    public string? Caption { get; init; }
+
     /// <summary>Size of the trim area once the visual is upright, in raw units.</summary>
     public (double Width, double Height) UprightContentSize =>
         BaseRotation % 180 == 90 ? (Content.Height, Content.Width) : (Content.Width, Content.Height);

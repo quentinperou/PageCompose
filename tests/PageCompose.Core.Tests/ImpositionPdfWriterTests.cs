@@ -195,6 +195,19 @@ public sealed class ImpositionPdfWriterTests : IDisposable
     }
 
     [Fact]
+    public void Mirrored_bleed_draws_the_copies_of_the_photos_once_stored()
+    {
+        var jpg = VisualLoader.Load(_files.Jpeg(1063, 650));
+        var job = ImpositionJob.Repeat(LayoutEngine.Compute(new LayoutOptions(SheetFormats.Sra3, ItemFormats.BusinessCard.Size, 2)), jpg, 1);
+
+        using var enlarged = WriteAndOpen(job);
+        using var mirrored = WriteAndOpen(job with { MirrorBleed = true });
+
+        Assert.True(ContentLength(mirrored.Pages[0]) > ContentLength(enlarged.Pages[0]));
+        Assert.Single(ImageXObjects(mirrored)); // the copies draw the same image
+    }
+
+    [Fact]
     public void Cut_lines_take_their_colour_and_the_crop_marks_stay_black()
     {
         var jpg = VisualLoader.Load(_files.Jpeg(1063, 650));

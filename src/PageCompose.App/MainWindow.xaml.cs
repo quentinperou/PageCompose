@@ -31,6 +31,7 @@ public partial class MainWindow : Window
 
         Updater.Checked += Updater_Checked;
         ShowUpdateBar();
+        ViewModel.Notices.CollectionChanged += (_, _) => MeasureSingleNotice();
     }
 
     public MainViewModel ViewModel { get; }
@@ -497,6 +498,20 @@ public partial class MainWindow : Window
     // ---- The line of the notices ----
 
     private void NoticeBar_MouseLeftButtonUp(object sender, MouseButtonEventArgs e) => ViewModel.NoticesOpen = !ViewModel.NoticesOpen;
+
+    private void NoticeBar_SizeChanged(object sender, SizeChangedEventArgs e) => MeasureSingleNotice();
+
+    // Does a notice alone fit its line? Its whole text, in the font of the line, against the width of the text of the
+    // line (which fills what the icon leaves; the chevron, shown while summed up, would leave it the room it takes).
+    private void MeasureSingleNotice()
+    {
+        if (ViewModel.Notices.Count != 1 || NoticeText.ActualWidth <= 0) return;
+        var typeface = new Typeface(NoticeText.FontFamily, NoticeText.FontStyle, NoticeText.FontWeight, NoticeText.FontStretch);
+        var text = new FormattedText(ViewModel.Notices[0].Text, System.Globalization.CultureInfo.CurrentCulture, FlowDirection.LeftToRight,
+            typeface, NoticeText.FontSize, Brushes.Black, VisualTreeHelper.GetDpi(this).PixelsPerDip);
+        double room = NoticeText.ActualWidth + (ViewModel.CanOpenNotices ? NoticeChevron.ActualWidth + NoticeChevron.Margin.Left : 0);
+        ViewModel.SingleNoticeFits = text.WidthIncludingTrailingWhitespace <= room - 2; // a hair kept: rounding to pixels
+    }
 
     // A click anywhere else closes the notices opened over the preview (the click still does what it does).
     private void Window_PreviewMouseDown(object sender, MouseButtonEventArgs e)

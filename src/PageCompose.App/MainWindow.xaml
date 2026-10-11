@@ -3,6 +3,7 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:local="clr-namespace:PageCompose.App"
         xmlns:vm="clr-namespace:PageCompose.App.ViewModels"
+        xmlns:services="clr-namespace:PageCompose.App.Services"
         Title="{local:Tr AppTitle}" Icon="Assets/PageCompose.ico"
         Width="1360" Height="900" MinWidth="1040" MinHeight="680" WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="14"
@@ -193,6 +194,13 @@
                     </DockPanel>
                     <ContentControl Margin="0,6,0,0" Content="{Binding}" ContentTemplate="{StaticResource SizePicker}"
                                     Visibility="{Binding DataContext.IsMixedMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}" />
+                    <!-- Its own text in the band of its frame (empty: the common one) -->
+                    <DockPanel Margin="0,8,0,0" Visibility="{Binding HasCaptionBand, Converter={StaticResource BoolToVisibility}}">
+                        <TextBlock DockPanel.Dock="Left" Width="48" Text="{local:Tr CaptionLabel}" FontSize="12" VerticalAlignment="Center"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                        <TextBox local:NumericInput.Step="0" ToolTip="{local:Tr CaptionLineTooltip}" AutomationProperties.Name="{local:Tr CaptionLabel}"
+                                 Text="{Binding Caption, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                    </DockPanel>
                     <ContentControl Margin="0,8,0,0" Content="{Binding}" ContentTemplate="{StaticResource LineBack}"
                                     Visibility="{Binding DataContext.VersoEnabled, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}" />
                 </StackPanel>
@@ -322,6 +330,18 @@
                                         Visibility="{Binding HasVisuals, Converter={StaticResource BoolToVisibility}}" />
                                 <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionVisuals}" />
                             </DockPanel>
+                            <!-- The copies of every line at once (asked by the author); empty while the lines differ -->
+                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8" ToolTip="{local:Tr CopiesForAllTooltip}"
+                                        Visibility="{Binding ShowCopiesForAll, Converter={StaticResource BoolToVisibility}}">
+                                <TextBlock Text="{local:Tr CopiesForAll}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <Button Style="{StaticResource IconButton}" Content="&#xE738;" Command="{Binding LessForAllCommand}" Margin="0,0,4,0"
+                                        ToolTip="{local:Tr LessForAllTooltip}" AutomationProperties.Name="{local:Tr LessForAllTooltip}" />
+                                <TextBox Width="54" MinWidth="54" TextAlignment="Center" local:NumericInput.Minimum="1"
+                                         AutomationProperties.Name="{local:Tr CopiesForAll}"
+                                         Text="{Binding CopiesForAll, UpdateSourceTrigger=PropertyChanged, Delay=400, TargetNullValue=''}" />
+                                <Button Style="{StaticResource IconButton}" Content="&#xE710;" Command="{Binding MoreForAllCommand}" Margin="4,0,0,0"
+                                        ToolTip="{local:Tr MoreForAllTooltip}" AutomationProperties.Name="{local:Tr MoreForAllTooltip}" />
+                            </StackPanel>
                             <ItemsControl ItemsSource="{Binding Visuals}" ItemTemplate="{StaticResource ComposeRow}" />
                             <Button Style="{StaticResource DropZoneButton}" Click="BrowseVisuals_Click" AutomationProperties.Name="{local:Tr DropVisualsAdd}">
                                 <StackPanel>
@@ -376,6 +396,9 @@
                             <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionFormat}" />
                             <ComboBox ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat}" DisplayMemberPath="Name"
                                       HorizontalAlignment="Stretch" AutomationProperties.Name="{local:Tr SectionFormat}" />
+                            <!-- A folded card: dashed marks in line with its folds, outside the block -->
+                            <CheckBox Content="{local:Tr FoldMarks}" IsChecked="{Binding FoldMarks}" Margin="0,8,0,0" ToolTip="{local:Tr FoldMarksTooltip}"
+                                      Visibility="{Binding ShowFoldMarks, Converter={StaticResource BoolToVisibility}}" />
                             <Grid Margin="0,10,0,0" Visibility="{Binding IsCustomFormat, Converter={StaticResource BoolToVisibility}}">
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="*" />
@@ -418,6 +441,55 @@
                                 <CheckBox Content="{local:Tr VersoMargins}" IsChecked="{Binding VersoMargins}" Margin="0,6,0,0"
                                           Visibility="{Binding VersoEnabled, Converter={StaticResource BoolToVisibility}}" />
                             </StackPanel>
+                        </StackPanel>
+                    </Border>
+
+                    <!-- The text in the band of framed sizes (Polaroid, Instax), asked by the author: common to the photos, each
+                         line may have its own; the font is embedded in the PDF -->
+                    <Border Style="{StaticResource Card}" Visibility="{Binding ShowCaption, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionCaption}" />
+                            <TextBox local:NumericInput.Step="0" AutomationProperties.Name="{local:Tr SectionCaption}"
+                                     Text="{Binding CaptionText, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                            <TextBlock Style="{StaticResource Hint}" Text="{local:Tr CaptionHint}" />
+                            <Grid Margin="0,10,0,0">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="*" />
+                                    <ColumnDefinition Width="Auto" />
+                                    <ColumnDefinition Width="Auto" />
+                                </Grid.ColumnDefinitions>
+                                <TextBlock Text="{local:Tr CaptionFont}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                <!-- Each font shown in itself -->
+                                <ComboBox Grid.Column="1" ItemsSource="{Binding CaptionFonts}" SelectedItem="{Binding SelectedCaptionFont}"
+                                          HorizontalAlignment="Stretch" AutomationProperties.Name="{local:Tr CaptionFont}"
+                                          VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+                                    <ComboBox.ItemsPanel>
+                                        <ItemsPanelTemplate>
+                                            <VirtualizingStackPanel />
+                                        </ItemsPanelTemplate>
+                                    </ComboBox.ItemsPanel>
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type services:FontChoice}">
+                                            <TextBlock Text="{Binding Name}" FontFamily="{Binding Name}" FontSize="15" />
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                                <TextBlock Grid.Column="2" Text="{local:Tr CaptionColorLabel}" VerticalAlignment="Center" Margin="14,0,10,0" />
+                                <ComboBox Grid.Column="3" ItemsSource="{Binding CaptionColors}" SelectedItem="{Binding SelectedCaptionColor}" MinWidth="130"
+                                          AutomationProperties.Name="{local:Tr CaptionColorLabel}">
+                                    <ComboBox.ItemTemplate>
+                                        <DataTemplate DataType="{x:Type vm:CaptionColorOption}">
+                                            <StackPanel Orientation="Horizontal">
+                                                <Border Width="14" Height="14" CornerRadius="3" Margin="0,0,8,0" VerticalAlignment="Center"
+                                                        Background="{Binding Swatch}" BorderThickness="1"
+                                                        BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}" />
+                                                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ComboBox.ItemTemplate>
+                                </ComboBox>
+                            </Grid>
                         </StackPanel>
                     </Border>
 
@@ -484,7 +556,7 @@
                                     </ComboBox.ItemTemplate>
                                 </ComboBox>
                             </DockPanel>
-                            <!-- Bleed and spacing: values aligned in one column -->
+                            <!-- Bleed and spacing: values aligned in one column; under the bleed, how it is made -->
                             <Grid>
                                 <Grid.ColumnDefinitions>
                                     <ColumnDefinition Width="Auto" />
@@ -494,15 +566,24 @@
                                 <Grid.RowDefinitions>
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
+                                    <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <CheckBox Content="{local:Tr Bleed}" IsChecked="{Binding BleedEnabled}" VerticalAlignment="Center" />
                                 <TextBox Grid.Column="1" AutomationProperties.Name="{local:Tr BleedMm}" Width="64" Margin="12,2,6,2" VerticalAlignment="Center"
                                          Text="{Binding BleedMm, UpdateSourceTrigger=PropertyChanged, Delay=400}" IsEnabled="{Binding BleedEnabled}" />
                                 <TextBlock Grid.Column="2" Text="{local:Tr Millimetres}" VerticalAlignment="Center" />
-                                <CheckBox Grid.Row="1" Content="{local:Tr Spacing}" IsChecked="{Binding SpacingEnabled}" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="1" Grid.Column="1" AutomationProperties.Name="{local:Tr SpacingMm}" Width="64" Margin="12,2,6,2" VerticalAlignment="Center"
+                                <!-- How the bleed of a photo is made (asked by the author): enlarged (the default), or its edges mirrored -->
+                                <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="28,0,0,4"
+                                            Visibility="{Binding BleedEnabled, Converter={StaticResource BoolToVisibility}}">
+                                    <RadioButton GroupName="bleedMode" Content="{local:Tr BleedEnlarge}" IsChecked="{Binding EnlargeForBleed}"
+                                                 ToolTip="{local:Tr BleedEnlargeTooltip}" />
+                                    <RadioButton GroupName="bleedMode" Content="{local:Tr BleedMirror}" IsChecked="{Binding MirrorBleed}"
+                                                 ToolTip="{local:Tr BleedMirrorTooltip}" />
+                                </StackPanel>
+                                <CheckBox Grid.Row="2" Content="{local:Tr Spacing}" IsChecked="{Binding SpacingEnabled}" VerticalAlignment="Center" />
+                                <TextBox Grid.Row="2" Grid.Column="1" AutomationProperties.Name="{local:Tr SpacingMm}" Width="64" Margin="12,2,6,2" VerticalAlignment="Center"
                                          Text="{Binding SpacingMm, UpdateSourceTrigger=PropertyChanged, Delay=400}" IsEnabled="{Binding SpacingEnabled}" />
-                                <TextBlock Grid.Row="1" Grid.Column="2" Text="{local:Tr Millimetres}" VerticalAlignment="Center" />
+                                <TextBlock Grid.Row="2" Grid.Column="2" Text="{local:Tr Millimetres}" VerticalAlignment="Center" />
                             </Grid>
                             <TextBlock Style="{StaticResource Hint}" Text="{local:Tr BleedHint}" />
                             <TextBlock Text="{local:Tr FitTitle}" Margin="0,12,0,2" />
@@ -776,7 +857,7 @@
             <StackPanel Grid.Row="3">
                 <!-- The notices on one line of a fixed height (asked by the author: their list changed the height of the
                      preview with each change). Hidden, not collapsed, when there is none: the preview keeps its size. -->
-                <Border x:Name="NoticeBar" CornerRadius="6" Padding="12,0,10,0" Height="36" BorderThickness="1"
+                <Border x:Name="NoticeBar" CornerRadius="6" Padding="12,0,10,0" Height="36" BorderThickness="1" SizeChanged="NoticeBar_SizeChanged"
                         BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" MouseLeftButtonUp="NoticeBar_MouseLeftButtonUp"
                         ToolTip="{Binding NoticeBarTooltip}" AutomationProperties.Name="{Binding NoticeDetail}">
                     <Border.Style>
@@ -816,7 +897,7 @@
                             </TextBlock.Style>
                         </TextBlock>
                         <!-- Up: the notices open above it; down: they close -->
-                        <TextBlock DockPanel.Dock="Right" FontFamily="{StaticResource IconFont}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center"
+                        <TextBlock x:Name="NoticeChevron" DockPanel.Dock="Right" FontFamily="{StaticResource IconFont}" FontSize="12" Margin="10,0,0,0" VerticalAlignment="Center"
                                    Visibility="{Binding CanOpenNotices, Converter={StaticResource BoolToVisibility}}">
                             <TextBlock.Style>
                                 <Style TargetType="TextBlock">
@@ -829,8 +910,8 @@
                                 </Style>
                             </TextBlock.Style>
                         </TextBlock>
-                        <TextBlock VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
-                            <Run Text="{Binding NoticeTitle, Mode=OneWay}" FontWeight="SemiBold" /><Run Text="  " /><Run
+                        <TextBlock x:Name="NoticeText" VerticalAlignment="Center" TextTrimming="CharacterEllipsis">
+                            <Run Text="{Binding NoticeTitle, Mode=OneWay}" FontWeight="SemiBold" /><Run
                                 Text="{Binding NoticeDetail, Mode=OneWay}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                         </TextBlock>
                     </DockPanel>

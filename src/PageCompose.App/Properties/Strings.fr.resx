@@ -770,6 +770,9 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
   <data name="SettingsTitle" xml:space="preserve">
     <value>Paramètres</value>
   </data>
+  <data name="SettingsGeneral" xml:space="preserve">
+    <value>Général</value>
+  </data>
   <data name="SettingsLanguage" xml:space="preserve">
     <value>Langue</value>
   </data>
@@ -818,14 +821,11 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
   <data name="UpdateStatusChecking" xml:space="preserve">
     <value>Recherche de mises à jour…</value>
   </data>
-  <data name="UpdateStatusUpToDate" xml:space="preserve">
-    <value>Version {0} · l'application est à jour.</value>
+  <data name="UpdateUpToDate" xml:space="preserve">
+    <value>L'application est à jour.</value>
   </data>
-  <data name="UpdateStatusAvailable" xml:space="preserve">
-    <value>Version {0} · la version {1} est disponible.</value>
-  </data>
-  <data name="UpdateStatusFailed" xml:space="preserve">
-    <value>Version {0} · impossible de rechercher les mises à jour : {1}</value>
+  <data name="UpdateCheckFailed" xml:space="preserve">
+    <value>Impossible de rechercher les mises à jour : {0}</value>
   </data>
   <data name="UpdateCheck" xml:space="preserve">
     <value>Rechercher des mises à jour</value>
@@ -1060,5 +1060,83 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
   </data>
   <data name="NoticeKey_Preview" xml:space="preserve">
     <value>Aperçu</value>
+  </data>
+  <data name="CopiesForAll" xml:space="preserve">
+    <value>Pour toutes :</value>
+  </data>
+  <data name="CopiesForAllTooltip" xml:space="preserve">
+    <value>Le même nombre d'exemplaires sur toutes les lignes</value>
+  </data>
+  <data name="LessForAllTooltip" xml:space="preserve">
+    <value>Un exemplaire de moins sur chaque ligne</value>
+  </data>
+  <data name="MoreForAllTooltip" xml:space="preserve">
+    <value>Un exemplaire de plus sur chaque ligne</value>
+  </data>
+  <data name="BleedEnlarge" xml:space="preserve">
+    <value>Agrandir la photo</value>
+  </data>
+  <data name="BleedEnlargeTooltip" xml:space="preserve">
+    <value>La photo couvre le fond perdu : ses bords partent à la coupe.</value>
+  </data>
+  <data name="BleedMirror" xml:space="preserve">
+    <value>Prolonger les bords en miroir</value>
+  </data>
+  <data name="BleedMirrorTooltip" xml:space="preserve">
+    <value>La photo garde sa taille ; le fond perdu reprend ses bords en reflet. Les PDF avec leur propre fond perdu le gardent.</value>
+  </data>
+  <data name="Format_FoldedA6" xml:space="preserve">
+    <value>Carte pliée A6 (A5 ouverte)</value>
+  </data>
+  <data name="Format_Folded10x15" xml:space="preserve">
+    <value>Carte pliée 10 × 15 (10 × 30 ouverte)</value>
+  </data>
+  <data name="Format_FoldedSquare14" xml:space="preserve">
+    <value>Carte pliée carrée 14 × 14 (14 × 28 ouverte)</value>
+  </data>
+  <data name="Format_TrifoldA4" xml:space="preserve">
+    <value>Dépliant 3 volets (A4 ouvert)</value>
+  </data>
+  <data name="FoldMarks" xml:space="preserve">
+    <value>Traits de pliage (en pointillés, hors des visuels)</value>
+  </data>
+  <data name="FoldMarksTooltip" xml:space="preserve">
+    <value>Déposez la carte ouverte : l'extérieur (4e et 1re de couverture) au recto de la feuille, l'intérieur au verso avec Recto verso.</value>
+  </data>
+  <data name="DetailsFoldMarks" xml:space="preserve">
+    <value> · traits de pliage</value>
+  </data>
+  <data name="SectionCaption" xml:space="preserve">
+    <value>Texte dans la bande</value>
+  </data>
+  <data name="CaptionHint" xml:space="preserve">
+    <value>Commun à toutes les photos ; chaque ligne peut avoir le sien.</value>
+  </data>
+  <data name="CaptionFont" xml:space="preserve">
+    <value>Police</value>
+  </data>
+  <data name="CaptionColorLabel" xml:space="preserve">
+    <value>Couleur</value>
+  </data>
+  <data name="CaptionLabel" xml:space="preserve">
+    <value>Texte</value>
+  </data>
+  <data name="CaptionLineTooltip" xml:space="preserve">
+    <value>Le texte de cette photo ; vide : le texte commun</value>
+  </data>
+  <data name="CaptionColor_Black" xml:space="preserve">
+    <value>Noir</value>
+  </data>
+  <data name="CaptionColor_DarkGrey" xml:space="preserve">
+    <value>Gris foncé</value>
+  </data>
+  <data name="CaptionColor_Grey" xml:space="preserve">
+    <value>Gris</value>
+  </data>
+  <data name="CaptionColor_Navy" xml:space="preserve">
+    <value>Bleu nuit</value>
+  </data>
+  <data name="CaptionColor_Burgundy" xml:space="preserve">
+    <value>Bordeaux</value>
   </data>
 </root>

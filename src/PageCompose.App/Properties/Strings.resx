@@ -770,6 +770,9 @@ The file may be open in another program.</value>
   <data name="SettingsTitle" xml:space="preserve">
     <value>Settings</value>
   </data>
+  <data name="SettingsGeneral" xml:space="preserve">
+    <value>General</value>
+  </data>
   <data name="SettingsLanguage" xml:space="preserve">
     <value>Language</value>
   </data>
@@ -818,14 +821,11 @@ The file may be open in another program.</value>
   <data name="UpdateStatusChecking" xml:space="preserve">
     <value>Checking for updates…</value>
   </data>
-  <data name="UpdateStatusUpToDate" xml:space="preserve">
-    <value>Version {0} · PageCompose is up to date.</value>
+  <data name="UpdateUpToDate" xml:space="preserve">
+    <value>PageCompose is up to date.</value>
   </data>
-  <data name="UpdateStatusAvailable" xml:space="preserve">
-    <value>Version {0} · version {1} is available.</value>
-  </data>
-  <data name="UpdateStatusFailed" xml:space="preserve">
-    <value>Version {0} · could not check for updates: {1}</value>
+  <data name="UpdateCheckFailed" xml:space="preserve">
+    <value>Could not check for updates: {0}</value>
   </data>
   <data name="UpdateCheck" xml:space="preserve">
     <value>Check for updates</value>
@@ -1060,5 +1060,83 @@ The file may be open in another program.</value>
   </data>
   <data name="NoticeKey_Preview" xml:space="preserve">
     <value>Preview</value>
+  </data>
+  <data name="CopiesForAll" xml:space="preserve">
+    <value>For all lines:</value>
+  </data>
+  <data name="CopiesForAllTooltip" xml:space="preserve">
+    <value>The same number of copies on every line</value>
+  </data>
+  <data name="LessForAllTooltip" xml:space="preserve">
+    <value>One copy less on every line</value>
+  </data>
+  <data name="MoreForAllTooltip" xml:space="preserve">
+    <value>One copy more on every line</value>
+  </data>
+  <data name="BleedEnlarge" xml:space="preserve">
+    <value>Enlarge the photo</value>
+  </data>
+  <data name="BleedEnlargeTooltip" xml:space="preserve">
+    <value>The photo covers the bleed: its edges go with the cut.</value>
+  </data>
+  <data name="BleedMirror" xml:space="preserve">
+    <value>Mirror its edges</value>
+  </data>
+  <data name="BleedMirrorTooltip" xml:space="preserve">
+    <value>The photo keeps its size; the bleed takes its edges, mirrored. PDF files with their own bleed keep it.</value>
+  </data>
+  <data name="Format_FoldedA6" xml:space="preserve">
+    <value>Folded card A6 (A5 open)</value>
+  </data>
+  <data name="Format_Folded10x15" xml:space="preserve">
+    <value>Folded card 10 × 15 (10 × 30 open)</value>
+  </data>
+  <data name="Format_FoldedSquare14" xml:space="preserve">
+    <value>Folded square card 14 × 14 (14 × 28 open)</value>
+  </data>
+  <data name="Format_TrifoldA4" xml:space="preserve">
+    <value>Trifold leaflet (A4 open)</value>
+  </data>
+  <data name="FoldMarks" xml:space="preserve">
+    <value>Fold marks (dashed, outside the visuals)</value>
+  </data>
+  <data name="FoldMarksTooltip" xml:space="preserve">
+    <value>Lay the card open: outside (back and front cover) on the front of the sheet, inside on the back with Double-sided.</value>
+  </data>
+  <data name="DetailsFoldMarks" xml:space="preserve">
+    <value> · fold marks</value>
+  </data>
+  <data name="SectionCaption" xml:space="preserve">
+    <value>Text in the band</value>
+  </data>
+  <data name="CaptionHint" xml:space="preserve">
+    <value>Common to every photo; each line may have its own.</value>
+  </data>
+  <data name="CaptionFont" xml:space="preserve">
+    <value>Font</value>
+  </data>
+  <data name="CaptionColorLabel" xml:space="preserve">
+    <value>Colour</value>
+  </data>
+  <data name="CaptionLabel" xml:space="preserve">
+    <value>Text</value>
+  </data>
+  <data name="CaptionLineTooltip" xml:space="preserve">
+    <value>The text of this photo; empty: the common text</value>
+  </data>
+  <data name="CaptionColor_Black" xml:space="preserve">
+    <value>Black</value>
+  </data>
+  <data name="CaptionColor_DarkGrey" xml:space="preserve">
+    <value>Dark grey</value>
+  </data>
+  <data name="CaptionColor_Grey" xml:space="preserve">
+    <value>Grey</value>
+  </data>
+  <data name="CaptionColor_Navy" xml:space="preserve">
+    <value>Navy blue</value>
+  </data>
+  <data name="CaptionColor_Burgundy" xml:space="preserve">
+    <value>Burgundy</value>
   </data>
 </root>

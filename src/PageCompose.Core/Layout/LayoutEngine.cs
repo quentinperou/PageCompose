@@ -10,9 +10,14 @@ namespace PageCompose.Core.Layout;
 /// bleed.
 /// </param>
 /// <param name="Margins">White margins inside each visual, for <paramref name="Item"/> as requested (front only).</param>
+/// <param name="Folds">Where the size folds (a folded card); with <paramref name="FoldMarks"/>, dashed marks in line
+/// with each fold outside the block, in the room of the crop marks.</param>
 public sealed record LayoutOptions(PaperFormat Sheet, SizeMm Item, double BleedMm = 0, bool CropMarks = false,
-    double SpacingMm = 0, MarginsMm Margins = default)
+    double SpacingMm = 0, MarginsMm Margins = default, FoldsMm? Folds = null, bool FoldMarks = false)
 {
+    /// <summary>Marks are drawn outside the block, crop marks or fold marks: the room is kept for them.</summary>
+    public bool HasMarks => CropMarks || (FoldMarks && Folds is { IsEmpty: false });
+
     /// <summary>Distance between the trims of two neighbouring cells.</summary>
     public double Gap => Math.Max(SpacingMm, 2 * BleedMm);
 
@@ -58,8 +63,9 @@ public sealed class SheetLayout
 {
     internal SheetLayout(LayoutOptions options, RectMm printableArea, bool itemRotated, int columns, int rows,
         IReadOnlyList<LayoutCell> cells, IReadOnlyList<double> cutsX, IReadOnlyList<double> cutsY,
-        IReadOnlyList<LineMm> cropMarks)
+        IReadOnlyList<LineMm> cropMarks, IReadOnlyList<LineMm>? foldMarks = null)
     {
+        FoldMarks = foldMarks ?? [];
         Options = options;
         PrintableArea = printableArea;
         ItemRotated = itemRotated;
@@ -148,6 +154,9 @@ public sealed class SheetLayout
 
     public IReadOnlyList<LineMm> CropMarks { get; }
 
+    /// <summary>Marks in line with the folds of folded cards, outside the block (drawn dashed).</summary>
+    public IReadOnlyList<LineMm> FoldMarks { get; }
+
     /// <summary>Bounds of all cells, bleed included.</summary>
     public RectMm? Block => IsEmpty ? null : Bounds(Cells.Select(c => c.Bleed));
 
@@ -188,7 +197,7 @@ public static class LayoutEngine
             return new SheetLayout(options, new RectMm(sheet.Width / 2, sheet.Height / 2, 0, 0), false, 0, 0, [], [], [], []);
 
         // Around the block: the bleed of the outer cells, plus the room for the crop marks.
-        double reserve = options.BleedMm + (options.CropMarks ? LayoutOptions.CropMarkReserveMm : 0);
+        double reserve = options.BleedMm + (options.HasMarks ? LayoutOptions.CropMarkReserveMm : 0);
         double gap = options.Gap;
         double availW = printable.Width - 2 * reserve;
         double availH = printable.Height - 2 * reserve;
@@ -225,11 +234,20 @@ public static class LayoutEngine
         var cutsX = Distinct(Enumerable.Range(0, cols).SelectMany(c => new[] { x0 + c * (item.Width + gap), x0 + c * (item.Width + gap) + item.Width }));
         var cutsY = Distinct(Enumerable.Range(0, rows).SelectMany(r => new[] { y0 + r * (item.Height + gap), y0 + r * (item.Height + gap) + item.Height }));
 
-        var marks = options.CropMarks
-            ? BuildCropMarks(new RectMm(x0, y0, blockW, blockH).Inflate(options.BleedMm), printable, cutsX, cutsY)
-            : [];
+        var marked = new RectMm(x0, y0, blockW, blockH).Inflate(options.BleedMm);
+        var marks = options.CropMarks ? BuildCropMarks(marked, printable, cutsX, cutsY) : [];
 
-        return new SheetLayout(options, printable, rotated, cols, rows, cells, cutsX, cutsY, marks);
+        // The folds of each column and row (turned with the size), marked the same way as the cuts.
+        List<LineMm> foldMarks = [];
+        if (options.FoldMarks && options.Folds is { IsEmpty: false } folds)
+        {
+            var laid = rotated ? folds.RotatedClockwise(options.Item.Height) : folds;
+            var foldsX = Enumerable.Range(0, cols).SelectMany(c => laid.X.Select(x => x0 + c * (item.Width + gap) + x)).ToList();
+            var foldsY = Enumerable.Range(0, rows).SelectMany(r => laid.Y.Select(y => y0 + r * (item.Height + gap) + y)).ToList();
+            foldMarks = BuildCropMarks(marked, printable, foldsX, foldsY);
+        }
+
+        return new SheetLayout(options, printable, rotated, cols, rows, cells, cutsX, cutsY, marks, foldMarks);
     }
 
     /// <summary>Largest n such that n * size + (n - 1) * gap fits in avail.</summary>

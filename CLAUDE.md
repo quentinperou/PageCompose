@@ -16,6 +16,10 @@ QuentinPerou, with Claude Code (Anthropic)".
 
 ## Project status (October 11, 2026)
 
+Version **0.9.0** (October 11, 2026: commit "PageCompose 0.9.0", tag `v0.9.0`, GitHub release with its patch note)
+adds the copies of every line at once, a text in the band of the Polaroid and Instax frames (font and colour of the
+PC, embedded in the PDF), the folded cards (four sizes laid open, dashed fold marks), the mirrored bleed (an option),
+a single notice too long for its line summed up as several, and the Settings window on pages with a menu on the left.
 Version **0.8.0** (October 11, 2026: commit "PageCompose 0.8.0", tag `v0.8.0`, GitHub release with its patch note)
 adds fill or fit per visual (right click on its line), the colour of the cut lines (grey by default), the notices on
 one line under the preview (the preview no longer changes size), and converts the JPEG files from the web that
@@ -57,9 +61,9 @@ the photo sizes moved to exact inches.
 - English/French UI with live switching from Settings (the main window is rebuilt on the same view model).
 - Windows 11 Fluent theme, light or dark: follows Windows, or forced from Settings (applied live).
 - Updates from GitHub Releases, as in CropPdf: check at startup (can be turned off), Stable/Beta channel, bar in the
-  main window, download checked with SHA-256, silent install and relaunch. The Settings window copies CropPdf's
-  (language, theme, updates, about).
-- 1122 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.8.0.exe` locally (Inno Setup 6).
+  main window, download checked with SHA-256, silent install and relaunch. The Settings window has CropPdf's cards
+  (language, theme, presets, updates, about), on pages chosen from a menu on the left (see below).
+- 1327 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.9.0.exe` locally (Inno Setup 6).
 - The installer is not signed: the UAC prompt shows "Unknown publisher" (QuentinPerou appears in the file details
   and in Installed apps). Left as is for now (October 10, 2026). A paid certificate would show the author's legal
   name, SignPath Foundation its own name; only a self-signed certificate trusted by hand on each PC shows "QuentinPerou".
@@ -119,7 +123,8 @@ the photo sizes moved to exact inches.
     does not draw it): take them only when PageCompose is in the foreground, never another application.
   - `Services/Updater`: check at startup, download to `%TEMP%\PageCompose-Update`, run the installer with
     `/SP- /SILENT /NORESTART /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /RELAUNCH=1` (the `.iss` relaunches the app).
-  - `ViewModels/MainViewModel`: modes, `VisualItem` list (thumbnail, copies, dpi), recomputed on every change;
+  - `ViewModels/MainViewModel`: modes, `VisualItem` list (thumbnail, copies, dpi; "Pour toutes : [−] [n] [+]" sets the
+    copies of every line at once, `CopiesForAll`, one recomputation), recomputed on every change;
     the preview is regenerated 200 ms after the last change, for the displayed sheet only.
   - **Mixed mode** (`RecomputeMixed`): uses the `Visuals` list of Compose; each line has its own size
     (`VisualItem.Format`, `MixedFormats`: the preset sizes and "Custom", whose width and height are typed on the line,
@@ -158,8 +163,16 @@ the photo sizes moved to exact inches.
     `VisualInfo` object (`_lineOfInfo`), so that a cell finds its line back. The label is in % of the real size. The view tells the view
     model how wide the sheet is on screen (`SetPreviewDisplayWidth`), which renders the preview from 1400 up to
     3600 px wide, in steps of 400.
-  - Dialogs, drag and drop and the update bar in `MainWindow.xaml.cs`; `SettingsWindow` (language, theme,
-    updates, about), reopened after a language change.
+  - Dialogs, drag and drop and the update bar in `MainWindow.xaml.cs`; `SettingsWindow`, reopened after a language
+    change. **Settings on pages** (asked by the author, variant A of two mock-ups, `.local\settings-mockups.cs`): a menu
+    on the left as in the Windows 11 Settings app (`PageList`, an accent bar on the chosen entry), General (language,
+    theme), Presets, Updates, About, the page title from the chosen entry. The four pages share one cell, the hidden
+    ones keeping their room, so the window takes the height of the tallest and does not jump; each page scrolls once
+    the window reaches the height of the screen (`MaxHeight` = work area). No Close button (the cross of the title
+    bar, as in Windows 11); Escape closes. No "Settings" heading over the menu (the title bar says it, as in Windows 11;
+    removed at the author's request). No title repeats its page: the Presets card is titled by the count, the
+    Updates card by the installed version ("Version 0.9.0", what the check found under it), the About card by the
+    app's name and its icon (the PNG). CropPdf still has the single page.
   - `Services/PdfRasterizer`: a PDF that PDFsharp cannot read (non-standard files, e.g. an encrypted invoice
     whose Info strings have unescaped parentheses) is rendered by `Windows.Data.Pdf` to a 300 dpi PNG in
     `%TEMP%\PageCompose\Converted` (files older than a day deleted at startup: another window may be using its
@@ -243,7 +256,8 @@ the photo sizes moved to exact inches.
   - **Notices under the preview** (`MainViewModel.AddVisualNotices`), on **one line of a fixed height** (asked by the
     author: their list changed the height of the preview with each change; variant A of his mock-ups): the icon and
     colour of the worst, "3 alertes" and their key words (`Notice.Key`, "Recadrage · Verso"), or the notice itself when
-    alone (then nothing to unfold, its whole text as tooltip: the author's remark); a click shows them all
+    alone and short enough (then nothing to unfold, its whole text as tooltip: the author's remark; too long for the
+    line, measured by the view, `SingleNoticeFits`, it is summed up as several: "1 alerte · Recadrage"); a click shows them all
     (`NoticesOpen`, `NoticePanel`) over the bottom of the preview, which does not move;
     a click elsewhere or Escape closes them; nothing opens by itself, even for an error (his choice). With no notice the
     line is hidden, its room kept. Only what the settings column does not already
@@ -310,6 +324,23 @@ the photo sizes moved to exact inches.
   the draw rectangle by that share of the overflow, and `Placement.Dragged` turns a drag on the sheet into it (the
   turn and mirror undone, kept between the edges). Chosen by dragging the photo on the preview (the author's choice
   among three mock-ups); it belongs to the line (`VisualItem.Crop`), not to the presets.
+- **Mirrored bleed** (`SideOptions.MirrorBleed`, `ImpositionJob.MirrorBleed`, a choice under the bleed, **off by
+  default**: the author keeps "Agrandir la photo"): a visual without its own bleed, filled, keeps its size in its trim
+  (target = trim) and the bleed takes its edges: `VisualPlacement.MirrorCopies` lists the flipped copies around it that
+  the clip shows (the clip turned back into the axes of the drawing), drawn first, 0.05 mm larger, so that no seam shows.
+- **Folded cards** (`PaperFormat.Folds`, `FoldsMm`, turned clockwise with the size; asked by the author): A6 folded
+  (A5 open), 10 x 15 folded (10 x 30 open), square 14 x 14 folded, trifold A4 (folds at 97 and 197 mm: the flap
+  folded in is narrower); `LayoutOptions.FoldMarks` ("Traits de pliage", in the size section, settings and presets,
+  on by default) adds `SheetLayout.FoldMarks`, built as the crop marks in line with each fold and drawn dashed
+  (0.8 / 0.6 mm), in the room kept for marks. Not in the Mixed mode (packed as their open size).
+- **Text in the band** (`VisualInfo.Caption`, `ImpositionJob.Caption` = `CaptionStyle`, `Core/Pdf/Caption`; asked by the
+  author, mock-up accepted): in the thickest white margin of a frame when 8 mm or more (Polaroid 22, Instax 18), centred,
+  em = 36 % of the band, shrunk to 88 % of its length, turned with the frame (a frame laid a quarter turn has its band
+  on the left). A common text (card "Texte dans la bande", belongs to the job: undo and projects, not the presets) and a
+  text per line (`VisualItem.Caption`, empty: the common one). The font: a TrueType font of the PC (`FontList`: the
+  registry, .ttf only, bold / italic faces and symbols left out, Segoe Print, Segoe Script, Ink Free, Gabriola, Comic
+  Sans first), registered by its file in `WindowsFonts` and embedded by PDFsharp (the text stays vector; a picture only
+  when flattened or in JPG); a dark colour (`CaptionColor`, **black by default**: the author's choice). Font and colour are in the settings and the presets.
 - **Fill or fit, per visual** (`VisualInfo.Fit`, asked by the author): right click on a line, "As the general setting" /
   "Fill the cell" / "Fit (whole image)" (checked in the menu); `Placement.Compute` and `Dragged` take it before the
   layout's. The line says " · Fitted" or " · Filled" after its resolution; the cropping check follows it. It belongs

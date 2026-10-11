@@ -34,12 +34,24 @@ public sealed class LayoutPreset
     public double CustomSheetMargin { get; set; } = Core.SheetFormats.PrinterMarginMm;
 
     public bool CropMarks { get; set; } = true;
+
+    /// <summary>Folded cards: the fold marks (presets of 0.8.x and before: on).</summary>
+    public bool FoldMarks { get; set; } = true;
     public bool CutLines { get; set; }
 
     /// <summary>Cut lines in the Mixed mode (presets of 0.4.x: yes, as they were then always drawn).</summary>
     public bool MixedCutLines { get; set; } = true;
     public bool BleedEnabled { get; set; }
     public double BleedMm { get; set; } = 2;
+
+    /// <summary>The bleed of the photos mirrored rather than enlarged (presets of 0.8.x and before: enlarged).</summary>
+    public bool MirrorBleed { get; set; }
+
+    /// <summary>Captions (presets of 0.8.x and before: Segoe Print, black): the font (a family name of the PC) and the colour. The text belongs to the job, not here.</summary>
+    public string CaptionFont { get; set; } = FontList.DefaultFont;
+
+    [JsonConverter(typeof(JsonStringEnumConverter<CaptionColor>))]
+    public CaptionColor CaptionColor { get; set; } = CaptionColor.Black; // black by default (the author's choice)
     public bool SpacingEnabled { get; set; }
     public double SpacingMm { get; set; } = 5;
 
