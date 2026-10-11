@@ -18,9 +18,12 @@ public sealed class VisualItem : ObservableObject
     private readonly Func<VisualItem, int, Task>? _choosePage;
 
     /// <param name="choosePage">Loads another page of the PDF into this item (see <see cref="Replace"/>).</param>
-    public VisualItem(VisualInfo info, Action changed, Action<VisualItem> remove, Func<VisualItem, int, Task>? choosePage = null)
+    /// <param name="format">Its size in the Mixed mode (<see cref="Format"/>).</param>
+    public VisualItem(VisualInfo info, Action changed, Action<VisualItem> remove, Func<VisualItem, int, Task>? choosePage = null,
+        FormatOption? format = null)
     {
         _info = info;
+        _format = format;
         _changed = changed;
         _choosePage = choosePage;
         Pages = [.. Enumerable.Range(1, info.PageCount).Select(n => new PageOption(n, Strings.Format("PageOf", n, info.PageCount)))];
@@ -31,6 +34,7 @@ public sealed class VisualItem : ObservableObject
         RotateRightCommand = new RelayCommand(() => Rotate(90));
         RotateLeftCommand = new RelayCommand(() => Rotate(-90));
         RotateHalfCommand = new RelayCommand(() => Rotate(180));
+        RotateAutoCommand = new RelayCommand(() => Rotate(-_rotation));
     }
 
     private VisualInfo _info;
@@ -50,14 +54,22 @@ public sealed class VisualItem : ObservableObject
     /// </summary>
     public int Rotation => _rotation;
 
-    /// <summary>The same turn as <paramref name="other"/> (the visual carried over to the other mode).</summary>
-    public void RotateLike(VisualItem other) => Rotate(other.Rotation - _rotation);
+    /// <summary>Turned by hand: "Automatic rotation" in the context menu gives the automatic turn alone back.</summary>
+    public bool IsTurnedByHand => _rotation != 0;
+
+    /// <summary>The same turn and size as <paramref name="other"/> (the visual carried over to the other mode).</summary>
+    public void CopyChoicesOf(VisualItem other)
+    {
+        Rotate(other.Rotation - _rotation);
+        _format ??= other.Format;
+    }
 
     private void Rotate(int degrees)
     {
         if (degrees % 360 == 0) return;
         _rotation = ((_rotation + degrees) % 360 + 360) % 360;
         OnPropertyChanged(nameof(Rotation));
+        OnPropertyChanged(nameof(IsTurnedByHand));
         OnPropertyChanged(nameof(Info));
         OnPropertyChanged(nameof(Details));
         _changed();
@@ -96,6 +108,18 @@ public sealed class VisualItem : ObservableObject
         set { if (Set(ref _copies, Math.Clamp(value, 1, 100_000))) _changed(); }
     }
 
+    private FormatOption? _format;
+
+    /// <summary>
+    /// Size of this visual in the Mixed mode, chosen on its line (preset sizes only); null until the line is shown in
+    /// that mode. Like the turn by hand, it belongs to the file line, not to the presets.
+    /// </summary>
+    public FormatOption? Format
+    {
+        get => _format;
+        set { if (value is not null && Set(ref _format, value)) _changed(); }
+    }
+
     private ImageSource? _thumbnail;
     public ImageSource? Thumbnail { get => _thumbnail; set => Set(ref _thumbnail, value); }
 
@@ -112,6 +136,7 @@ public sealed class VisualItem : ObservableObject
     public ICommand RotateRightCommand { get; }
     public ICommand RotateLeftCommand { get; }
     public ICommand RotateHalfCommand { get; }
+    public ICommand RotateAutoCommand { get; }
 
     public static string Describe(VisualInfo v)
     {

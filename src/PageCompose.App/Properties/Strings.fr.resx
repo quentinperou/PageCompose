@@ -18,19 +18,88 @@
     <value>Répétition</value>
   </data>
   <data name="ModeCompose" xml:space="preserve">
-    <value>Composition</value>
+    <value>Même format</value>
   </data>
   <data name="ModeRepeatHint" xml:space="preserve">
     <value>Un même visuel répété sur toute la feuille.</value>
   </data>
   <data name="ModeComposeHint" xml:space="preserve">
-    <value>Plusieurs visuels différents sur la même feuille, chacun avec son nombre d'exemplaires.</value>
+    <value>Plusieurs visuels du même format, chacun avec ses exemplaires.</value>
+  </data>
+  <data name="ModeMixed" xml:space="preserve">
+    <value>Multi-formats</value>
+  </data>
+  <data name="ModeMixedHint" xml:space="preserve">
+    <value>Chaque visuel a son format ; les numéros donnent l'ordre de coupe.</value>
+  </data>
+  <data name="ItemSize" xml:space="preserve">
+    <value>Format du tirage</value>
+  </data>
+  <data name="MixedHeadline" xml:space="preserve">
+    <value>Multi-formats</value>
+  </data>
+  <data name="QualityTooLarge" xml:space="preserve">
+    <value>Trop grand pour la feuille</value>
+  </data>
+  <data name="NoticeTooLarge" xml:space="preserve">
+    <value>Trop grand pour une feuille {1}, laissé de côté : {0}.</value>
+  </data>
+  <data name="FileNameMixed" xml:space="preserve">
+    <value>multi-formats_{0}-visuels_{1}_{2}f</value>
+  </data>
+  <data name="PdfTitleMixed" xml:space="preserve">
+    <value>Multi-formats</value>
+  </data>
+  <data name="MixedCutLines" xml:space="preserve">
+    <value>Lignes de coupe (le long de chaque coupe)</value>
+  </data>
+  <data name="NoticeWithoutCropMarksSheets" xml:space="preserve">
+    <value>Sans traits de coupe : {0}.</value>
+  </data>
+  <data name="SectionExport" xml:space="preserve">
+    <value>Export</value>
+  </data>
+  <data name="CuttingPlan" xml:space="preserve">
+    <value>Joindre le plan de coupe (A4)</value>
+  </data>
+  <data name="CuttingPlanTooltip" xml:space="preserve">
+    <value>Un PDF à part, à imprimer sur papier ordinaire : les coupes dans l'ordre, avec leurs cotes.</value>
+  </data>
+  <data name="CuttingPlanFileName" xml:space="preserve">
+    <value>{0}-plan-de-coupe</value>
+  </data>
+  <data name="CuttingPlanTitle" xml:space="preserve">
+    <value>Plan de coupe</value>
+  </data>
+  <data name="CuttingPlanSheet" xml:space="preserve">
+    <value>Feuille {0} / {1} · {2} · recto vers le haut</value>
+  </data>
+  <data name="CuttingPlanHint" xml:space="preserve">
+    <value>Coupez dans l'ordre des numéros.</value>
+  </data>
+  <data name="CuttingPlanMeasureHint" xml:space="preserve">
+    <value>Cote : de la coupe au bord indiqué du morceau, ce bord contre la butée.</value>
+  </data>
+  <data name="CutFromTop" xml:space="preserve">
+    <value>{0} mm depuis le haut</value>
+  </data>
+  <data name="CutFromBottom" xml:space="preserve">
+    <value>{0} mm depuis le bas</value>
+  </data>
+  <data name="CutFromLeft" xml:space="preserve">
+    <value>{0} mm depuis la gauche</value>
+  </data>
+  <data name="CutFromRight" xml:space="preserve">
+    <value>{0} mm depuis la droite</value>
+  </data>
+  <data name="ToastWithPlan" xml:space="preserve">
+    <value> + plan de coupe</value>
   </data>
   <data name="SectionVisual" xml:space="preserve">
-    <value>1. Visuel</value>
+    <value>Visuel</value>
   </data>
   <data name="SectionVisuals" xml:space="preserve">
-    <value>1. Visuels</value>
+    <value>Visuels</value>
   </data>
   <data name="DropVisual" xml:space="preserve">
     <value>Glissez un visuel ici ou cliquez pour choisir</value>
@@ -90,7 +159,7 @@
     <value>Le PDF alterne recto et verso. Les traits de coupe sont sur le recto.</value>
   </data>
   <data name="SectionFormat" xml:space="preserve">
-    <value>2. Format du visuel</value>
+    <value>Format du visuel</value>
   </data>
   <data name="WidthMm" xml:space="preserve">
     <value>Largeur (mm)</value>
@@ -180,7 +249,7 @@
     <value>Personnalisé…</value>
   </data>
   <data name="SectionSheet" xml:space="preserve">
-    <value>3. Feuille</value>
+    <value>Feuille</value>
   </data>
   <data name="Sheet_SRA3" xml:space="preserve">
     <value>SRA3 (320 × 450)</value>
@@ -216,7 +285,7 @@
     <value>Indiquez une largeur et une hauteur de feuille entre {0} et {1} mm.</value>
   </data>
   <data name="SectionCutting" xml:space="preserve">
-    <value>4. Coupe et remplissage</value>
+    <value>Coupe et remplissage</value>
   </data>
   <data name="CropMarks" xml:space="preserve">
     <value>Traits de coupe</value>
@@ -252,7 +321,7 @@
     <value>Ajuster (image entière, sans recadrage)</value>
   </data>
   <data name="SectionQuantity" xml:space="preserve">
-    <value>5. Quantité</value>
+    <value>Quantité</value>
   </data>
   <data name="Quantity" xml:space="preserve">
     <value>Quantité</value>
@@ -264,7 +333,7 @@
     <value>feuilles</value>
   </data>
   <data name="ComposeCopiesHint" xml:space="preserve">
-    <value>Le nombre d'exemplaires se règle sur chaque visuel (section 1).</value>
+    <value>Le nombre d'exemplaires se règle sur la ligne de chaque visuel.</value>
   </data>
   <data name="CompleteLastSheet" xml:space="preserve">
     <value>Compléter la dernière feuille en répétant les visuels</value>
@@ -340,10 +409,10 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
     <value>{0}_{1}_{2}_{3}-par-feuille_{4}f</value>
   </data>
   <data name="FileNameCompose" xml:space="preserve">
-    <value>composition_{0}-visuels_{1}_{2}_{3}f</value>
+    <value>meme-format_{0}-visuels_{1}_{2}_{3}f</value>
   </data>
   <data name="PdfTitleCompose" xml:space="preserve">
-    <value>Composition</value>
+    <value>Même format</value>
   </data>
   <data name="PreviousSheetTooltip" xml:space="preserve">
     <value>Feuille précédente</value>
@@ -359,6 +428,9 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
   </data>
   <data name="RotateHalf" xml:space="preserve">
     <value>Retourner (180°)</value>
+  </data>
+  <data name="RotateAuto" xml:space="preserve">
+    <value>Rotation automatique</value>
   </data>
   <data name="ZoomInTooltip" xml:space="preserve">
     <value>Zoom avant (Ctrl +)</value>
@@ -508,7 +580,7 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
     <value> · coupe {0} × {1}</value>
   </data>
   <data name="FilesSwitchedToCompose" xml:space="preserve">
-    <value>{0} visuels déposés : passage en mode composition.</value>
+    <value>{0} visuels déposés : passage en mode « Même format ».</value>
   </data>
   <data name="FilesDuplicates" xml:space="preserve">
     <value>{0} fichier(s) déjà dans la liste, ignoré(s).</value>

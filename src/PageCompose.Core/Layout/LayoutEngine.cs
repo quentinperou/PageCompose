@@ -47,7 +47,13 @@ public sealed record LayoutCell(int Column, int Row, RectMm Trim, RectMm Bleed, 
     }
 }
 
-/// <summary>Result of the layout computation, in millimetres.</summary>
+/// <summary>Edge of a piece of paper put against the back gauge of the guillotine for a cut.</summary>
+public enum CutEdge { Top, Left, Bottom, Right }
+
+/// <summary>
+/// Result of the layout computation, in millimetres: a grid of one size (<see cref="LayoutEngine"/>), or one sheet of
+/// several sizes (<see cref="MixedPacker"/>, <see cref="IsMixed"/>).
+/// </summary>
 public sealed class SheetLayout
 {
     internal SheetLayout(LayoutOptions options, RectMm printableArea, bool itemRotated, int columns, int rows,
@@ -65,6 +71,59 @@ public sealed class SheetLayout
         CropMarks = cropMarks;
     }
 
+    /// <summary>A sheet of several sizes: no grid, its own cuts in cutting order, and the spaces to paint white.</summary>
+    internal SheetLayout(LayoutOptions options, RectMm printableArea, IReadOnlyList<LayoutCell> cells,
+        IReadOnlyList<LineMm> cutSegments, IReadOnlyList<RectMm> cutPieces, IReadOnlyList<RectMm> spaces,
+        IReadOnlyList<LineMm> cropMarks)
+        : this(options, printableArea, false, 0, 0, cells, [], [], cropMarks)
+    {
+        IsMixed = true;
+        CutSegments = cutSegments;
+        CutPieces = cutPieces;
+        Spaces = spaces;
+    }
+
+    /// <summary>
+    /// Several sizes on the sheet, each cell its own size: there are no columns nor rows, <see cref="LayoutOptions.Item"/>
+    /// is not used (zero), and the cuts are <see cref="CutSegments"/>.
+    /// </summary>
+    public bool IsMixed { get; }
+
+    /// <summary>
+    /// Cuts of a mixed sheet, in cutting order (guillotine: each one across the piece it cuts). Those along the edges
+    /// of the block are drawn along the block, though they go across the sheet.
+    /// </summary>
+    public IReadOnlyList<LineMm> CutSegments { get; } = [];
+
+    /// <summary>The piece of paper each cut of <see cref="CutSegments"/> cuts, as it is at that moment.</summary>
+    public IReadOnlyList<RectMm> CutPieces { get; } = [];
+
+    /// <summary>
+    /// The clamp of a guillotine needs room: a part of the piece narrower than this is measured from the other edge.
+    /// </summary>
+    public const double MinHeldMm = 30;
+
+    /// <summary>
+    /// Where cut <paramref name="index"/> falls in its piece: the measurement to set on the guillotine, with
+    /// <c>Edge</c> of the piece against the back gauge. From the top (a cut across) or the left (a cut down), so that
+    /// it reads as the size of a visual, unless that part is too narrow to be held (a space, a strip of waste): then
+    /// from the bottom or the right.
+    /// </summary>
+    public (double Mm, CutEdge Edge) CutMeasurement(int index)
+    {
+        var (cut, piece) = (CutSegments[index], CutPieces[index]);
+        bool across = Math.Abs(cut.Y1 - cut.Y2) < 1e-9;
+        double first = across ? cut.Y1 - piece.Y : cut.X1 - piece.X;
+        double second = (across ? piece.Height : piece.Width) - first;
+        bool fromFirst = first >= MinHeldMm || first >= second;
+        return across
+            ? (fromFirst ? first : second, fromFirst ? CutEdge.Top : CutEdge.Bottom)
+            : (fromFirst ? first : second, fromFirst ? CutEdge.Left : CutEdge.Right);
+    }
+
+    /// <summary>What no bleed covers between the visuals of a mixed sheet, painted white.</summary>
+    public IReadOnlyList<RectMm> Spaces { get; } = [];
+
     public LayoutOptions Options { get; }
     public SizeMm Sheet => Options.Sheet.Size;
     public RectMm PrintableArea { get; }
@@ -77,7 +136,7 @@ public sealed class SheetLayout
 
     public int Columns { get; }
     public int Rows { get; }
-    public int PerSheet => Columns * Rows;
+    public int PerSheet => Cells.Count;
     public bool IsEmpty => PerSheet == 0;
 
     /// <summary>Cells in reading order (row by row).</summary>
@@ -90,10 +149,16 @@ public sealed class SheetLayout
     public IReadOnlyList<LineMm> CropMarks { get; }
 
     /// <summary>Bounds of all cells, bleed included.</summary>
-    public RectMm? Block => IsEmpty
-        ? null
-        : new RectMm(Cells[0].Bleed.X, Cells[0].Bleed.Y,
-            Cells[^1].Bleed.Right - Cells[0].Bleed.X, Cells[^1].Bleed.Bottom - Cells[0].Bleed.Y);
+    public RectMm? Block => IsEmpty ? null : Bounds(Cells.Select(c => c.Bleed));
+
+    /// <summary>The smallest rectangle around <paramref name="rects"/> (at least one).</summary>
+    internal static RectMm Bounds(IEnumerable<RectMm> rects)
+    {
+        double left = double.MaxValue, top = double.MaxValue, right = double.MinValue, bottom = double.MinValue;
+        foreach (var r in rects)
+            (left, top, right, bottom) = (Math.Min(left, r.X), Math.Min(top, r.Y), Math.Max(right, r.Right), Math.Max(bottom, r.Bottom));
+        return new RectMm(left, top, right - left, bottom - top);
+    }
 }
 
 public static class LayoutEngine

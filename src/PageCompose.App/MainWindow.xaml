@@ -45,6 +45,13 @@
                 </MenuItem.Icon>
             </MenuItem>
             <MenuItem Header="{local:Tr RotateHalf}" Command="{Binding RotateHalfCommand}" />
+            <!-- Back to the automatic turn alone (it is kept through every change of the settings until then) -->
+            <Separator />
+            <MenuItem Header="{local:Tr RotateAuto}" Command="{Binding RotateAutoCommand}" IsEnabled="{Binding IsTurnedByHand}">
+                <MenuItem.Icon>
+                    <TextBlock Text="&#xE7A7;" FontFamily="{StaticResource IconFont}" FontSize="16" />
+                </MenuItem.Icon>
+            </MenuItem>
         </ContextMenu>
 
         <!-- Page of a PDF of several pages: "Page 2 / 3" -->
@@ -82,56 +89,67 @@
             </Border>
         </DataTemplate>
 
-        <!-- Visual of a composition, with its number of copies -->
+        <!-- Mixed mode: the size of the print, on its line (preset sizes only) -->
+        <DataTemplate x:Key="SizePicker" DataType="{x:Type vm:VisualItem}">
+            <ComboBox ItemsSource="{Binding DataContext.MixedFormats, RelativeSource={RelativeSource AncestorType=Window}}"
+                      SelectedItem="{Binding Format}" DisplayMemberPath="Name" AutomationProperties.Name="{local:Tr ItemSize}"
+                      HorizontalAlignment="Stretch" />
+        </DataTemplate>
+
+        <!-- Visual of a composition, with its number of copies. In the Mixed mode, its size on a row of its own, across
+             the whole line, so that long size names show in full (chosen by the author among three places). -->
         <DataTemplate x:Key="ComposeRow" DataType="{x:Type vm:VisualItem}">
             <Border Style="{StaticResource FileRow}" ContextMenu="{StaticResource VisualMenu}">
-                <DockPanel>
-                    <ContentControl DockPanel.Dock="Left" Content="{Binding}" ContentTemplate="{StaticResource Thumbnail}" />
-                    <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE711;" Command="{Binding RemoveCommand}"
-                            ToolTip="{local:Tr RemoveVisualTooltip}" AutomationProperties.Name="{local:Tr RemoveVisualTooltip}" VerticalAlignment="Center" />
-                    <!-- A little room between the buttons: their hover backgrounds would touch -->
-                    <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,4,0">
-                        <Button Style="{StaticResource IconButton}" Content="&#xE738;" Command="{Binding DecrementCommand}" Margin="0,0,4,0"
-                                ToolTip="{local:Tr LessCopyTooltip}" AutomationProperties.Name="{local:Tr LessCopyTooltip}" />
-                        <TextBox Width="54" MinWidth="54" TextAlignment="Center" AutomationProperties.Name="{local:Tr CopiesLabel}"
-                                 Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged, Delay=400}" ToolTip="{local:Tr CopiesTooltip}" />
-                        <Button Style="{StaticResource IconButton}" Content="&#xE710;" Command="{Binding IncrementCommand}" Margin="4,0,0,0"
-                                ToolTip="{local:Tr MoreCopyTooltip}" AutomationProperties.Name="{local:Tr MoreCopyTooltip}" />
-                    </StackPanel>
-                    <StackPanel Margin="10,0,4,0" VerticalAlignment="Center">
-                        <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Info.OriginalPath}" />
-                        <TextBlock Text="{Binding Details}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
-                        <TextBlock Text="{Binding Quality}" Style="{StaticResource QualityText}" />
-                        <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PagePicker}" />
-                    </StackPanel>
-                </DockPanel>
+                <StackPanel>
+                    <DockPanel>
+                        <ContentControl DockPanel.Dock="Left" Content="{Binding}" ContentTemplate="{StaticResource Thumbnail}" />
+                        <Button DockPanel.Dock="Right" Style="{StaticResource IconButton}" Content="&#xE711;" Command="{Binding RemoveCommand}"
+                                ToolTip="{local:Tr RemoveVisualTooltip}" AutomationProperties.Name="{local:Tr RemoveVisualTooltip}" VerticalAlignment="Center" />
+                        <!-- A little room between the buttons: their hover backgrounds would touch -->
+                        <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,4,0">
+                            <Button Style="{StaticResource IconButton}" Content="&#xE738;" Command="{Binding DecrementCommand}" Margin="0,0,4,0"
+                                    ToolTip="{local:Tr LessCopyTooltip}" AutomationProperties.Name="{local:Tr LessCopyTooltip}" />
+                            <TextBox Width="54" MinWidth="54" TextAlignment="Center" AutomationProperties.Name="{local:Tr CopiesLabel}"
+                                     Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged, Delay=400}" ToolTip="{local:Tr CopiesTooltip}" />
+                            <Button Style="{StaticResource IconButton}" Content="&#xE710;" Command="{Binding IncrementCommand}" Margin="4,0,0,0"
+                                    ToolTip="{local:Tr MoreCopyTooltip}" AutomationProperties.Name="{local:Tr MoreCopyTooltip}" />
+                        </StackPanel>
+                        <StackPanel Margin="10,0,4,0" VerticalAlignment="Center">
+                            <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Info.OriginalPath}" />
+                            <TextBlock Text="{Binding Details}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Quality}" Style="{StaticResource QualityText}" />
+                            <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PagePicker}" />
+                        </StackPanel>
+                    </DockPanel>
+                    <ContentControl Margin="0,6,0,0" Content="{Binding}" ContentTemplate="{StaticResource SizePicker}"
+                                    Visibility="{Binding DataContext.IsMixedMode, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}" />
+                </StackPanel>
             </Border>
         </DataTemplate>
+
     </Window.Resources>
 
     <Grid>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="430" />
+            <ColumnDefinition Width="470" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
         <!-- ==================== Settings panel ==================== -->
         <!-- On the window background (Mica on Windows 11, as the title bar): only the cards stand out. -->
         <DockPanel Grid.Column="0">
+            <!-- Only the export buttons stay fixed at the bottom: their options are in the last section (asked by the author) -->
             <Border DockPanel.Dock="Bottom" Padding="20,14" BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
-                <StackPanel>
-                    <Grid>
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="*" />
-                            <ColumnDefinition Width="8" />
-                            <ColumnDefinition Width="*" />
-                        </Grid.ColumnDefinitions>
-                        <Button Style="{StaticResource PrimaryButton}" Content="{local:Tr ExportButton}" IsEnabled="{Binding CanExport}" Click="Export_Click" />
-                        <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="{local:Tr ExportJpegButton}"
-                                IsEnabled="{Binding CanExport}" Click="ExportJpeg_Click" ToolTip="{local:Tr ExportJpegTooltip}" />
-                    </Grid>
-                    <CheckBox Content="{local:Tr FlattenPdf}" IsChecked="{Binding FlattenPdf}" Margin="0,8,0,0" ToolTip="{local:Tr FlattenPdfTooltip}" />
-                </StackPanel>
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="*" />
+                        <ColumnDefinition Width="8" />
+                        <ColumnDefinition Width="*" />
+                    </Grid.ColumnDefinitions>
+                    <Button Style="{StaticResource PrimaryButton}" Content="{local:Tr ExportButton}" IsEnabled="{Binding CanExport}" Click="Export_Click" />
+                    <Button Grid.Column="2" Style="{StaticResource SecondaryButton}" Content="{local:Tr ExportJpegButton}"
+                            IsEnabled="{Binding CanExport}" Click="ExportJpeg_Click" ToolTip="{local:Tr ExportJpegTooltip}" />
+                </Grid>
             </Border>
 
             <!-- Fixed above the settings that scroll: the title, the Settings button and the presets. -->
@@ -172,17 +190,20 @@
                 <StackPanel Margin="18,14,18,6">
                     <!-- Mode -->
                     <Border Background="{DynamicResource ControlAltFillColorTertiaryBrush}" CornerRadius="6" Padding="3">
-                        <UniformGrid Columns="2">
+                        <UniformGrid Columns="3">
                             <RadioButton Style="{StaticResource SegmentItem}" GroupName="mode" Content="{local:Tr ModeRepeat}" IsChecked="{Binding IsRepeatMode}" />
                             <RadioButton Style="{StaticResource SegmentItem}" GroupName="mode" Content="{local:Tr ModeCompose}" IsChecked="{Binding IsComposeMode}" />
+                            <RadioButton Style="{StaticResource SegmentItem}" GroupName="mode" Content="{local:Tr ModeMixed}" IsChecked="{Binding IsMixedMode}" />
                         </UniformGrid>
                     </Border>
                     <TextBlock Style="{StaticResource Hint}" Margin="2,6,0,14" Text="{local:Tr ModeRepeatHint}"
                                Visibility="{Binding IsRepeatMode, Converter={StaticResource BoolToVisibility}}" />
                     <TextBlock Style="{StaticResource Hint}" Margin="2,6,0,14" Text="{local:Tr ModeComposeHint}"
                                Visibility="{Binding IsComposeMode, Converter={StaticResource BoolToVisibility}}" />
+                    <TextBlock Style="{StaticResource Hint}" Margin="2,6,0,14" Text="{local:Tr ModeMixedHint}"
+                               Visibility="{Binding IsMixedMode, Converter={StaticResource BoolToVisibility}}" />
 
-                    <!-- 1. Visual (Repeat) -->
+                    <!-- Visual (Repeat) -->
                     <Border Style="{StaticResource Card}" Visibility="{Binding IsRepeatMode, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionVisual}" />
@@ -199,8 +220,8 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 1. Visuals (Compose) -->
-                    <Border Style="{StaticResource Card}" Visibility="{Binding IsComposeMode, Converter={StaticResource BoolToVisibility}}">
+                    <!-- Visuals (Compose and Mixed) -->
+                    <Border Style="{StaticResource Card}" Visibility="{Binding HasVisualList, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel>
                             <DockPanel>
                                 <Button DockPanel.Dock="Right" Content="{local:Tr ClearAll}" Command="{Binding ClearVisualsCommand}" Padding="10,3" Margin="0,-4,0,6"
@@ -250,8 +271,8 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 2. Size -->
-                    <Border Style="{StaticResource Card}">
+                    <!-- Size (in the Mixed mode, each line has its own) -->
+                    <Border Style="{StaticResource Card}" Visibility="{Binding IsMixedMode, Converter={StaticResource InverseBoolToVisibility}}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionFormat}" />
                             <ComboBox ItemsSource="{Binding Formats}" SelectedItem="{Binding SelectedFormat}" DisplayMemberPath="Name"
@@ -301,7 +322,7 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 3. Sheet -->
+                    <!-- Sheet -->
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionSheet}" />
@@ -336,12 +357,17 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 4. Cutting -->
+                    <!-- Cutting -->
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionCutting}" />
+                            <!-- Mixed mode: crop marks for the cuts that reach the edge of the block only, and cut lines
+                                 of its own (along each cut, on by default) -->
                             <CheckBox Content="{local:Tr CropMarks}" IsChecked="{Binding CropMarks}" />
-                            <CheckBox Content="{local:Tr CutLines}" IsChecked="{Binding CutLines}" />
+                            <CheckBox Content="{local:Tr CutLines}" IsChecked="{Binding CutLines}"
+                                      Visibility="{Binding IsMixedMode, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <CheckBox Content="{local:Tr MixedCutLines}" IsChecked="{Binding MixedCutLines}"
+                                      Visibility="{Binding IsMixedMode, Converter={StaticResource BoolToVisibility}}" />
                             <!-- Bleed and spacing: values aligned in one column -->
                             <Grid>
                                 <Grid.ColumnDefinitions>
@@ -369,7 +395,7 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- 5. Quantity -->
+                    <!-- Quantity -->
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionQuantity}" />
@@ -380,10 +406,21 @@
                                 <RadioButton GroupName="unit" Content="{local:Tr UnitSheets}" IsChecked="{Binding UnitSheets}" VerticalAlignment="Center" />
                             </StackPanel>
                             <TextBlock Style="{StaticResource Hint}" Margin="0,0,0,6" Text="{local:Tr ComposeCopiesHint}"
-                                       Visibility="{Binding IsComposeMode, Converter={StaticResource BoolToVisibility}}" />
+                                       Visibility="{Binding HasVisualList, Converter={StaticResource BoolToVisibility}}" />
                             <CheckBox Content="{local:Tr CompleteLastSheet}" IsChecked="{Binding CompleteLastSheet}" Margin="0,6,0,2"
                                       Visibility="{Binding CanCompleteLastSheet, Converter={StaticResource BoolToVisibility}}" />
                             <TextBlock Text="{Binding PlanText}" FontWeight="SemiBold" Foreground="{DynamicResource AccentFillColorDefaultBrush}" TextWrapping="Wrap" Margin="0,10,0,0" />
+                        </StackPanel>
+                    </Border>
+
+                    <!-- Export: the options of the buttons fixed at the bottom -->
+                    <Border Style="{StaticResource Card}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionExport}" />
+                            <CheckBox Content="{local:Tr FlattenPdf}" IsChecked="{Binding FlattenPdf}" ToolTip="{local:Tr FlattenPdfTooltip}" />
+                            <!-- Mixed mode: a separate A4 PDF next to the export, to print on office paper (never on the sheets) -->
+                            <CheckBox Content="{local:Tr CuttingPlan}" IsChecked="{Binding CuttingPlan}" ToolTip="{local:Tr CuttingPlanTooltip}"
+                                      Visibility="{Binding IsMixedMode, Converter={StaticResource BoolToVisibility}}" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -501,6 +538,34 @@
                                             <Image Source="{Binding Image}" Stretch="Fill" RenderOptions.BitmapScalingMode="HighQuality" />
                                             <Path Data="{Binding DataContext.MarginGeometry, RelativeSource={RelativeSource AncestorType=Window}}"
                                                   Fill="#2EE63946" IsHitTestVisible="False" />
+
+                                            <!-- Mixed mode: the cutting order, on the front (the side up on the guillotine). On screen
+                                                 only, like the red band: printed, the numbers would land on the photos. -->
+                                            <ItemsControl ItemsSource="{Binding DataContext.CutNumbers, RelativeSource={RelativeSource AncestorType=Window}}"
+                                                          IsHitTestVisible="False" Focusable="False"
+                                                          Visibility="{Binding IsFront, Converter={StaticResource BoolToVisibility}}">
+                                                <ItemsControl.ItemsPanel>
+                                                    <ItemsPanelTemplate>
+                                                        <Canvas />
+                                                    </ItemsPanelTemplate>
+                                                </ItemsControl.ItemsPanel>
+                                                <ItemsControl.ItemContainerStyle>
+                                                    <Style TargetType="ContentPresenter">
+                                                        <Setter Property="Canvas.Left" Value="{Binding Left}" />
+                                                        <Setter Property="Canvas.Top" Value="{Binding Top}" />
+                                                    </Style>
+                                                </ItemsControl.ItemContainerStyle>
+                                                <ItemsControl.ItemTemplate>
+                                                    <DataTemplate DataType="{x:Type vm:CutNumber}">
+                                                        <!-- On paper (white in both themes), red as the cut lines of the simulations -->
+                                                        <Grid Width="{Binding Size}" Height="{Binding Size}">
+                                                            <Ellipse Fill="White" Stroke="#C42B1C" StrokeThickness="0.45" />
+                                                            <TextBlock Text="{Binding Text}" FontSize="{Binding FontSize}" FontWeight="SemiBold"
+                                                                       Foreground="#C42B1C" HorizontalAlignment="Center" VerticalAlignment="Center" />
+                                                        </Grid>
+                                                    </DataTemplate>
+                                                </ItemsControl.ItemTemplate>
+                                            </ItemsControl>
                                         </Grid>
                                     </Viewbox>
                                 </DockPanel>

@@ -11,8 +11,11 @@ using PageCompose.Core.Visuals;
 
 namespace PageCompose.App.ViewModels;
 
-/// <summary>Repeat: one visual over the whole sheet. Compose: several visuals, each with its own copies.</summary>
-public enum LayoutMode { Repeat, Compose }
+/// <summary>
+/// Repeat: one visual over the whole sheet. Compose: several visuals of one size, each with its own copies. Mixed:
+/// several visuals, each with its own size and copies, packed on as few sheets as possible.
+/// </summary>
+public enum LayoutMode { Repeat, Compose, Mixed }
 
 public enum QuantityUnit { Items, Sheets }
 
@@ -44,10 +47,16 @@ public sealed record Notice(NoticeLevel Level, string Text)
     public string Icon => Level switch { NoticeLevel.Error => "", NoticeLevel.Warning => "", _ => "" };
 }
 
+/// <summary>Number of a cut on the preview of a mixed sheet (cutting order), in millimetres on the sheet.</summary>
+public sealed record CutNumber(double Left, double Top, double Size, double FontSize, string Text);
+
 /// <summary>A side shown in the preview (front, and the back next to it).</summary>
 public sealed class PreviewSide(string labelKey) : ObservableObject
 {
     public string Label => Strings.Get(labelKey);
+
+    /// <summary>The front: the side facing up on the guillotine, where the cut numbers are shown.</summary>
+    public bool IsFront { get; init; }
 
     private ImageSource? _image;
     public ImageSource? Image { get => _image; set => Set(ref _image, value); }
@@ -76,6 +85,7 @@ public sealed class MainViewModel : ObservableObject
     {
         _settings = settings;
         Formats = [.. ItemFormats.All.Select(f => new FormatOption(f)), new FormatOption(null)];
+        MixedFormats = [.. Formats.Where(f => !f.IsCustom)];
         Sheets = [.. SheetFormats.All.Select(s => new SheetOption(s)), new SheetOption(null)];
 
         _mode = settings.Mode;
@@ -87,6 +97,7 @@ public sealed class MainViewModel : ObservableObject
             (settings.CustomSheetWidth, settings.CustomSheetHeight, settings.CustomSheetMargin);
         _cropMarks = settings.CropMarks;
         _cutLines = settings.CutLines;
+        _mixedCutLines = settings.MixedCutLines;
         _bleedEnabled = settings.BleedEnabled;
         _bleedMm = settings.BleedMm;
         _spacingEnabled = settings.SpacingEnabled;
@@ -102,6 +113,7 @@ public sealed class MainViewModel : ObservableObject
         _completeLastSheet = settings.CompleteLastSheet;
         _unit = settings.Unit;
         _flattenPdf = settings.FlattenPdf;
+        _cuttingPlan = settings.CuttingPlan;
 
         ClearVisualsCommand = new RelayCommand(ClearVisuals);
         PreviousSheetCommand = new RelayCommand(() => PreviewSheetIndex--);
@@ -126,6 +138,9 @@ public sealed class MainViewModel : ObservableObject
 
     public IReadOnlyList<FormatOption> Formats { get; }
     public IReadOnlyList<SheetOption> Sheets { get; }
+
+    /// <summary>Sizes offered on each line in the Mixed mode: the preset sizes (a custom one would need its fields).</summary>
+    public IReadOnlyList<FormatOption> MixedFormats { get; }
 
     // ---- Presets: the settings of a usual job (no files, no quantity) ----
 
@@ -214,6 +229,7 @@ public sealed class MainViewModel : ObservableObject
         CustomSheetMargin = CustomSheetMargin,
         CropMarks = CropMarks,
         CutLines = CutLines,
+        MixedCutLines = MixedCutLines,
         BleedEnabled = BleedEnabled,
         BleedMm = BleedMm,
         SpacingEnabled = SpacingEnabled,
@@ -225,6 +241,7 @@ public sealed class MainViewModel : ObservableObject
         Flip = _flip,
         RotateVerso180 = RotateVerso180,
         FlattenPdf = FlattenPdf,
+        CuttingPlan = CuttingPlan,
     };
 
     private bool _applyingPreset;
@@ -267,6 +284,7 @@ public sealed class MainViewModel : ObservableObject
         CustomSheetMargin = p.CustomSheetMargin;
         CropMarks = p.CropMarks;
         CutLines = p.CutLines;
+        MixedCutLines = p.MixedCutLines;
         BleedEnabled = p.BleedEnabled;
         BleedMm = p.BleedMm;
         SpacingEnabled = p.SpacingEnabled;
@@ -278,6 +296,7 @@ public sealed class MainViewModel : ObservableObject
         SetFlip(p.Flip);
         RotateVerso180 = p.RotateVerso180;
         FlattenPdf = p.FlattenPdf;
+        CuttingPlan = p.CuttingPlan;
     }
 
     // ---- Mode ----
@@ -285,6 +304,10 @@ public sealed class MainViewModel : ObservableObject
     private LayoutMode _mode;
     public bool IsRepeatMode { get => _mode == LayoutMode.Repeat; set { if (value) SetMode(LayoutMode.Repeat); } }
     public bool IsComposeMode { get => _mode == LayoutMode.Compose; set { if (value) SetMode(LayoutMode.Compose); } }
+    public bool IsMixedMode { get => _mode == LayoutMode.Mixed; set { if (value) SetMode(LayoutMode.Mixed); } }
+
+    /// <summary>Several visuals in a list (Compose and Mixed), rather than a single one.</summary>
+    public bool HasVisualList => _mode != LayoutMode.Repeat;
 
     // ---- Repeat: one visual ----
 
@@ -305,7 +328,7 @@ public sealed class MainViewModel : ObservableObject
     private int _quantity = 1;
     public int Quantity { get => _quantity; set { if (Set(ref _quantity, Math.Clamp(value, 0, 100_000))) Changed(); } }
 
-    private QuantityUnit _unit = QuantityUnit.Items;
+    private QuantityUnit _unit = QuantityUnit.Sheets;
     public bool UnitItems { get => _unit == QuantityUnit.Items; set { if (value) SetUnit(QuantityUnit.Items); } }
     public bool UnitSheets { get => _unit == QuantityUnit.Sheets; set { if (value) SetUnit(QuantityUnit.Sheets); } }
 
@@ -318,8 +341,11 @@ public sealed class MainViewModel : ObservableObject
     private bool _completeLastSheet;
     public bool CompleteLastSheet { get => _completeLastSheet; set { if (Set(ref _completeLastSheet, value)) Changed(); } }
 
-    /// <summary>A quantity counted in sheets always fills them: the option only matters for a number of visuals.</summary>
-    public bool CanCompleteLastSheet => _mode == LayoutMode.Compose || _unit == QuantityUnit.Items;
+    /// <summary>
+    /// A quantity counted in sheets always fills them: the option only matters for a number of visuals. Mixed sheets
+    /// are packed with the copies asked, nothing more.
+    /// </summary>
+    public bool CanCompleteLastSheet => _mode == LayoutMode.Compose || (_mode == LayoutMode.Repeat && _unit == QuantityUnit.Items);
 
     public ICommand ClearVisualsCommand { get; }
 
@@ -397,8 +423,11 @@ public sealed class MainViewModel : ObservableObject
     private bool _versoMargins;
     public bool VersoMargins { get => _versoMargins; set { if (Set(ref _versoMargins, value)) Changed(); } }
 
-    /// <summary>The back keeps the white margins: asked, and there are margins and a back.</summary>
-    private bool BackHasMargins => VersoMargins && MarginsEnabled && VersoEnabled;
+    /// <summary>
+    /// The back keeps the white margins: asked, and there are margins and a back. Not in the Mixed mode, where the
+    /// option is hidden with the size section: the back covers each cell.
+    /// </summary>
+    private bool BackHasMargins => VersoMargins && MarginsEnabled && VersoEnabled && _mode != LayoutMode.Mixed;
 
     private double _customWidth;
     public double CustomWidth { get => _customWidth; set { if (Set(ref _customWidth, value)) Changed(); } }
@@ -436,6 +465,14 @@ public sealed class MainViewModel : ObservableObject
     private bool _cutLines;
     public bool CutLines { get => _cutLines; set { if (Set(ref _cutLines, value)) Changed(); } }
 
+    private bool _mixedCutLines;
+
+    /// <summary>
+    /// The cut lines of the Mixed mode, apart from those of the grids (<see cref="CutLines"/>, often off): there they
+    /// go along each cut, and are on by default.
+    /// </summary>
+    public bool MixedCutLines { get => _mixedCutLines; set { if (Set(ref _mixedCutLines, value)) Changed(); } }
+
     private bool _bleedEnabled;
     public bool BleedEnabled { get => _bleedEnabled; set { if (Set(ref _bleedEnabled, value)) Changed(); } }
 
@@ -454,8 +491,21 @@ public sealed class MainViewModel : ObservableObject
 
     // ---- Result ----
 
+    /// <summary>The layout of the sheets; in the Mixed mode, that of the sheet shown (each has its own).</summary>
     public SheetLayout? Layout { get; private set; }
     public SheetPlan Plan { get; private set; } = SheetPlan.Empty;
+
+    /// <summary>The sheets of the Mixed mode (empty in the other modes).</summary>
+    private MixedPlan _mixed = MixedPlan.Empty;
+
+    /// <summary>
+    /// The Mixed mode's last packings, by what they were computed from: settings that change nothing keep them, and
+    /// the packing without crop marks (for its notice) is not done again at each change.
+    /// </summary>
+    private readonly Dictionary<string, MixedPlan> _packings = [];
+
+    /// <summary>Cutting order on the sheet shown in the Mixed mode, over the front of the preview (never printed).</summary>
+    public IReadOnlyList<CutNumber> CutNumbers { get; private set; } = [];
 
     public string Headline { get; private set; } = "";
     public string Details { get; private set; } = "";
@@ -484,7 +534,7 @@ public sealed class MainViewModel : ObservableObject
 
     // ---- Preview ----
 
-    public PreviewSide RectoSide { get; } = new("SideFront");
+    public PreviewSide RectoSide { get; } = new("SideFront") { IsFront = true };
     public PreviewSide VersoSide { get; } = new("SideBack");
     public ObservableCollection<PreviewSide> PreviewSides { get; } = [];
 
@@ -497,6 +547,7 @@ public sealed class MainViewModel : ObservableObject
             int clamped = Math.Clamp(value, 0, Math.Max(0, Plan.SheetCount - 1));
             if (!Set(ref _previewSheetIndex, clamped)) return;
             OnPropertyChanged(nameof(PreviewSheetLabel));
+            if (_mode == LayoutMode.Mixed) ShowMixedSheet(); // each sheet has its own layout
             SchedulePreview();
         }
     }
@@ -513,6 +564,11 @@ public sealed class MainViewModel : ObservableObject
 
     private bool _flattenPdf;
     public bool FlattenPdf { get => _flattenPdf; set { if (Set(ref _flattenPdf, value)) ForgetPresetIfChanged(); } }
+
+    private bool _cuttingPlan;
+
+    /// <summary>Mixed mode: writes the cutting plan (A4 PDF, to print on office paper) next to each export.</summary>
+    public bool CuttingPlan { get => _cuttingPlan; set { if (Set(ref _cuttingPlan, value)) ForgetPresetIfChanged(); } }
 
     /// <summary>Progress and result of the exports, shown over the preview.</summary>
     public ExportToast Toast { get; } = new();
@@ -642,17 +698,20 @@ public sealed class MainViewModel : ObservableObject
     {
         var item = CurrentItemSize() ?? default;
         string size = $"{item.Width:0}x{item.Height:0}"; // whole millimetres: 10 x 15 reads 102x152, not 101,6x152,4
-        string name = _mode == LayoutMode.Repeat
-            ? Strings.Format("FileNameRepeat", Path.GetFileNameWithoutExtension(RepeatVisual?.Info.OriginalPath ?? "layout"),
-                size, Sheet.Id, Layout?.PerSheet ?? 0, Plan.SheetCount)
-            : Strings.Format("FileNameCompose", Visuals.Count, size, Sheet.Id, Plan.SheetCount);
+        string name = _mode switch
+        {
+            LayoutMode.Repeat => Strings.Format("FileNameRepeat", Path.GetFileNameWithoutExtension(RepeatVisual?.Info.OriginalPath ?? "layout"),
+                size, Sheet.Id, Layout?.PerSheet ?? 0, Plan.SheetCount),
+            LayoutMode.Compose => Strings.Format("FileNameCompose", Visuals.Count, size, Sheet.Id, Plan.SheetCount),
+            _ => Strings.Format("FileNameMixed", Visuals.Count, Sheet.Id, Plan.SheetCount),
+        };
         return name + ".pdf";
     }
 
     public async Task ExportAsync(string path)
     {
         if (!CanExport) return;
-        var job = BuildJob(Plan.Sheets);
+        var job = BuildJob(AllSheets());
         Toast.ShowProgress(Strings.Get("Exporting"), Path.GetFileName(path));
         if (FlattenPdf)
         {
@@ -680,10 +739,46 @@ public sealed class MainViewModel : ObservableObject
             await Task.Run(() => ImpositionPdfWriter.Write(job, path));
         }
 
+        var cuttingPlan = await WriteCuttingPlanAsync(path);
         Toast.ShowDone(Strings.Get("ToastPdfSaved"),
-            Strings.Format("ToastPdfDetail", Path.GetFileName(path), Strings.Count("Sheets", Plan.SheetCount)), [path]);
+            Strings.Format("ToastPdfDetail", Path.GetFileName(path), Strings.Count("Sheets", Plan.SheetCount)) +
+            (cuttingPlan is null ? "" : Strings.Get("ToastWithPlan")),
+            cuttingPlan is null ? [path] : [path, cuttingPlan]);
         _settings.LastExportFolder = Path.GetDirectoryName(path);
         SaveSettings();
+    }
+
+    /// <summary>
+    /// In the Mixed mode, when asked: the cutting plan next to the export ("name-cutting-plan.pdf"), to print on
+    /// office paper and keep by the guillotine. Returns its path, or null when there is none.
+    /// </summary>
+    private async Task<string?> WriteCuttingPlanAsync(string exportPath)
+    {
+        if (_mode != LayoutMode.Mixed || !CuttingPlan || _mixed.SheetCount == 0) return null;
+        string stem = Path.GetFileNameWithoutExtension(exportPath);
+        string path = Path.Combine(Path.GetDirectoryName(exportPath) ?? "", Strings.Format("CuttingPlanFileName", stem) + ".pdf");
+        var texts = new CuttingPlanTexts(Strings.Get("CuttingPlanTitle"), Strings.Get("CuttingPlanSheet"), Strings.Get("CuttingPlanHint"),
+            Strings.Get("CutFromTop"), Strings.Get("CutFromBottom"), Strings.Get("CutFromLeft"), Strings.Get("CutFromRight"),
+            Strings.Get("CuttingPlanMeasureHint"));
+        // The size of each line, by index as packed.
+        var labels = Visuals.Select(v => (v.Format ?? DefaultMixedFormat()).Name).ToList();
+        var (plan, sheet, fit, logo) = (_mixed, SheetLabel, _fit, AppIconPng());
+        await Task.Run(() =>
+        {
+            using var fs = File.Create(path);
+            CuttingPlanWriter.Write(plan, labels, sheet, stem, texts, fs, fit, logo);
+        });
+        return path;
+    }
+
+    // The icon of the app in high definition, for the foot of the cutting plan (never the .ico: its first frame is 16 px).
+    private static byte[]? AppIconPng()
+    {
+        if (Application.GetResourceStream(new Uri("pack://application:,,,/Assets/PageCompose.png")) is not { } resource)
+            return null;
+        using var png = new MemoryStream();
+        resource.Stream.CopyTo(png);
+        return png.ToArray();
     }
 
     /// <summary>
@@ -693,7 +788,7 @@ public sealed class MainViewModel : ObservableObject
     public async Task<IReadOnlyList<string>> ExportJpegAsync(string path)
     {
         if (!CanExport) return [];
-        var job = BuildJob(Plan.Sheets);
+        var job = BuildJob(AllSheets());
         int count = PageCount(job);
         string folder = Path.GetDirectoryName(path) ?? "", stem = Path.GetFileNameWithoutExtension(path);
         List<string> files = count == 1
@@ -707,8 +802,11 @@ public sealed class MainViewModel : ObservableObject
 
         Toast.ShowProgress(Strings.Get("Exporting"), Path.GetFileName(path));
         await RenderPagesAsync(job, files);
+        var cuttingPlan = await WriteCuttingPlanAsync(path);
         Toast.ShowDone(Strings.Count("JpegSaved", files.Count),
-            files.Count == 1 ? Path.GetFileName(path) : Strings.Format("ToastInFolder", Path.GetFileName(folder)), files);
+            (files.Count == 1 ? Path.GetFileName(path) : Strings.Format("ToastInFolder", Path.GetFileName(folder))) +
+            (cuttingPlan is null ? "" : Strings.Get("ToastWithPlan")),
+            cuttingPlan is null ? files : [.. files, cuttingPlan]);
         _settings.LastExportFolder = folder;
         SaveSettings();
         return files;
@@ -741,6 +839,7 @@ public sealed class MainViewModel : ObservableObject
             (CustomSheetWidth, CustomSheetHeight, CustomSheetMargin);
         _settings.CropMarks = CropMarks;
         _settings.CutLines = CutLines;
+        _settings.MixedCutLines = MixedCutLines;
         _settings.BleedEnabled = BleedEnabled;
         _settings.BleedMm = BleedMm;
         _settings.SpacingEnabled = SpacingEnabled;
@@ -753,6 +852,7 @@ public sealed class MainViewModel : ObservableObject
         _settings.CompleteLastSheet = CompleteLastSheet;
         _settings.Unit = _unit;
         _settings.FlattenPdf = FlattenPdf;
+        _settings.CuttingPlan = CuttingPlan;
         _settings.Save();
     }
 
@@ -771,10 +871,15 @@ public sealed class MainViewModel : ObservableObject
     /// <param name="remove">What the item's close button does (default: remove it from the composition).</param>
     private VisualItem CreateItem(VisualInfo info, Action<VisualItem>? remove = null)
     {
-        var item = new VisualItem(info, Changed, remove ?? RemoveItem, ChoosePageAsync);
+        var item = new VisualItem(info, Changed, remove ?? RemoveItem, ChoosePageAsync,
+            _mode == LayoutMode.Mixed ? DefaultMixedFormat() : null);
         _ = LoadThumbnailAsync(item);
         return item;
     }
+
+    /// <summary>Size of a new line in the Mixed mode: the size chosen in section 2 when it is a preset one, else 10 x 15.</summary>
+    private FormatOption DefaultMixedFormat() =>
+        SelectedFormat.IsCustom ? MixedFormats.First(f => f.Format == ItemFormats.Photo10x15) : SelectedFormat;
 
     // Another page of the PDF of an item, chosen in its page list.
     private async Task ChoosePageAsync(VisualItem item, int pageNumber)
@@ -813,22 +918,29 @@ public sealed class MainViewModel : ObservableObject
         if (_mode == mode) return;
         _mode = mode;
 
-        // Keep the work in progress when switching modes, turned as it was.
-        if (carryOver && mode == LayoutMode.Compose && Visuals.Count == 0 && RepeatVisual is { } r)
+        // Keep the work in progress when switching modes, turned as it was. Compose and Mixed share their list.
+        if (carryOver && mode != LayoutMode.Repeat && Visuals.Count == 0 && RepeatVisual is { } r)
         {
             var copy = CreateItem(r.SourceInfo);
-            copy.RotateLike(r);
+            copy.CopyChoicesOf(r);
             Visuals.Add(copy);
         }
         if (carryOver && mode == LayoutMode.Repeat && RepeatVisual is null && Visuals.Count > 0)
         {
             _repeatVisual = CreateItem(Visuals[0].SourceInfo, _ => RepeatVisual = null);
-            _repeatVisual.RotateLike(Visuals[0]);
+            _repeatVisual.CopyChoicesOf(Visuals[0]);
         }
+
+        // Lines added in another mode get their size in the Mixed mode now, from the size chosen until then.
+        if (mode == LayoutMode.Mixed)
+            foreach (var item in Visuals.Where(v => v.Format is null))
+                item.Format = DefaultMixedFormat();
 
         FilesMessage = null;
         OnPropertyChanged(nameof(IsRepeatMode));
         OnPropertyChanged(nameof(IsComposeMode));
+        OnPropertyChanged(nameof(IsMixedMode));
+        OnPropertyChanged(nameof(HasVisualList));
         OnPropertyChanged(nameof(CanCompleteLastSheet));
         OnPropertyChanged(nameof(RepeatVisual));
         OnPropertyChanged(nameof(HasRepeatVisual));
@@ -953,13 +1065,44 @@ public sealed class MainViewModel : ObservableObject
         Notices.Clear();
         if (PreviewSides.Count == 0) UpdatePreviewSides();
 
+        bool sheetValid = !SelectedSheet.IsCustom || CustomSheet() is not null;
+        double bleed = BleedEnabled ? Math.Clamp(BleedMm, 0, 10) : 0;
+        double spacing = SpacingEnabled ? Math.Clamp(SpacingMm, 0, 100) : 0;
+        if (_mode == LayoutMode.Mixed)
+            RecomputeMixed(sheetValid, bleed, spacing);
+        else
+            RecomputeGrid(sheetValid, bleed, spacing);
+
+        PlanText = BuildPlanText();
+        double edge = Sheet.Margins.Top;
+        PreviewHint = edge > 0 ? Strings.Format("PreviewHintMargin", edge.ToString("0.#")) : Strings.Get("PreviewHint");
+
+        var printable = Layout?.PrintableArea ?? new RectMm(0, 0, Sheet.Width, Sheet.Height);
+        var margin = new GeometryGroup { FillRule = FillRule.EvenOdd };
+        margin.Children.Add(new RectangleGeometry(new Rect(0, 0, Sheet.Width, Sheet.Height)));
+        margin.Children.Add(new RectangleGeometry(new Rect(printable.X, printable.Y, printable.Width, printable.Height)));
+        margin.Freeze();
+        MarginGeometry = margin;
+        PlaceholderCells = Layout?.Cells.Select(c => c.Trim).ToList() ?? [];
+
+        foreach (var name in new[]
+                 {
+                     nameof(Layout), nameof(Plan), nameof(Headline), nameof(Details), nameof(PlanText), nameof(CanExport),
+                     nameof(SheetWidth), nameof(SheetHeight), nameof(MarginGeometry), nameof(PlaceholderCells), nameof(PreviewHint),
+                     nameof(PreviewSheetIndex), nameof(PreviewSheetLabel), nameof(HasSeveralSheets), nameof(CutNumbers),
+                 })
+            OnPropertyChanged(name);
+    }
+
+    // Repeat and Compose: one size, a grid of cells, the same on every sheet.
+    private void RecomputeGrid(bool sheetValid, double bleed, double spacing)
+    {
+        _mixed = MixedPlan.Empty;
+        CutNumbers = [];
         var item = CurrentItemSize();
         var margins = CurrentMargins();
         bool marginsFit = item is not { } s ||
                           (s.Width - margins.Left - margins.Right >= MinSizeMm && s.Height - margins.Top - margins.Bottom >= MinSizeMm);
-        bool sheetValid = !SelectedSheet.IsCustom || CustomSheet() is not null;
-        double bleed = BleedEnabled ? Math.Clamp(BleedMm, 0, 10) : 0;
-        double spacing = SpacingEnabled ? Math.Clamp(SpacingMm, 0, 100) : 0;
         Layout = item is { } size && marginsFit && sheetValid
             ? LayoutEngine.Compute(new LayoutOptions(Sheet, size, bleed, CropMarks, spacing, margins))
             : null;
@@ -1016,29 +1159,103 @@ public sealed class MainViewModel : ObservableObject
                       (margins.IsEmpty ? "" : Strings.Get("DetailsMargins")) +
                       (CropMarks ? Strings.Get("DetailsCropMarks") : "") +
                       (CutLines ? Strings.Get("DetailsCutLines") : "");
-            AddVisualNotices(Layout);
+            var first = Layout.Cells[0];
+            AddVisualNotices([.. ActiveVisuals().Select(v => (v, first))], first, bleed);
             AddCropMarksNotice(Layout);
         }
+    }
 
-        PlanText = BuildPlanText();
-        double edge = Sheet.Margins.Top;
-        PreviewHint = edge > 0 ? Strings.Format("PreviewHintMargin", edge.ToString("0.#")) : Strings.Get("PreviewHint");
+    // Mixed: each line its own size, packed on as few sheets as possible, each sheet its own layout.
+    private void RecomputeMixed(bool sheetValid, double bleed, double spacing)
+    {
+        var lines = Visuals.ToList();
+        var items = lines.Select(v =>
+        {
+            var format = (v.Format ?? DefaultMixedFormat()).Format!;
+            return new MixedItem(v.Info, format.Size, v.Copies, format.Margins);
+        }).ToList();
+        _mixed = sheetValid ? Pack(items, bleed, spacing, CropMarks) : MixedPlan.Empty;
+        Plan = new SheetPlan([.. _mixed.Sheets.Select(s => s.Visuals)], _mixed.Printed, _mixed.Printed, 0);
+        if (_previewSheetIndex >= Plan.SheetCount) _previewSheetIndex = Math.Max(0, Plan.SheetCount - 1);
+        ShowMixedSheet();
 
-        var printable = Layout?.PrintableArea ?? new RectMm(0, 0, Sheet.Width, Sheet.Height);
-        var margin = new GeometryGroup { FillRule = FillRule.EvenOdd };
-        margin.Children.Add(new RectangleGeometry(new Rect(0, 0, Sheet.Width, Sheet.Height)));
-        margin.Children.Add(new RectangleGeometry(new Rect(printable.X, printable.Y, printable.Width, printable.Height)));
-        margin.Freeze();
-        MarginGeometry = margin;
+        if (!sheetValid)
+        {
+            Headline = Strings.Get("InvalidSheet");
+            Details = Strings.Format("InvalidSheetDetails", MinSheetMm, MaxSheetMm);
+            Notices.Add(new Notice(NoticeLevel.Error, Details));
+            return;
+        }
+
+        string cutting = (spacing > 0 ? Strings.Format("DetailsSpacing", Math.Max(spacing, 2 * bleed).ToString("0.#")) : "") +
+                         (bleed > 0 ? Strings.Format("DetailsBleed", bleed.ToString("0.#")) : spacing > 0 ? "" : Strings.Get("DetailsEdgeToEdge")) +
+                         (CropMarks ? Strings.Get("DetailsCropMarks") : "") +
+                         (MixedCutLines ? Strings.Get("DetailsCutLines") : "");
+        Headline = _mixed.SheetCount > 0 ? Strings.Count("Sheets", _mixed.SheetCount) : Strings.Get("MixedHeadline");
+        Details = _mixed.Printed > 0 ? Strings.Count("Prints", _mixed.Printed) + cutting : cutting.TrimStart(' ', '·');
+
+        // Crop marks keep room around the block (none on a lab print): say how many sheets it takes without them,
+        // when fewer.
+        if (CropMarks && _mixed.SheetCount > 0 && Pack(items, bleed, spacing, false).SheetCount is var without && without < _mixed.SheetCount)
+            Notices.Add(new Notice(NoticeLevel.Info, Strings.Format("NoticeWithoutCropMarksSheets", Strings.Count("Sheets", without))));
+
+        foreach (int i in _mixed.TooLarge)
+        {
+            lines[i].Quality = Strings.Get("QualityTooLarge");
+            lines[i].IsLowQuality = true;
+        }
+        if (_mixed.TooLarge.Count > 0)
+            Notices.Add(new Notice(NoticeLevel.Error, Strings.Format("NoticeTooLarge", List(_mixed.TooLarge.Select(i => lines[i].FileName)), SheetLabel)));
+
+        // Each line is checked in its own cell, the back in the largest one (where its resolution is lowest).
+        var cells = new SortedDictionary<int, LayoutCell>();
+        foreach (var sheet in _mixed.Sheets)
+        foreach (var (cell, item) in sheet.Layout.Cells.Zip(sheet.Items))
+            cells.TryAdd(item, cell);
+        AddVisualNotices([.. cells.Select(c => (lines[c.Key], c.Value))],
+            cells.Values.MaxBy(c => c.Trim.Width * c.Trim.Height), bleed);
+    }
+
+    /// <summary>
+    /// Packs the lines, or gives the last packing again when nothing that matters changed (the packing is the costly
+    /// part); the visuals are those of the lines as they are now (turned by hand, another page of a PDF).
+    /// </summary>
+    private MixedPlan Pack(List<MixedItem> items, double bleed, double spacing, bool cropMarks)
+    {
+        var sheet = Sheet;
+        var key = string.Join(";", new[] { sheet.Width, sheet.Height, sheet.Margins.Top, bleed, spacing, cropMarks ? 1 : 0 }
+            .Concat(items.SelectMany(i => new[] { i.Size.Width, i.Size.Height, i.Margins.Top, i.Margins.Right, i.Margins.Bottom, i.Margins.Left, i.Copies }))
+            .Select(v => v.ToString("R", System.Globalization.CultureInfo.InvariantCulture)));
+        if (!_packings.TryGetValue(key, out var plan))
+        {
+            if (_packings.Count >= 8) _packings.Clear();
+            _packings[key] = plan = MixedPacker.Pack(sheet, items, bleed, spacing, cropMarks);
+        }
+
+        return plan with
+        {
+            Sheets = [.. plan.Sheets.Select(s => s with { Visuals = [.. s.Items.Select(i => (VisualInfo?)items[i].Visual)] })],
+        };
+    }
+
+    // The sheet shown in the Mixed mode: its layout, its cell outlines and the numbers of its cuts.
+    private void ShowMixedSheet()
+    {
+        Layout = _mixed.SheetCount > 0 ? _mixed.Sheets[_previewSheetIndex].Layout : null;
         PlaceholderCells = Layout?.Cells.Select(c => c.Trim).ToList() ?? [];
+        CutNumbers = Layout is { } layout ? NumbersOf(layout) : [];
+        OnPropertyChanged(nameof(Layout));
+        OnPropertyChanged(nameof(PlaceholderCells));
+        OnPropertyChanged(nameof(CutNumbers));
+    }
 
-        foreach (var name in new[]
-                 {
-                     nameof(Layout), nameof(Plan), nameof(Headline), nameof(Details), nameof(PlanText), nameof(CanExport),
-                     nameof(SheetWidth), nameof(SheetHeight), nameof(MarginGeometry), nameof(PlaceholderCells), nameof(PreviewHint),
-                     nameof(PreviewSheetIndex), nameof(PreviewSheetLabel), nameof(HasSeveralSheets),
-                 })
-            OnPropertyChanged(name);
+    // In proportion to the sheet, which the preview fits to its area: about 12 mm on SRA3, the same size on screen
+    // for every sheet.
+    private static List<CutNumber> NumbersOf(SheetLayout layout)
+    {
+        double size = Math.Max(layout.Sheet.Width, layout.Sheet.Height) * 0.027;
+        var at = MixedPacker.NumberPositions(layout, size);
+        return [.. at.Select((p, i) => new CutNumber(p.X - size / 2, p.Y - size / 2, size, size * (i < 9 ? 0.62 : 0.5), (i + 1).ToString()))];
     }
 
     private string BuildPlanText()
@@ -1051,23 +1268,24 @@ public sealed class MainViewModel : ObservableObject
         return text;
     }
 
-    private void AddVisualNotices(SheetLayout layout)
+    /// <param name="fronts">Each visual with the cell it is checked in.</param>
+    /// <param name="back">The cell the back is checked in.</param>
+    /// <param name="bleed">Bleed of the layout, in millimetres.</param>
+    private void AddVisualNotices(IReadOnlyList<(VisualItem Item, LayoutCell Cell)> fronts, LayoutCell? back, double bleed)
     {
-        var visuals = ActiveVisuals().ToList();
-        if (visuals.Count == 0)
+        if (!ActiveVisuals().Any())
         {
             Notices.Add(new Notice(NoticeLevel.Info, Strings.Get(_mode == LayoutMode.Repeat ? "NoticeAddVisual" : "NoticeAddVisuals")));
             return;
         }
 
-        var cell = layout.Cells[0];
         var lowDpi = new List<(string Name, int Dpi)>();
         var cropped = new List<(string Name, double Ratio)>();
         var ownBleed = new List<(string Name, double Mm)>();
-        foreach (var item in visuals)
+        foreach (var (item, cell) in fronts)
             Assess(item, cell, SideOptions.Recto, lowDpi, cropped, ownBleed);
-        if (VersoEnabled && Verso is not null)
-            Assess(Verso, cell, new SideOptions(true, _flip, RotateVerso180, BackHasMargins), lowDpi, cropped, ownBleed);
+        if (VersoEnabled && Verso is not null && back is not null)
+            Assess(Verso, back, new SideOptions(true, _flip, RotateVerso180, BackHasMargins), lowDpi, cropped, ownBleed);
 
         var critical = lowDpi.Where(d => d.Dpi < CriticalDpi).ToList();
         var low = lowDpi.Where(d => d.Dpi >= CriticalDpi).ToList();
@@ -1080,9 +1298,9 @@ public sealed class MainViewModel : ObservableObject
         foreach (var (name, mm) in ownBleed.Distinct())
         {
             Notices.Add(new Notice(NoticeLevel.Info, Strings.Format("NoticeOwnBleed", name, mm.ToString("0.#"))));
-            if (layout.Options.BleedMm > mm + 0.05)
+            if (bleed > mm + 0.05)
                 Notices.Add(new Notice(NoticeLevel.Warning,
-                    Strings.Format("NoticeOwnBleedTooSmall", name, mm.ToString("0.#"), layout.Options.BleedMm.ToString("0.#"))));
+                    Strings.Format("NoticeOwnBleedTooSmall", name, mm.ToString("0.#"), bleed.ToString("0.#"))));
         }
 
         // No notice for what the settings column already says (asked by the author): the empty cells are in the
@@ -1153,7 +1371,7 @@ public sealed class MainViewModel : ObservableObject
             return;
         }
 
-        var job = BuildJob([Plan.Sheets[PreviewSheetIndex]]);
+        var job = BuildJob([PreviewSheetIndex]);
         IsPreviewBusy = true;
         try
         {
@@ -1185,7 +1403,23 @@ public sealed class MainViewModel : ObservableObject
         }
     }
 
-    private ImpositionJob BuildJob(IReadOnlyList<VisualInfo?[]> sheets) =>
-        new(Layout!, sheets, VersoEnabled ? Verso?.Info : null, _fit, _flip, RotateVerso180,
-            _mode == LayoutMode.Repeat ? RepeatVisual?.Info.FileName : Strings.Get("PdfTitleCompose"), CutLines, BackHasMargins);
+    /// <param name="sheets">Indices of the sheets, from 0.</param>
+    private ImpositionJob BuildJob(IReadOnlyList<int> sheets)
+    {
+        // Mixed sheets each have their own layout, and their own cut lines setting (on by default).
+        var job = _mode == LayoutMode.Mixed
+            ? ImpositionJob.Mixed(_mixed, sheets) with { Title = Strings.Get("PdfTitleMixed"), CutLines = MixedCutLines }
+            : new ImpositionJob(Layout!, [.. sheets.Select(i => Plan.Sheets[i])], CutLines: CutLines,
+                Title: _mode == LayoutMode.Repeat ? RepeatVisual?.Info.FileName : Strings.Get("PdfTitleCompose"));
+        return job with
+        {
+            Verso = VersoEnabled ? Verso?.Info : null,
+            Fit = _fit,
+            Flip = _flip,
+            RotateVerso180 = RotateVerso180,
+            VersoMargins = BackHasMargins,
+        };
+    }
+
+    private List<int> AllSheets() => [.. Enumerable.Range(0, Plan.SheetCount)];
 }

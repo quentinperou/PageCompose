@@ -69,9 +69,9 @@ public partial class MainWindow : Window
     {
         var dialog = new OpenFileDialog
         {
-            Title = Strings.Get(ViewModel.IsComposeMode ? "OpenVisualsTitle" : "OpenVisualTitle"),
+            Title = Strings.Get(ViewModel.HasVisualList ? "OpenVisualsTitle" : "OpenVisualTitle"),
             Filter = Strings.Get("VisualsFilter"),
-            Multiselect = ViewModel.IsComposeMode,
+            Multiselect = ViewModel.HasVisualList,
         };
         if (dialog.ShowDialog(this) == true) await ViewModel.AddFilesAsync(dialog.FileNames);
     }

@@ -25,17 +25,25 @@ d'exemplaires que possible, avec traits de coupe et fond perdu en option, prête
 par défaut correspondent à la **FUJIFILM ApeosPro C810 for Photo** (feuilles SRA3, A3 et A4, marge non imprimable
 de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réelle.
 
-- **Deux modes** :
+- **Trois modes** :
   - **Répétition** : un seul visuel répété sur toute la feuille (cartes de visite, flyers…). La quantité se saisit
     en visuels ou en feuilles ; la dernière feuille peut être complétée, ou ne porter que les visuels demandés.
-  - **Composition** : plusieurs visuels différents sur la même feuille (les 8 photos d'une commande, par exemple),
+  - **Même format** : plusieurs visuels différents d'un même format sur la feuille (les 8 photos d'une commande, par exemple),
     chacun avec son nombre d'exemplaires. La dernière feuille peut être complétée en répétant les visuels, ou
     garder ses cases vides.
+  - **Multi-formats** : plusieurs formats sur la même feuille (des tirages 10 × 15, 13 × 18 et 20 × 30 d'une même commande,
+    des cartes de visite…), chaque visuel avec son format et ses exemplaires. Ils sont placés sur **le moins de
+    feuilles possible**, chaque feuille avec sa propre disposition, en coupes droites uniquement (comme au massicot).
+    L'aperçu **numérote les coupes dans l'ordre** ; les numéros restent à l'écran, le PDF n'a que des lignes de coupe
+    fines (désactivables) et, si vous le voulez, des traits de coupe pour les coupes qui touchent le bord du bloc.
+    **« Joindre le plan de coupe »** écrit à côté de chaque export un PDF A4 à imprimer sur papier ordinaire et
+    à garder près du massicot : chaque feuille avec ses coupes numérotées et la cote de chaque coupe (« 101,6 mm
+    depuis le haut » : ce bord contre la butée).
 - **Glisser-déposer** des fichiers ou un dossier entier n'importe où dans la fenêtre (ou cliquer pour choisir).
-  Déposer plusieurs fichiers en mode répétition fait passer en composition.
+  Déposer plusieurs fichiers en mode Répétition fait passer en Même format.
 - **Préréglages** : enregistrez sous un nom les réglages d'un travail habituel (mode, format et marges, feuille, coupe,
-  quantité en visuels ou en feuilles, recto verso, export) et retrouvez-les en un clic. Les fichiers et le nombre
-  d'exemplaires n'en font pas partie.
+  quantité en visuels ou en feuilles, recto verso, export) et retrouvez-les en un clic. Les fichiers, le nombre
+  d'exemplaires et le format de chaque ligne en mode Multi-formats n'en font pas partie.
   **Paramètres → Préréglages** les exporte dans un fichier `.PageCompose` (tous dans `all-preset.PageCompose`, ou un
   seul sous son propre nom) et les importe, pour les copier sur un autre PC ou les sauvegarder. Un **double clic** sur un fichier `.PageCompose` (ou un glisser-déposer dans la fenêtre) les
   importe aussi ; un fichier d'un seul préréglage l'applique aussitôt. Ce fichier reste du JSON lisible avec le
@@ -98,6 +106,13 @@ Exemples sur une feuille SRA3 :
 
 <p align="center">
   <img src=".github/screenshot-polaroid.fr.png" width="900" alt="Douze cadres Polaroid classiques sur une feuille SRA3, avec les marges blanches du cadre">
+</p>
+
+En mode Multi-formats, une commande de quatre 10 × 15, deux 13 × 18 et un 20 × 30 tient sur 2 feuilles SRA3, là où une
+planche par format en prend 3 :
+
+<p align="center">
+  <img src=".github/screenshot-mixed.fr.png" width="900" alt="Mode Multi-formats : tirages 10 x 15 et 20 x 30 sur une feuille SRA3, les coupes numérotées dans l'ordre">
 </p>
 
 ### Imprimer le PDF
@@ -173,9 +188,10 @@ l'autre langue sans changer de réglage, et `PAGECOMPOSE_THEME` à `Light` ou `D
 
 ```
 src/
-  PageCompose.Core/   Logique sans interface : calcul du montage, placement, répartition sur les feuilles,
-                      lecture des visuels (taille, EXIF, TrimBox PDF), écriture du PDF (PDFsharp),
-                      liste des versions publiées sur GitHub (mises à jour)
+  PageCompose.Core/   Logique sans interface : calcul du montage, placement des formats mélangés (coupes
+                      au massicot), placement, répartition sur les feuilles, lecture des visuels (taille,
+                      EXIF, TrimBox PDF), écriture du PDF (PDFsharp), liste des versions publiées sur
+                      GitHub (mises à jour)
   PageCompose.App/    Application WPF : panneau de réglages, aperçu (Windows.Data.Pdf), glisser-déposer,
                       paramètres, mises à jour, textes de l'interface
 installer/            Script Inno Setup de l'installateur
@@ -214,7 +230,7 @@ Un tag avec suffixe (`v1.1.0-beta.1`) est publié comme *pre-release* : seules l
 
 ## Feuille de route
 
-- [ ] Plusieurs formats sur la même feuille.
+- [x] Plusieurs formats sur la même feuille (mode Multi-formats, 0.5.0).
 - [ ] **Signature gratuite** de l'installateur via [SignPath Foundation](https://signpath.org) (projets open source) :
   plus d'avertissement SmartScreen.
 

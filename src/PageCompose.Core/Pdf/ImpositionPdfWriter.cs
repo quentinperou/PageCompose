@@ -8,8 +8,12 @@ namespace PageCompose.Core.Pdf;
 /// <param name="Layout">Computed layout.</param>
 /// <param name="Sheets">Visual of each cell, sheet by sheet (see <see cref="SheetFiller"/>); null = empty cell.</param>
 /// <param name="Verso">Back shared by every filled cell (null = single-sided).</param>
-/// <param name="CutLines">Thin lines along every cut, across the whole block, on the front (crop marks or not).</param>
+/// <param name="CutLines">
+/// Thin lines along every cut, on the front (crop marks or not): across the whole block of a grid, along each cut of
+/// a mixed sheet.
+/// </param>
 /// <param name="VersoMargins">The back keeps the white margins of the front (mirrored with the flip).</param>
+/// <param name="SheetLayouts">Layout of each sheet, when each has its own (mixed sizes); else every sheet uses <paramref name="Layout"/>.</param>
 public sealed record ImpositionJob(
     SheetLayout Layout,
     IReadOnlyList<VisualInfo?[]> Sheets,
@@ -19,8 +23,22 @@ public sealed record ImpositionJob(
     bool RotateVerso180 = false,
     string? Title = null,
     bool CutLines = false,
-    bool VersoMargins = false)
+    bool VersoMargins = false,
+    IReadOnlyList<SheetLayout>? SheetLayouts = null)
 {
+    /// <summary>Layout of sheet <paramref name="index"/> (from 0).</summary>
+    public SheetLayout LayoutOf(int index) => SheetLayouts?[index] ?? Layout;
+
+    /// <summary>The sheets of a mixed layout, as they are or only some of them (indices, from 0).</summary>
+    public static ImpositionJob Mixed(MixedPlan plan, IEnumerable<int>? sheets = null)
+    {
+        var chosen = (sheets ?? Enumerable.Range(0, plan.SheetCount)).Select(i => plan.Sheets[i]).ToList();
+        if (chosen.Count == 0)
+            throw new ArgumentException("No sheet to write.", nameof(plan));
+        return new ImpositionJob(chosen[0].Layout, chosen.Select(s => s.Visuals).ToList(), CutLines: true,
+            SheetLayouts: chosen.Select(s => s.Layout).ToList());
+    }
+
     /// <summary>The same visual in every cell of <paramref name="sheets"/> sheets.</summary>
     public static ImpositionJob Repeat(SheetLayout layout, VisualInfo visual, int sheets, VisualInfo? verso = null,
         FitMode fit = FitMode.Fill) =>
@@ -48,12 +66,13 @@ public static class ImpositionPdfWriter
     public static void Write(ImpositionJob job, Stream output)
     {
         ArgumentNullException.ThrowIfNull(job);
-        var layout = job.Layout;
-        if (layout.IsEmpty)
+        if (job.Layout.IsEmpty)
             throw new InvalidOperationException("The visual size does not fit on this sheet.");
         if (job.Sheets.Count == 0)
             throw new ArgumentException("No sheet to write.", nameof(job));
-        if (job.Sheets.Any(s => s.Length != layout.PerSheet))
+        if (job.SheetLayouts is { } own && (own.Count != job.Sheets.Count || own.Any(l => l.IsEmpty)))
+            throw new ArgumentException("Each sheet needs its own layout, with cells.", nameof(job));
+        if (job.Sheets.Select((s, i) => s.Length != job.LayoutOf(i).PerSheet).Any(wrong => wrong))
             throw new ArgumentException("Each sheet must have as many cells as the layout.", nameof(job));
 
         using var doc = new PdfDocument();
@@ -74,8 +93,9 @@ public static class ImpositionPdfWriter
             }
 
             var versoSide = new SideOptions(true, job.Flip, job.RotateVerso180, job.VersoMargins);
-            foreach (var sheet in job.Sheets)
+            for (int s = 0; s < job.Sheets.Count; s++)
             {
+                var (layout, sheet) = (job.LayoutOf(s), job.Sheets[s]);
                 var recto = layout.Cells.Select((cell, i) => (cell, visual: sheet[i])).ToList();
                 DrawSide(doc, layout, recto, ImageOf, job.Fit, SideOptions.Recto, job.CutLines);
 
@@ -95,7 +115,7 @@ public static class ImpositionPdfWriter
         }
     }
 
-    private static XImage Open(VisualInfo visual)
+    internal static XImage Open(VisualInfo visual)
     {
         if (visual.Kind == VisualKind.Pdf)
         {
@@ -115,6 +135,55 @@ public static class ImpositionPdfWriter
         page.Height = XUnit.FromMillimeter(layout.Sheet.Height);
 
         using var gfx = XGraphics.FromPdfPage(page);
+        DrawVisuals(gfx, layout, cells, imageOf, fit, side);
+
+        // A space wider than the bleed leaves a white band between two visuals. Painting it white changes nothing on
+        // paper, but Windows (preview, JPG export, flattened PDF) rounds clipping paths to whole pixels: a band of one
+        // or two pixels (0.1 mm at 300 dpi) would vanish between some columns or rows and not others.
+        if (layout.IsMixed)
+        {
+            foreach (var space in layout.Spaces)
+                gfx.DrawRectangle(XBrushes.White, ToPt(side.IsVerso ? MirrorForVerso(space, layout.Sheet, side.Flip) : space));
+        }
+        else if (layout.Options.SpacingMm > 2 * layout.Options.BleedMm)
+        {
+            PaintSpaces(gfx, side.IsVerso
+                ? [.. layout.Cells.Select(c => Placement.MirrorForVerso(c, layout.Sheet, side.Flip))]
+                : layout.Cells);
+        }
+
+        // Crop marks on the front only: that is the side facing up on the guillotine.
+        var pen = new XPen(XColors.Black, CropMarkWidthPt);
+        if (!side.IsVerso && layout.CropMarks.Count > 0)
+        {
+            foreach (var m in layout.CropMarks)
+                gfx.DrawLine(pen, Units.MmToPt(m.X1), Units.MmToPt(m.Y1), Units.MmToPt(m.X2), Units.MmToPt(m.Y2));
+        }
+
+        // A mixed sheet: its own cuts, each across the piece it cuts (the numbers of the cutting order are only on screen:
+        // printed, they would land on the visuals).
+        if (cutLines && layout.IsMixed)
+        {
+            foreach (var c in layout.CutSegments)
+                gfx.DrawLine(pen, Units.MmToPt(c.X1), Units.MmToPt(c.Y1), Units.MmToPt(c.X2), Units.MmToPt(c.Y2));
+        }
+        // Continuous cut lines over the visuals, from one side of the block of trims to the other. The cells form a
+        // grid: a line along the edge of one cell runs along the edges of its whole row or column.
+        else if (cutLines && layout.Cells.Count > 0)
+        {
+            double top = layout.Cells[0].Trim.Y, bottom = layout.Cells[^1].Trim.Bottom;
+            double left = layout.Cells[0].Trim.X, right = layout.Cells[^1].Trim.Right;
+            foreach (var x in layout.CutsX)
+                gfx.DrawLine(pen, Units.MmToPt(x), Units.MmToPt(top), Units.MmToPt(x), Units.MmToPt(bottom));
+            foreach (var y in layout.CutsY)
+                gfx.DrawLine(pen, Units.MmToPt(left), Units.MmToPt(y), Units.MmToPt(right), Units.MmToPt(y));
+        }
+    }
+
+    /// <summary>The visual of each cell, in the coordinates of the sheet (points); the cutting plan draws them smaller.</summary>
+    internal static void DrawVisuals(XGraphics gfx, SheetLayout layout, IEnumerable<(LayoutCell cell, VisualInfo? visual)> cells,
+        Func<VisualInfo, XImage> imageOf, FitMode fit, SideOptions side)
+    {
         foreach (var (layoutCell, visual) in cells)
         {
             if (visual is null) continue;
@@ -128,34 +197,6 @@ public static class ImpositionPdfWriter
             if (p.Mirror) gfx.ScaleTransform(-1, 1);
             gfx.DrawImage(imageOf(visual), ToPt(p.DrawRect));
             gfx.Restore(state);
-        }
-
-        // A space wider than the bleed leaves a white band between two visuals. Painting it white changes nothing on
-        // paper, but Windows (preview, JPG export, flattened PDF) rounds clipping paths to whole pixels: a band of one
-        // or two pixels (0.1 mm at 300 dpi) would vanish between some columns or rows and not others.
-        if (layout.Options.SpacingMm > 2 * layout.Options.BleedMm)
-            PaintSpaces(gfx, side.IsVerso
-                ? [.. layout.Cells.Select(c => Placement.MirrorForVerso(c, layout.Sheet, side.Flip))]
-                : layout.Cells);
-
-        // Crop marks on the front only: that is the side facing up on the guillotine.
-        var pen = new XPen(XColors.Black, CropMarkWidthPt);
-        if (!side.IsVerso && layout.CropMarks.Count > 0)
-        {
-            foreach (var m in layout.CropMarks)
-                gfx.DrawLine(pen, Units.MmToPt(m.X1), Units.MmToPt(m.Y1), Units.MmToPt(m.X2), Units.MmToPt(m.Y2));
-        }
-
-        // Continuous cut lines over the visuals, from one side of the block of trims to the other. The cells form a
-        // grid: a line along the edge of one cell runs along the edges of its whole row or column.
-        if (cutLines && layout.Cells.Count > 0)
-        {
-            double top = layout.Cells[0].Trim.Y, bottom = layout.Cells[^1].Trim.Bottom;
-            double left = layout.Cells[0].Trim.X, right = layout.Cells[^1].Trim.Right;
-            foreach (var x in layout.CutsX)
-                gfx.DrawLine(pen, Units.MmToPt(x), Units.MmToPt(top), Units.MmToPt(x), Units.MmToPt(bottom));
-            foreach (var y in layout.CutsY)
-                gfx.DrawLine(pen, Units.MmToPt(left), Units.MmToPt(y), Units.MmToPt(right), Units.MmToPt(y));
         }
     }
 
@@ -177,6 +218,10 @@ public static class ImpositionPdfWriter
                 gfx.DrawRectangle(XBrushes.White, ToPt(new RectMm(left, rows[i - 1].End, right - left, rows[i].Start - rows[i - 1].End)));
     }
 
-    private static XRect ToPt(RectMm r) =>
+    // As the cells of the back (Placement.MirrorForVerso).
+    private static RectMm MirrorForVerso(RectMm r, SizeMm sheet, DuplexFlip flip) =>
+        flip == DuplexFlip.LongEdge ? r.MirrorX(sheet.Width) : r.MirrorY(sheet.Height);
+
+    internal static XRect ToPt(RectMm r) =>
         new(Units.MmToPt(r.X), Units.MmToPt(r.Y), Units.MmToPt(r.Width), Units.MmToPt(r.Height));
 }

@@ -25,16 +25,23 @@ copies as fit, with optional crop marks and bleed, ready to cut on a guillotine.
 **FUJIFILM ApeosPro C810 for Photo** (SRA3, A3 and A4 sheets, 4.1 mm unprintable margin), but the PDF works
 with any printer that prints at actual size.
 
-- **Two modes**:
+- **Three modes**:
   - **Repeat**: one visual repeated over the whole sheet (business cards, flyers…). Enter the quantity in visuals
     or in sheets; the last sheet can be filled, or hold just the visuals asked for.
-  - **Compose**: several different visuals on the same sheet (the 8 photos of an order, for instance), each with
+  - **Same size**: several different visuals of one size on the same sheet (the 8 photos of an order, for instance), each with
     its own number of copies. The last sheet can be filled by repeating the visuals, or keep empty cells.
+  - **Mixed sizes**: several sizes on the same sheet (10 × 15, 13 × 18 and 20 × 30 prints of one order, business cards…),
+    each visual with its own size and copies. They are packed on **as few sheets as possible**, each sheet its own
+    arrangement, with straight cuts only (as on a guillotine). The preview **numbers the cuts in cutting order**; the
+    numbers are only on screen, the PDF gets thin cut lines (can be turned off) and, if you like, crop marks for the
+    cuts that reach the edge of the block. **"Add the cutting plan"** writes, next to each export,
+    an A4 PDF to print on plain paper and keep by the guillotine: each sheet with its numbered cuts and the
+    measurement of each cut ("101.6 mm from the top": that edge against the back gauge).
 - **Drag and drop** files or a whole folder anywhere in the window (or click to choose). Dropping several files
-  in Repeat mode switches to Compose.
+  in Repeat mode switches to Same size.
 - **Presets**: save the settings of a usual job under a name (mode, size and margins, sheet, cutting, quantity in
-  visuals or in sheets, double-sided, export) and get them back in one click. Files and the number of copies are not
-  part of them. **Settings → Presets** exports
+  visuals or in sheets, double-sided, export) and get them back in one click. Files, the number of copies and the
+  size of each line in Mixed sizes mode are not part of them. **Settings → Presets** exports
   them to a `.PageCompose` file (all of them in `all-preset.PageCompose`, or a single one under its own name) and
   imports them, to copy them to another PC or keep them safe. A **double click** on
   a `.PageCompose` file (or dropping it on the window) imports them too; a file of a single preset applies it at once.
@@ -92,6 +99,13 @@ Examples on an SRA3 sheet:
 
 <p align="center">
   <img src=".github/screenshot-polaroid.png" width="900" alt="Twelve classic Polaroid frames on an SRA3 sheet, with the white margins of the frame">
+</p>
+
+In Mixed sizes mode, an order of four 10 × 15, two 13 × 18 and one 20 × 30 takes 2 SRA3 sheets, where one sheet per size
+takes 3:
+
+<p align="center">
+  <img src=".github/screenshot-mixed.png" width="900" alt="Mixed sizes mode: 10 x 15 and 20 x 30 prints packed on an SRA3 sheet, the cuts numbered in cutting order">
 </p>
 
 ### Printing the PDF
@@ -166,9 +180,9 @@ language without changing any setting, and `PAGECOMPOSE_THEME` to `Light` or `Da
 
 ```
 src/
-  PageCompose.Core/   Logic without UI: layout computation, placement, distribution over the sheets,
-                      reading the visuals (size, EXIF, PDF TrimBox), writing the PDF (PDFsharp),
-                      list of the GitHub releases (updates)
+  PageCompose.Core/   Logic without UI: layout computation, packing of mixed sizes (guillotine cuts),
+                      placement, distribution over the sheets, reading the visuals (size, EXIF, PDF
+                      TrimBox), writing the PDF (PDFsharp), list of the GitHub releases (updates)
   PageCompose.App/    WPF app: settings panel, preview (Windows.Data.Pdf), drag and drop, settings, updates,
                       UI strings
 installer/            Inno Setup script of the installer
@@ -207,7 +221,7 @@ offer it. Installed apps find a new version at their next start.
 
 ## Roadmap
 
-- [ ] Several sizes on the same sheet.
+- [x] Several sizes on the same sheet (Mixed sizes mode, 0.5.0).
 - [ ] **Free signing** of the installer through [SignPath Foundation](https://signpath.org) (for open source projects): no more SmartScreen warning.
 
 ## Privacy policy

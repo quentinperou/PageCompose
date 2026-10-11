@@ -18,19 +18,88 @@
     <value>Repeat</value>
   </data>
   <data name="ModeCompose" xml:space="preserve">
-    <value>Compose</value>
+    <value>Same size</value>
   </data>
   <data name="ModeRepeatHint" xml:space="preserve">
     <value>One visual repeated over the whole sheet.</value>
   </data>
   <data name="ModeComposeHint" xml:space="preserve">
-    <value>Several different visuals on the same sheet, each with its own number of copies.</value>
+    <value>Several visuals of the same size, each with its own copies.</value>
+  </data>
+  <data name="ModeMixed" xml:space="preserve">
+    <value>Mixed sizes</value>
+  </data>
+  <data name="ModeMixedHint" xml:space="preserve">
+    <value>Each visual has its own size; the numbers give the cutting order.</value>
+  </data>
+  <data name="ItemSize" xml:space="preserve">
+    <value>Print size</value>
+  </data>
+  <data name="MixedHeadline" xml:space="preserve">
+    <value>Mixed sizes</value>
+  </data>
+  <data name="QualityTooLarge" xml:space="preserve">
+    <value>Too large for the sheet</value>
+  </data>
+  <data name="NoticeTooLarge" xml:space="preserve">
+    <value>Too large for a {1} sheet, left out: {0}.</value>
+  </data>
+  <data name="FileNameMixed" xml:space="preserve">
+    <value>mixed-sizes_{0}-visuals_{1}_{2}-sheets</value>
+  </data>
+  <data name="PdfTitleMixed" xml:space="preserve">
+    <value>Mixed sizes</value>
+  </data>
+  <data name="MixedCutLines" xml:space="preserve">
+    <value>Cut lines (along each cut)</value>
+  </data>
+  <data name="NoticeWithoutCropMarksSheets" xml:space="preserve">
+    <value>Without crop marks: {0}.</value>
+  </data>
+  <data name="SectionExport" xml:space="preserve">
+    <value>Export</value>
+  </data>
+  <data name="CuttingPlan" xml:space="preserve">
+    <value>Add the cutting plan (A4)</value>
+  </data>
+  <data name="CuttingPlanTooltip" xml:space="preserve">
+    <value>A separate PDF to print on plain paper: the cuts in order, with their measurements.</value>
+  </data>
+  <data name="CuttingPlanFileName" xml:space="preserve">
+    <value>{0}-cutting-plan</value>
+  </data>
+  <data name="CuttingPlanTitle" xml:space="preserve">
+    <value>Cutting plan</value>
+  </data>
+  <data name="CuttingPlanSheet" xml:space="preserve">
+    <value>Sheet {0} / {1} · {2} · front side up</value>
+  </data>
+  <data name="CuttingPlanHint" xml:space="preserve">
+    <value>Cut in the order of the numbers.</value>
+  </data>
+  <data name="CuttingPlanMeasureHint" xml:space="preserve">
+    <value>Measured from the cut to the edge named, that edge against the back gauge.</value>
+  </data>
+  <data name="CutFromTop" xml:space="preserve">
+    <value>{0} mm from the top</value>
+  </data>
+  <data name="CutFromBottom" xml:space="preserve">
+    <value>{0} mm from the bottom</value>
+  </data>
+  <data name="CutFromLeft" xml:space="preserve">
+    <value>{0} mm from the left</value>
+  </data>
+  <data name="CutFromRight" xml:space="preserve">
+    <value>{0} mm from the right</value>
+  </data>
+  <data name="ToastWithPlan" xml:space="preserve">
+    <value> + cutting plan</value>
   </data>
   <data name="SectionVisual" xml:space="preserve">
-    <value>1. Visual</value>
+    <value>Visual</value>
   </data>
   <data name="SectionVisuals" xml:space="preserve">
-    <value>1. Visuals</value>
+    <value>Visuals</value>
   </data>
   <data name="DropVisual" xml:space="preserve">
     <value>Drop a visual here or click to choose</value>
@@ -90,7 +159,7 @@
     <value>The PDF alternates front and back. Crop marks are on the front.</value>
   </data>
   <data name="SectionFormat" xml:space="preserve">
-    <value>2. Visual size</value>
+    <value>Visual size</value>
   </data>
   <data name="WidthMm" xml:space="preserve">
     <value>Width (mm)</value>
@@ -180,7 +249,7 @@
     <value>Custom…</value>
   </data>
   <data name="SectionSheet" xml:space="preserve">
-    <value>3. Sheet</value>
+    <value>Sheet</value>
   </data>
   <data name="Sheet_SRA3" xml:space="preserve">
     <value>SRA3 (320 × 450)</value>
@@ -216,7 +285,7 @@
     <value>Enter a sheet width and height between {0} and {1} mm.</value>
   </data>
   <data name="SectionCutting" xml:space="preserve">
-    <value>4. Cutting and fill</value>
+    <value>Cutting and fill</value>
   </data>
   <data name="CropMarks" xml:space="preserve">
     <value>Crop marks</value>
@@ -252,7 +321,7 @@
     <value>Fit (whole image, no cropping)</value>
   </data>
   <data name="SectionQuantity" xml:space="preserve">
-    <value>5. Quantity</value>
+    <value>Quantity</value>
   </data>
   <data name="Quantity" xml:space="preserve">
     <value>Quantity</value>
@@ -264,7 +333,7 @@
     <value>sheets</value>
   </data>
   <data name="ComposeCopiesHint" xml:space="preserve">
-    <value>Set the number of copies on each visual (section 1).</value>
+    <value>Set the number of copies on the line of each visual.</value>
   </data>
   <data name="CompleteLastSheet" xml:space="preserve">
     <value>Fill the last sheet by repeating the visuals</value>
@@ -340,10 +409,10 @@ The file may be open in another program.</value>
     <value>{0}_{1}_{2}_{3}-per-sheet_{4}-sheets</value>
   </data>
   <data name="FileNameCompose" xml:space="preserve">
-    <value>composition_{0}-visuals_{1}_{2}_{3}-sheets</value>
+    <value>same-size_{0}-visuals_{1}_{2}_{3}-sheets</value>
   </data>
   <data name="PdfTitleCompose" xml:space="preserve">
-    <value>Composition</value>
+    <value>Same size</value>
   </data>
   <data name="PreviousSheetTooltip" xml:space="preserve">
     <value>Previous sheet</value>
@@ -359,6 +428,9 @@ The file may be open in another program.</value>
   </data>
   <data name="RotateHalf" xml:space="preserve">
     <value>Turn upside down (180°)</value>
+  </data>
+  <data name="RotateAuto" xml:space="preserve">
+    <value>Automatic rotation</value>
   </data>
   <data name="ZoomInTooltip" xml:space="preserve">
     <value>Zoom in (Ctrl +)</value>
@@ -508,7 +580,7 @@ The file may be open in another program.</value>
     <value> · trim {0} × {1}</value>
   </data>
   <data name="FilesSwitchedToCompose" xml:space="preserve">
-    <value>{0} visuals dropped: switched to Compose mode.</value>
+    <value>{0} visuals dropped: switched to the “Same size” mode.</value>
   </data>
   <data name="FilesDuplicates" xml:space="preserve">
     <value>{0} file(s) already in the list, skipped.</value>

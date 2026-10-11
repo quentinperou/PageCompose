@@ -59,6 +59,9 @@ public sealed class AppSettings
     public double CustomSheetMargin { get; set; } = Core.SheetFormats.PrinterMarginMm;
     public bool CropMarks { get; set; } = true;
     public bool CutLines { get; set; }
+
+    /// <summary>Cut lines along each cut in the Mixed mode (apart from those of the grids: on by default).</summary>
+    public bool MixedCutLines { get; set; } = true;
     public bool BleedEnabled { get; set; }
     public double BleedMm { get; set; } = 2;
     public bool SpacingEnabled { get; set; }
@@ -79,14 +82,17 @@ public sealed class AppSettings
 
     public bool CompleteLastSheet { get; set; }
 
-    /// <summary>The quantity is typed in visuals or in sheets.</summary>
+    /// <summary>The quantity is typed in visuals or in sheets (Repeat mode). Sheets by default (asked by the author).</summary>
     [JsonConverter(typeof(JsonStringEnumConverter<QuantityUnit>))]
-    public QuantityUnit Unit { get; set; } = QuantityUnit.Items;
+    public QuantityUnit Unit { get; set; } = QuantityUnit.Sheets;
 
     public string? LastExportFolder { get; set; }
 
-    /// <summary>Export each sheet side as a 300 dpi picture in the PDF.</summary>
-    public bool FlattenPdf { get; set; }
+    /// <summary>Export each sheet side as a 300 dpi picture in the PDF. On by default (asked by the author).</summary>
+    public bool FlattenPdf { get; set; } = true;
+
+    /// <summary>Mixed mode: the cutting plan (A4 PDF) is written next to each export.</summary>
+    public bool CuttingPlan { get; set; } = true;
 
     // A missing or damaged file just means default settings: preferences are never worth an error message.
     public static AppSettings Load()

@@ -8,16 +8,17 @@ Guidance for Claude Code and contributors working on this repository. `README.md
 **PageCompose**: a small open-source (MIT) Windows 11 app that lays out visuals (JPG, PNG, PDF) on a sheet and
 exports a **print-ready PDF** (step and repeat, crop marks, bleed, double-sided). Made for a photo shop printing on a
 **FUJIFILM ApeosPro C810 for Photo** (SRA3 / A3 / A4 sheets, 4.1 mm unprintable margin). UI in English and French.
-Author: [QuentinPerou](https://github.com/quentinperou). Planned repository: https://github.com/quentinperou/PageCompose
-(not published yet: the author commits and publishes himself). Credits wording: "Developed by QuentinPerou, with
-Claude Code (Anthropic)".
+Author: [QuentinPerou](https://github.com/quentinperou). Repository: https://github.com/quentinperou/PageCompose
+(public since October 11, 2026; the author commits and publishes himself). Credits wording: "Developed by
+QuentinPerou, with Claude Code (Anthropic)".
 
 **Talk to the author in French.** Code, comments, commit messages and these docs are in English.
 
-## Project status (October 10, 2026)
+## Project status (October 11, 2026)
 
-Version **0.4.9** works end to end, developed and tested on Windows 11 (build 26200), and is installed on the shop
-PC. 0.4.9 drops two notices that repeated the settings column (empty cells, "Fit" mode). 0.4.8 stops photos from turning in some Polaroid frames and not others (a square image area within 1 µm turns
+Version **0.5.0** adds the third mode, **Mixed** (several print sizes on a sheet, packed with guillotine cuts, the
+cutting order numbered on the preview), and widens the settings column from 430 to 470 px. Version **0.4.9** works
+end to end, developed and tested on Windows 11 (build 26200), and is installed on the shop PC. 0.4.9 drops two notices that repeated the settings column (empty cells, "Fit" mode). 0.4.8 stops photos from turning in some Polaroid frames and not others (a square image area within 1 µm turns
 nothing), turns a visual by hand from the right click menu of its line, keeps the title, the Settings button and
 the presets fixed above the settings that scroll, and lets the mouse wheel over a closed drop-down list scroll the
 settings instead of changing the list (`App.ComboBox_PreviewMouseWheel`, a class handler for every ComboBox). 0.4.7 keeps the unit of the quantity (visuals or sheets) in the presets and the settings. 0.4.6 adds the preview zoom and paints the space between visuals white, so that a 0.1 mm space shows in
@@ -31,8 +32,12 @@ custom sheet with its own unprintable margin, the optional filling of the last s
 Up / Down arrows in number fields, continuous cut lines, and the image fallback for PDFs that PDFsharp cannot read;
 the photo sizes moved to exact inches.
 
-- Two modes: **Repeat** (one visual over the whole sheet, quantity in visuals or sheets) and **Compose** (several
-  visuals, each with its own copies). In both, "Fill the last sheet" is optional (off: exactly the quantity asked).
+- Three modes: **Repeat** (one visual over the whole sheet, quantity in visuals or sheets), **Compose** (several
+  visuals of one size, each with its own copies) and **Mixed** (several visuals, each with its own size and copies,
+  packed on as few sheets as possible). Those are their names in the code and these notes (`LayoutMode`, settings,
+  presets); the UI calls them **Repeat · Same size · Mixed sizes**, in French **Répétition · Même format ·
+  Multi-formats** (renamed in 0.5.0 at the author's request: "Composition" sounded like the mode of several sizes). In Repeat and Compose, "Fill the last sheet" is optional (off: exactly the
+  quantity asked); Mixed lays exactly the copies asked.
 - Drag and drop of files and folders, shared back (double-sided) with the front and back previews side by side,
   sheet navigation, resolution and cropping checks, export.
 - English/French UI with live switching from Settings (the main window is rebuilt on the same view model).
@@ -40,14 +45,15 @@ the photo sizes moved to exact inches.
 - Updates from GitHub Releases, as in CropPdf: check at startup (can be turned off), Stable/Beta channel, bar in the
   main window, download checked with SHA-256, silent install and relaunch. The Settings window copies CropPdf's
   (language, theme, updates, about).
-- 585 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.4.9.exe` locally (Inno Setup 6).
+- 617 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.5.0.exe` locally (Inno Setup 6).
 - The installer is not signed: the UAC prompt shows "Unknown publisher" (QuentinPerou appears in the file details
   and in Installed apps). Left as is for now (October 10, 2026). A paid certificate would show the author's legal
   name, SignPath Foundation its own name; only a self-signed certificate trusted by hand on each PC shows "QuentinPerou".
 - First commit on October 10, 2026 (branch `main`), made by Claude at the author's request, as QuentinPerou with his
-  GitHub noreply address, set in the repository's own config. Not done yet: GitHub repository, push, CI run,
-  release. Until the repository exists, the update check gets a 404 and says "no version has been published on
-  GitHub yet". The project started as "Apeos Print" (layout +
+  GitHub noreply address, set in the repository's own config, and tagged `v0.4.9`. Published on October 11, 2026:
+  public repository https://github.com/quentinperou/PageCompose, `main` and `v0.4.9` pushed, the workflow built and
+  published the release `v0.4.9` with `PageCompose-Setup-0.4.9.exe` (the update check now finds it). The project
+  started as "Apeos Print" (layout +
   direct printing to the ApeosPro); direct printing was dropped on October 10, 2026: nothing is ever sent to a printer.
 
 ## Architecture
@@ -56,10 +62,23 @@ the photo sizes moved to exact inches.
   - `Layout/LayoutEngine`: step and repeat layout (both orientations tried, block centred, crop marks);
   - `Layout/Placement`: a visual in its cell (fill / fit, auto quarter turn, EXIF, back orientation, PDF on its TrimBox);
   - `Layout/SheetFiller`: visuals assigned to the cells, sheet by sheet;
+  - `Layout/MixedPacker`: the Mixed mode. `MixedItem`s (visual, size, copies, margins of its size) → `MixedPlan`
+    (one `MixedSheet` per sheet: its own `SheetLayout` with `IsMixed`, `CutSegments` in cutting order and white
+    `Spaces`, and the item of each cell; items too large left out). A guillotine tree per sheet, many heuristics
+    tried (fewer above 150 copies), `NumberPositions` places the cut numbers on screen;
   - `Visuals/VisualLoader`: JPEG/PNG headers read without decoding, EXIF orientation, PDF through PDFsharp;
     errors are `VisualLoadException` with a `VisualLoadError` code that the UI translates;
-  - `Pdf/ImpositionPdfWriter`: writes the PDF (PDFsharp 6.2.4, MIT). `Pdf/FlatPdfWriter`: the flattened PDF, one
-    JPEG picture per page, embedded as it is.
+  - `Pdf/ImpositionPdfWriter`: writes the PDF (PDFsharp 6.2.4, MIT); `ImpositionJob.SheetLayouts` gives each sheet
+    its own layout (`ImpositionJob.Mixed`). `Pdf/FlatPdfWriter`: the flattened PDF, one JPEG picture per page,
+    embedded as it is.
+  - `Pdf/CuttingPlanWriter`: the cutting plan of the Mixed mode, an A4 PDF to print on office paper, never with the
+    sheets: one page per sheet, the sheet drawn smaller (its visuals faded, through `ImpositionPdfWriter.DrawVisuals`)
+    with the name of each size, the cuts in red, their numbers, and a column of measurements
+    (`SheetLayout.CutMeasurement`: from the top or left edge of the piece cut, `CutPieces`; a part narrower than
+    `MinHeldMm` = 30 mm, which the clamp cannot hold, from the bottom or right). At the foot of each page, on the
+    right, the icon of the app (its 256 px PNG, passed by the app), "PageCompose" and its GitHub address, a link
+    (asked by the author). The only text PDFsharp draws in the app: Segoe UI read from the Windows fonts folder
+    (`WindowsFonts`, the core build of PDFsharp finds no font).
   - `UpdateFeed` + `SemanticVersion`: GitHub "list releases" API of `quentinperou/PageCompose`, asset
     `PageCompose-Setup-*.exe` and its `digest` (SHA-256), SemVer 2.0 ordering, never offers a downgrade
     (ported from CropPdf).
@@ -84,6 +103,22 @@ the photo sizes moved to exact inches.
     `/SP- /SILENT /NORESTART /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /RELAUNCH=1` (the `.iss` relaunches the app).
   - `ViewModels/MainViewModel`: modes, `VisualItem` list (thumbnail, copies, dpi), recomputed on every change;
     the preview is regenerated 200 ms after the last change, for the displayed sheet only.
+  - **Mixed mode** (`RecomputeMixed`): uses the `Visuals` list of Compose; each line has its own size
+    (`VisualItem.Format`, preset sizes only, `MixedFormats`), on a row of its own across the whole line (the author
+    chose it among three places: under the name cut long size names, on the right left no room for the file name).
+    A new line takes the size of the size section if it is a preset one, else 10 × 15. That section is hidden, as "Fill the
+    last sheet" and the margins on the back (the back covers each cell). The crop marks are offered (shared with the
+    grids: those of the cuts that reach the edge of the block, with a notice when fewer sheets fit without them), and
+    the cut lines have a setting of their own, `MixedCutLines` ("along each cut", on by default, in the settings and
+    the presets), since those of the grids are often off (asked by the author: both were first hidden). `Layout` is the shown sheet's; `CutNumbers` draws the cutting order over the front of the preview only
+    (never in the PDF or JPG: the numbers would land on the photos). `MixedPacker.NumberPositions(layout, size)`
+    places them, for the screen and the cutting plan alike: the numbers of the edges of the block just outside it,
+    beside its bleed (easier to read, asked by the author; kept on the sheet when the margin is too narrow), the
+    others along their cut, apart from each other. The last packing is kept (`_lastPacking`) while
+    sheet, bleed, spacing, sizes and copies do not change. Notices: each line checked in its first cell, the back in
+    the largest; too large lines say so on their line and in a notice. "Add the cutting plan (A4)" (`CuttingPlan`,
+    on by default, in the settings and the presets, shown in the Mixed mode only) writes `<name>-cutting-plan.pdf`
+    (`-plan-de-coupe` in French) next to each export, PDF or JPG; the toast says "+ cutting plan".
   - **The preview is the real PDF**, rendered by `Windows.Data.Pdf` (`Services/PdfPreviewRenderer`): no drawing
     logic is duplicated in the UI.
   - **Preview zoom** (`MainWindow.xaml.cs`, "Preview zoom"): zoom 1 = the sheets fit the area (Viewbox, no scroll
@@ -107,7 +142,8 @@ the photo sizes moved to exact inches.
     There is no "open after export" option: the toast offers it (removed at the author's request).
   - **Presets** (`Services/LayoutPreset` + `PresetStore`): the settings of a job under a name, never the files nor
     the number of copies (decided with the author); the unit of the quantity, visuals or sheets, is kept
-    (`LayoutPreset.Unit`, asked by the author; older presets read as visuals). The unit is also kept in the settings. Stored in their own `%LOCALAPPDATA%\PageCompose\presets.json`, read
+    (`LayoutPreset.Unit`, asked by the author; older presets read as visuals). The unit is also kept in the settings,
+    **sheets by default** (asked by the author in 0.5.0). Stored in their own `%LOCALAPPDATA%\PageCompose\presets.json`, read
     again before each change (several windows), damaged copy kept aside. The list shows a preset only while the
     settings match it: a manual change clears the selection, so picking it again applies it again. Settings →
     Presets exports them (`{"Format": "PageCompose presets", "Version": 1, "Presets": [...]}`) and imports them
@@ -127,8 +163,12 @@ the photo sizes moved to exact inches.
     `NumericInput.Minimum`; "." and "," both become the decimal separator of the PC) and `TextWrapping="Wrap"`, which
     hides the Fluent clear button (it hid the digits of narrow boxes). A text box for text sets `NumericInput.Step="0"`. The settings column's `ScrollViewer` is not focusable, or a keyboard focus frame shows
     around the whole column.
-  - Settings column: the title, the Settings button and the presets are fixed at the top (asked by the author), the
-    export buttons at the bottom, each with a divider; only the settings between them scroll.
+  - Settings column: the sections have no number in their title (asked by the author in 0.5.0: some are hidden in
+    some modes, the numbers then jumped). The title, the Settings button and the presets are fixed at the top (asked by the author), the
+    two export buttons at the bottom, each with a divider; only the settings between them scroll. The export options
+    ("Flatten the PDF", "Add the cutting plan" in the Mixed mode) are in the last section, "Export", at the end of
+    the scroll (asked by the author in 0.5.0); both are saved in the settings and in the presets, and both are on by
+    default (the author's choice).
   - **Notices under the preview** (`MainViewModel.AddVisualNotices`): only what the settings column does not already
     show (resolution, cropping, own bleed, missing back, how many fit without crop marks). The author removed those
     that repeated it: the empty cells (in the quantity summary) and the "Fit" mode (in its own label).
@@ -184,7 +224,17 @@ the photo sizes moved to exact inches.
 - **Turn by hand** (`VisualInfo.UserRotation`, right click on a file line: right, left, 180°): applied on the sheet
   after the automatic quarter turn, so it turns the visual as shown and the automatic turn never undoes it (a photo
   taken sideways). The thumbnail turns with it, the resolution and cropping checks follow (they read the final angle).
-  It belongs to the file line, not to the presets.
+  It belongs to the file line, not to the presets, and stays through every change of the settings; "Automatic
+  rotation" (last item of the menu, enabled once turned by hand) gives the automatic turn alone back (0.5.0).
+- **Mixed mode** (`MixedPacker`): fewest sheets first (each sheet its own arrangement), then fewest cuts, then the
+  smallest block on the last sheet; quarter turns allowed; the current bleed and space apply (area = printable area
+  less the bleed, each visual takes its size plus the gap); block centred. Cuts are guillotine cuts, each across the
+  piece it cuts: the four edges of the block first (not those on the edge of the sheet: a full lab print needs
+  none), then piece by piece, each part trimmed to its visuals; with a space between two parts, one cut on each side
+  of it. Numbers on screen only, thin cut lines in the PDF (decided with the author; can be turned off). Crop marks,
+  when asked, only in line with the cuts that reach the edge of the block (its edges included: a mark at each
+  corner), with the same 3 mm kept around the block as in the grids; a cut inside a piece gets none (the cutting
+  plan gives it). The spaces wider than the bleeds are painted white, as in the other modes.
 - Instant frames: overall and image sizes are the published ones (Polaroid 88 × 107, image 79 × 79; Instax Mini
   54 × 86 / 46 × 62; Square 72 × 86 / 62 × 62; Wide 108 × 86 / 99 × 62). The top/bottom split of the border is not
   published: it is an estimate (Polaroid 6 / 22 mm, Instax 6 / 18 mm), adjustable in the app.
@@ -227,9 +277,11 @@ the photo sizes moved to exact inches.
   (needs Ghostscript, installed on the shop PC).
 - NuGet source: `nuget.config` (the shop PC has no global NuGet source).
 - README screenshots, in English and French (`.fr.png`), the main window at its default size (1360 × 900), light
-  theme: `.github/screenshot.png` (Compose mode, three photos 10 × 15 on SRA3, the back shown) and
-  `.github/screenshot-polaroid.png` (Repeat mode, classic Polaroid on SRA3, margin fields shown). The script that
-  takes them is in `.local\` (see below), from the default settings; the current ones show version 0.4.4.
+  theme: `.github/screenshot.png` (Compose mode, three photos 10 × 15 on SRA3, the back shown),
+  `.github/screenshot-polaroid.png` (Repeat mode, classic Polaroid on SRA3, margin fields shown) and
+  `.github/screenshot-mixed.png` (Mixed mode, 10 × 15, 13 × 18 and 20 × 30 on SRA3, cut numbers shown). Synthetic
+  photos only (gradient, sun and hill, in the proportions of their sizes: the author liked them). The script that
+  takes them is in `.local\` (see below), from the default settings; `-Preview` saves window pictures to check first.
 
 ## Working on several PCs
 
@@ -253,6 +305,9 @@ The project folder lives on a USB drive, so that work can go on at the shop and 
 ## Releasing
 
 1. Bump `<Version>` in `Directory.Build.props`.
-2. Commit, tag `vX.Y.Z`, push the tag.
+2. Commit, push `main`, tag `vX.Y.Z`, push the tag (from the home PC only, never from the shop PC).
 3. `.github/workflows/build.yml` checks that the tag matches the version, builds, tests and publishes
    `PageCompose-Setup-X.Y.Z.exe` in a GitHub Release (a `-suffix` tag is a pre-release).
+4. Replace the generated "Full Changelog" notes with a short patch note in English, in the style of CropPdf's
+   releases (bold summary line, New / Fixes, Installation with the SmartScreen line, SHA-256 of the installer):
+   `gh release edit vX.Y.Z --notes-file <file>`.

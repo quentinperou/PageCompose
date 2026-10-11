@@ -3,6 +3,7 @@ using PageCompose.Core.Pdf;
 using PageCompose.Core.Visuals;
 using PdfSharp.Pdf;
 using PdfSharp.Pdf.Advanced;
+using PdfSharp.Pdf.Annotations;
 using PdfSharp.Pdf.Content;
 using PdfSharp.Pdf.Content.Objects;
 using PdfSharp.Pdf.IO;
@@ -188,6 +189,73 @@ public sealed class ImpositionPdfWriterTests : IDisposable
     }
 
     [Fact]
+    public void Mixed_sheets_each_have_their_own_layout()
+    {
+        var photo = VisualLoader.Load(_files.Jpeg(1200, 1800, name: "photo.jpg"));
+        var card = VisualLoader.Load(_files.Jpeg(1063, 650, name: "card.jpg"));
+        var verso = VisualLoader.Load(_files.Jpeg(1000, 640, name: "verso.jpg"));
+        var plan = MixedPacker.Pack(SheetFormats.Sra3,
+            [new MixedItem(photo, ItemFormats.Photo15x20.Size, 3), new MixedItem(card, ItemFormats.BusinessCard.Size, 12)], 0, 3);
+        Assert.Equal(2, plan.SheetCount);
+
+        using var doc = WriteAndOpen(ImpositionJob.Mixed(plan) with { Verso = verso });
+        using var second = WriteAndOpen(ImpositionJob.Mixed(plan, [1]));
+
+        Assert.Equal(4, doc.PageCount);              // front and back of both sheets
+        Assert.Equal(3, ImageXObjects(doc).Count);   // each picture once
+        Assert.Equal(1, second.PageCount);
+        // The spaces of each sheet are painted white, on the back too.
+        Assert.Equal(plan.Sheets[0].Layout.Spaces.Count, WhiteRectangles(doc.Pages[0]));
+        Assert.Equal(plan.Sheets[0].Layout.Spaces.Count, WhiteRectangles(doc.Pages[1]));
+        Assert.Equal(plan.Sheets[1].Layout.Spaces.Count, WhiteRectangles(doc.Pages[2]));
+    }
+
+    [Fact]
+    public void Mixed_cut_lines_are_drawn_on_the_front_only()
+    {
+        var photo = VisualLoader.Load(_files.Jpeg(1200, 1800, name: "photo.jpg"));
+        var verso = VisualLoader.Load(_files.Jpeg(1000, 640, name: "verso.jpg"));
+        var plan = MixedPacker.Pack(SheetFormats.Sra3, [new MixedItem(photo, ItemFormats.Photo13x18.Size, 4)]);
+        var job = ImpositionJob.Mixed(plan) with { Verso = verso };
+
+        using var lined = WriteAndOpen(job);
+        using var plain = WriteAndOpen(job with { CutLines = false });
+
+        Assert.True(ContentLength(lined.Pages[0]) > ContentLength(plain.Pages[0]));
+        Assert.Equal(ContentLength(plain.Pages[1]), ContentLength(lined.Pages[1]));
+    }
+
+    [Fact]
+    public void Cutting_plan_has_one_A4_page_per_sheet()
+    {
+        var photo = VisualLoader.Load(_files.Jpeg(1200, 1800, name: "photo.jpg"));
+        var card = VisualLoader.Load(_files.Jpeg(1063, 650, name: "card.jpg"));
+        var plan = MixedPacker.Pack(SheetFormats.Sra3,
+            [new MixedItem(photo, ItemFormats.Photo15x20.Size, 3), new MixedItem(card, ItemFormats.BusinessCard.Size, 12)], 0, 3);
+        var texts = new CuttingPlanTexts("Cutting plan", "Sheet {0} / {1} · {2}", "Cut in the order of the numbers.",
+            "{0} mm from the top", "{0} mm from the bottom", "{0} mm from the left", "{0} mm from the right", "From the edge named.");
+        var path = _files.Path("plan.pdf");
+
+        using (var fs = File.Create(path))
+            CuttingPlanWriter.Write(plan, ["Photo 15 × 20", "Business card"], "SRA3", "job", texts, fs,
+                logoPng: File.ReadAllBytes(_files.Png(64, 64, name: "logo.png")));
+        using var doc = PdfReader.Open(path, PdfDocumentOpenMode.Import);
+
+        Assert.Equal(plan.SheetCount, doc.PageCount);
+        Assert.All(doc.Pages.Cast<PdfPage>(), p =>
+        {
+            Assert.Equal(210, p.Width.Millimeter, 1);
+            Assert.Equal(297, p.Height.Millimeter, 1);
+            // At the foot of the page: a link to the GitHub page of the app.
+            var link = Assert.Single(p.Annotations.Cast<PdfAnnotation>());
+            Assert.Equal("https://github.com/quentinperou/PageCompose", link.Elements.GetDictionary("/A")!.Elements.GetString("/URI"));
+            Assert.InRange(link.Rectangle.Y1, 0, Units.MmToPt(20));
+        });
+        Assert.Equal(3, ImageXObjects(doc).Count); // the visuals and the icon, each once
+        Assert.Throws<ArgumentException>(() => CuttingPlanWriter.Write(MixedPlan.Empty, [], "SRA3", null, texts, Stream.Null));
+    }
+
+    [Fact]
     public void Sheets_must_match_the_layout()
     {
         var jpg = VisualLoader.Load(_files.Jpeg(100, 100));
@@ -197,6 +265,9 @@ public sealed class ImpositionPdfWriterTests : IDisposable
             ImpositionPdfWriter.Write(new ImpositionJob(layout, [new VisualInfo?[3]]), Stream.Null));
         Assert.Throws<ArgumentException>(() =>
             ImpositionPdfWriter.Write(new ImpositionJob(layout, []), Stream.Null));
+        // Each sheet of a mixed job has its own layout.
+        Assert.Throws<ArgumentException>(() =>
+            ImpositionPdfWriter.Write(new ImpositionJob(layout, [new VisualInfo?[layout.PerSheet]], SheetLayouts: []), Stream.Null));
     }
 
     // Rectangles filled ("re" then "f") while the fill colour is white ("1 1 1 rg").

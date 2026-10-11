@@ -34,6 +34,9 @@ public sealed class LayoutPreset
 
     public bool CropMarks { get; set; } = true;
     public bool CutLines { get; set; }
+
+    /// <summary>Cut lines in the Mixed mode (presets of 0.4.x: yes, as they were then always drawn).</summary>
+    public bool MixedCutLines { get; set; } = true;
     public bool BleedEnabled { get; set; }
     public double BleedMm { get; set; } = 2;
     public bool SpacingEnabled { get; set; }
@@ -55,6 +58,9 @@ public sealed class LayoutPreset
 
     public bool RotateVerso180 { get; set; }
     public bool FlattenPdf { get; set; }
+
+    /// <summary>Mixed mode: the cutting plan next to each export (presets of 0.4.x: yes).</summary>
+    public bool CuttingPlan { get; set; } = true;
 
     public override string ToString() => Name;
 }
