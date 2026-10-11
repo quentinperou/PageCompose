@@ -20,105 +20,50 @@
 
 ## Fonctionnalités
 
-PageCompose transforme vos visuels (JPG, PNG, HEIC, WebP, TIFF ou PDF) en **PDF prêt à imprimer** : la feuille est remplie avec autant
-d'exemplaires que possible, avec traits de coupe et fond perdu en option, prête à passer au massicot. Ses réglages
-par défaut correspondent à la **FUJIFILM ApeosPro C810 for Photo** (feuilles SRA3, A3 et A4, marge non imprimable
-de 4,1 mm), mais le PDF convient à toute imprimante qui imprime en taille réelle.
+PageCompose transforme vos photos et PDF en **PDF prêt à imprimer** : autant d'exemplaires que la feuille en contient,
+avec traits de coupe et fond perdu, prêt pour le massicot. Pensé pour la FUJIFILM ApeosPro C810 for Photo (SRA3, A3,
+A4), il convient à toute imprimante qui imprime en taille réelle.
 
-- **Trois modes** :
-  - **Répétition** : un seul visuel répété sur toute la feuille (cartes de visite, flyers…). La quantité se saisit
-    en visuels ou en feuilles ; la dernière feuille peut être complétée, ou ne porter que les visuels demandés.
-  - **Même format** : plusieurs visuels différents d'un même format sur la feuille (les 8 photos d'une commande, par exemple),
-    chacun avec son nombre d'exemplaires (« Pour toutes » les règle toutes d'un coup). La dernière feuille peut être complétée en répétant les visuels, ou
-    garder ses cases vides.
-  - **Multi-formats** : plusieurs formats sur la même feuille (des tirages 10 × 15, 13 × 18 et 20 × 30 d'une même commande,
-    des cartes de visite…), chaque visuel avec son format (prédéfini, ou une taille libre saisie sur sa ligne) et ses
-    exemplaires ; **« Dupliquer la ligne »** (clic droit) donne la même photo dans un autre format. Ils sont placés sur **le moins de
-    feuilles possible**, chaque feuille avec sa propre disposition, en coupes droites uniquement (comme au massicot).
-    L'aperçu **numérote les coupes dans l'ordre** ; les numéros restent à l'écran, le PDF n'a que des lignes de coupe
-    fines (désactivables) et, si vous le voulez, des traits de coupe pour les coupes qui touchent le bord du bloc.
-    **« Joindre le plan de coupe »** écrit à côté de chaque export un PDF A4 à imprimer sur papier ordinaire et
-    à garder près du massicot : chaque feuille avec ses coupes numérotées et la cote de chaque coupe (« 101,6 mm
-    depuis le haut » : ce bord contre la butée).
-- **Glisser-déposer** des fichiers ou un dossier entier n'importe où dans la fenêtre (ou cliquer pour choisir).
-  Déposer plusieurs fichiers en mode Répétition fait passer en Même format.
-- **Préréglages** : enregistrez sous un nom les réglages d'un travail habituel (mode, format et marges, feuille, coupe,
-  quantité en visuels ou en feuilles, recto verso, export) et retrouvez-les en un clic. Les fichiers, le nombre
-  d'exemplaires et le format de chaque ligne en mode Multi-formats n'en font pas partie (un projet les garde, voir
-  plus bas).
-  **Paramètres → Préréglages** les exporte dans un fichier `.PageComposePreset` (tous dans `all-preset.PageComposePreset`, ou un
-  seul sous son propre nom) et les importe, pour les copier sur un autre PC ou les sauvegarder. Un **double clic** sur un fichier `.PageComposePreset` (ou un glisser-déposer dans la fenêtre) les
-  importe aussi ; un fichier d'un seul préréglage l'applique aussitôt. Ce fichier reste du JSON lisible avec le
-  Bloc-notes.
-- **Photos d'iPhone (HEIC), WebP et TIFF** : Windows les convertit à l'ajout (redressées, couleurs en sRGB) en JPEG
-  de qualité maximale, utilisé comme n'importe quelle photo. Le HEIC demande les « Extensions d'image HEIF » et
-  « Extensions vidéo HEVC » du Microsoft Store, en général déjà installées ; l'appli le signale quand elles manquent.
-- **PDF de plusieurs pages** : une liste sur la ligne du fichier choisit la page utilisée. Ajouté à une liste de
-  visuels, l'appli demande s'il faut prendre toutes ses pages (une ligne chacune) ou une page, choisie dans une liste. Un
-  PDF de deux pages (une carte de visite) donne d'un coup son recto et son verso : en mode Répétition, ou dans une
-  liste quand Recto verso est coché.
-- **Formats prédéfinis** : carte de visite 85 × 55, photo d'identité 35 × 45 (huit sur un tirage 10 × 15), photos 9 × 13 / 10 × 15 / 13 × 18 / 15 × 20 / 20 × 30 (tailles
-  de labo, en pouces : 10 × 15 = 4 × 6 po = 101,6 × 152,4 mm), carrés (dont un 10 × 10 avec une marge blanche de 5 mm), **cadres photo
-  instantanée** (Polaroid classique, Instax Mini, Square et Wide, avec leur grosse bande en bas), carte postale A6,
-  flyers DL et A5, A4, **cartes pliées** posées ouvertes (A6 pliée / A5 ouverte, 10 × 15 pliée, carrée 14 × 14 pliée,
-  dépliant 3 volets A4) avec des traits de pliage en pointillés hors des visuels, ou une taille libre.
-- **Marges blanches** : une bande blanche à l'intérieur de chaque visuel, réglable côté par côté (haut, bas, gauche,
-  droite). Les formats à cadre la règlent d'eux-mêmes ; elle s'applique au recto, et aussi au verso si vous cochez
-  la case. Un **texte dans la bande** d'un Polaroid ou d'un Instax (un prénom, une date) : commun aux photos ou ligne
-  par ligne, dans une police du PC (les manuscrites de Windows d'abord) et une couleur sombre, à la taille de la bande ;
-  la police est intégrée au PDF.
-- **Feuilles** : SRA3 (320 × 450), A3 et A4 pour l'ApeosPro (marge non imprimable de 4,1 mm), **tirages labo**
-  10 × 15, 20 × 30 et 30 × 45 (imprimés jusqu'au bord : quatre 10 × 15 sur un 20 × 30), ou une **feuille
-  personnalisée** avec sa propre marge non imprimable.
-- **Meilleur montage, automatiquement** : celui qui place le plus de visuels, en pivotant le format si besoin (un cadre
-  Polaroid pivote alors avec sa photo, la grosse bande reste dessous). Chaque photo est tournée d'un quart de tour
-  quand ses proportions le demandent ; un **clic droit** sur sa ligne la fait pivoter à la main (à droite, à gauche,
-  180°), pour une photo prise de travers. **Faites glisser une photo dans l'aperçu** pour choisir la partie gardée
-  quand elle est recadrée (toutes les copies suivent ; « Recentrer la photo » dans son menu du clic droit). Le même
-  menu fait **remplir sa case ou y tenir entier** à un seul visuel, quel que soit le réglage général (« Comme le
-  réglage général » le rend).
-- **Coupe** : bord à bord (une seule coupe entre deux visuels), **traits de coupe** courts, **fond perdu**
-  (2 mm par défaut : la photo est agrandie pour le couvrir, ou garde sa taille avec ses bords **en miroir**) et, en option, un **espace entre les visuels** (5 mm par exemple) et des **lignes de coupe
-  continues** sur tout le bloc, dans la couleur de votre choix (noir, gris, blanc pour les photos sombres, rouge, cyan
-  ou magenta).
-- **Recto verso** : chaque verso est placé pour retomber derrière son recto (retournement bord long ou bord court,
-  rotation de 180° en option). Dans une liste, **chaque visuel peut avoir son propre verso**, sur sa ligne (à déposer
-  sur sa case « Verso ») ; les autres reçoivent le **verso commun**. L'appli les trouve seule (un badge « auto » le
-  signale) : la page 2 d'un PDF de deux pages, ou des fichiers `-recto` / `-verso` (`front` / `back`) ajoutés
-  ensemble. L'aperçu montre **les deux faces côte à côte**.
-- **Aperçu fidèle** : c'est le PDF exporté, rendu par Windows, avec la zone non imprimable en rouge.
-  **Zoom** avec les loupes, Ctrl + molette ou un double clic (pour se déplacer : clic molette, ou Alt + glisser),
-  affiché en % de la taille réelle ; le bouton « Ajuster » remet la feuille entière dans la vue.
-- **Export en PDF ou en JPG** : le PDF garde les photos telles quelles (sans recompression) et les PDF de graphiste
-  en vectoriel ; **« Aplatir le PDF »** fait de chaque face une seule image 300 dpi, sans rien à interpréter pour
-  l'imprimante. **« Exporter en JPG »** écrit une image 300 dpi par face de feuille, pratique pour un labo photo.
-  Une notification propose ensuite d'ouvrir le fichier (la première image pour un export JPG) ou de l'afficher dans
-  son dossier.
-- **Repère de feuille** (en option) : le nom du fichier, la date et « feuille 2/5 » en petit hors des visuels, coupés
-  avec les chutes, pour trier les feuilles au massicot.
-- **Projets enregistrés pour les réimprimer** : « Enregistrer le projet » écrit un fichier `.PageComposeProject` à
-  côté de chaque export, avec une copie de ses fichiers et tous les réglages (exemplaires, formats, versos, cadrages,
-  rotations) ; **« Exporter le projet »** l'écrit sans exporter les feuilles. Un double clic dessus rouvre le projet
-  tel quel, sur n'importe quel PC, dans sa propre fenêtre ; glissé sur une fenêtre qui contient déjà un travail, il
-  demande s'il faut l'ouvrir dans une nouvelle fenêtre ou à la place de ce travail (Ctrl+Z le rend).
-- **Annuler, rétablir** : Ctrl+Z et Ctrl+Y (ou Ctrl+Maj+Z) annulent et rétablissent les changements des réglages et
-  de la liste.
-- **Champs numériques** : les flèches haut et bas du clavier changent la valeur (Maj : de 10 en 10) ; « 0.1 » et
-  « 0,1 » fonctionnent tous les deux.
-- **Contrôles** : résolution effective de chaque visuel au format choisi (alerte sous 200 dpi), recadrage quand les
-  proportions diffèrent du format. Les alertes tiennent sur une ligne sous l'aperçu, qui garde sa taille : la plus
-  grave donne sa couleur, et un clic les affiche toutes.
-- **Malin avec les fichiers** : les photos de téléphone sont remises à l'endroit (EXIF), un PDF de graphiste avec fond
-  perdu est calé à 100 % sur sa zone de coupe, les JPEG sont intégrés sans recompression et stockés une seule fois (un JPEG du web que la
-  bibliothèque PDF refuse est converti par Windows).
-  Un PDF non standard qui ne peut pas être importé (certains logiciels de facturation en produisent) est converti en
-  image 300 dpi, avec un message pour le signaler.
-- **Anglais et français** : l'application et l'installateur suivent la langue d'affichage de Windows ; la langue de
-  l'application peut aussi être choisie dans les **Paramètres** (roue crantée).
-- **Apparence Windows 11** (Fluent, Mica), **claire ou sombre** : elle suit le mode de Windows, ou le thème choisi dans les
-  Paramètres.
-- **Mises à jour en un clic** : l'application signale qu'une nouvelle version est publiée sur GitHub et l'installe
-  pour vous (canal stable ou bêta, vérification au démarrage désactivable).
+### Trois modes
+
+- **Répétition** : un seul visuel sur toute la feuille (cartes de visite, flyers).
+- **Même format** : plusieurs visuels d'un même format, chacun avec son nombre d'exemplaires (les photos d'une
+  commande).
+- **Multi-formats** : plusieurs formats sur le moins de feuilles possible, les coupes numérotées dans l'ordre, et un
+  plan de coupe à imprimer pour le massicot.
+
+### Formats et feuilles
+
+- Cartes de visite, photos d'identité, tirages photo (du 9 × 13 au 20 × 30), cadres Polaroid et Instax, cartes
+  pliées, cartes postales, flyers, ou une taille libre.
+- SRA3, A3 et A4, tirages labo (10 × 15, 20 × 30, 30 × 45, sans marge) ou une feuille personnalisée.
+- Un texte dans la bande blanche des cadres Polaroid et Instax : un prénom, une date.
+
+### Mise en page
+
+- Le montage qui place le plus de visuels, trouvé tout seul ; les photos pivotent quand elles tiennent mieux.
+- Fond perdu, traits de coupe, lignes de coupe, espace entre les visuels, marges blanches.
+- Recto verso : un verso commun, ou un par visuel, chacun retombe derrière son recto.
+- Faites glisser une photo dans l'aperçu pour choisir la partie gardée ; un clic droit la fait pivoter ou tenir
+  entière.
+- Résolution et recadrage contrôlés pour chaque photo.
+
+### Fichiers
+
+- JPG, PNG, PDF, et photos d'iPhone (HEIC), WebP et TIFF.
+- Glisser-déposer de fichiers ou d'un dossier entier.
+- Photos intégrées telles quelles (sans recompression), PDF de graphiste calés sur leur zone de coupe.
+
+### Export
+
+- PDF, PDF aplati ou JPG en 300 dpi, avec un aperçu fidèle : ce que vous voyez est le PDF.
+- Un repère sur chaque feuille (nom, date, feuille 2/5) pour les trier au massicot.
+- **Projets** : les fichiers et réglages d'une commande dans un seul fichier, pour la réimprimer plus tard.
+- **Préréglages** : vos réglages habituels en un clic.
+
+### Et aussi
+
+Annuler et rétablir (Ctrl+Z, Ctrl+Y), anglais et français, thème clair ou sombre, mises à jour en un clic.
 
 Exemples sur une feuille SRA3 :
 

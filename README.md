@@ -20,95 +20,48 @@
 
 ## Features
 
-PageCompose turns your visuals (JPG, PNG, HEIC, WebP, TIFF or PDF) into a **print-ready PDF**: the sheet is filled with as many
-copies as fit, with optional crop marks and bleed, ready to cut on a guillotine. Its defaults match the
-**FUJIFILM ApeosPro C810 for Photo** (SRA3, A3 and A4 sheets, 4.1 mm unprintable margin), but the PDF works
-with any printer that prints at actual size.
+PageCompose turns your photos and PDFs into a **print-ready PDF**: as many copies as fit on the sheet, with crop marks
+and bleed, ready for the guillotine. Made for the FUJIFILM ApeosPro C810 for Photo (SRA3, A3, A4), it works with any
+printer that prints at actual size.
 
-- **Three modes**:
-  - **Repeat**: one visual repeated over the whole sheet (business cards, flyers…). Enter the quantity in visuals
-    or in sheets; the last sheet can be filled, or hold just the visuals asked for.
-  - **Same size**: several different visuals of one size on the same sheet (the 8 photos of an order, for instance), each with
-    its own number of copies ("For all lines" sets them all at once). The last sheet can be filled by repeating the
-    visuals, or keep empty cells.
-  - **Mixed sizes**: several sizes on the same sheet (10 × 15, 13 × 18 and 20 × 30 prints of one order, business cards…),
-    each visual with its own size (a preset one, or a custom size typed on its line) and copies; **"Duplicate the
-    line"** (right click) gives the same photo in another size. They are packed on **as few sheets as possible**, each sheet its own
-    arrangement, with straight cuts only (as on a guillotine). The preview **numbers the cuts in cutting order**; the
-    numbers are only on screen, the PDF gets thin cut lines (can be turned off) and, if you like, crop marks for the
-    cuts that reach the edge of the block. **"Add the cutting plan"** writes, next to each export,
-    an A4 PDF to print on plain paper and keep by the guillotine: each sheet with its numbered cuts and the
-    measurement of each cut ("101.6 mm from the top": that edge against the back gauge).
-- **Drag and drop** files or a whole folder anywhere in the window (or click to choose). Dropping several files
-  in Repeat mode switches to Same size.
-- **Presets**: save the settings of a usual job under a name (mode, size and margins, sheet, cutting, quantity in
-  visuals or in sheets, double-sided, export) and get them back in one click. Files, the number of copies and the
-  size of each line in Mixed sizes mode are not part of them (a project keeps them, see below). **Settings → Presets** exports
-  them to a `.PageComposePreset` file (all of them in `all-preset.PageComposePreset`, or a single one under its own name) and
-  imports them, to copy them to another PC or keep them safe. A **double click** on
-  a `.PageComposePreset` file (or dropping it on the window) imports them too; a file of a single preset applies it at once.
-  The file is still JSON, readable in Notepad.
-- **iPhone photos (HEIC), WebP and TIFF**: Windows converts them when they are added (upright, colours in sRGB) into a
-  JPEG of top quality, used as any photo. HEIC needs the "HEIF Image Extensions" and "HEVC Video Extensions" of the
-  Microsoft Store, usually already installed; the app says so when they are missing.
-- **PDF of several pages**: a page list on the line of the file chooses the page used. Added to a list of visuals,
-  the app asks whether to take all its pages (one line each) or one page, chosen in a list. A PDF of two pages (a
-  business card) gives its front and its back at once: in Repeat mode, or in a list when Double-sided is ticked.
-- **Preset sizes**: business card 85 × 55, ID photo 35 × 45 (eight on a 10 × 15 print), photos 9 × 13 / 10 × 15 / 13 × 18 / 15 × 20 / 20 × 30 (lab sizes, in
-  inches: 10 × 15 = 4 × 6 in = 101.6 × 152.4 mm), squares (also 10 × 10 with a 5 mm white border), **instant photo frames** (classic
-  Polaroid, Instax Mini, Square and Wide, with their thick border at the bottom), A6 postcard, DL and A5 flyers, A4,
-  **folded cards** laid open (A6 folded / A5 open, 10 × 15 folded, square 14 × 14 folded, trifold A4 leaflet) with dashed
-  fold marks outside the visuals, or any custom size.
-- **White margins**: a white band inside each visual, set side by side (top, bottom, left, right). The framed sizes
-  set it themselves; it applies to the front, and to the back too if you tick it. A **text in the band** of a Polaroid
-  or an Instax frame (a name, a date): common to the photos or line by line, in a font of the PC (the handwriting ones
-  of Windows first) and a dark colour, sized to the band; the font is embedded in the PDF.
-- **Sheets**: SRA3 (320 × 450), A3 and A4 for the ApeosPro (4.1 mm unprintable margin), **lab prints** 10 × 15,
-  20 × 30 and 30 × 45 (printed to the edge: four 10 × 15 on a 20 × 30), or a **custom sheet** with its own
-  unprintable margin.
-- **Best fit, automatically**: the layout that holds the most visuals, turning the size a quarter when it fits better
-  (a Polaroid frame then takes its photo along, so the thick border stays under it). Each photo is turned a quarter
-  when its proportions call for it; a **right click** on its line turns it by hand (right, left, 180°), for a photo
-  taken sideways. **Drag a photo on the preview** to choose which part of it is kept when it is cropped (every copy
-  follows; "Centre the photo" in its right click menu). The same menu makes one visual **fill its cell or lie whole**
-  in it, whatever the general setting ("As the general setting" gives it back).
-- **Cutting**: edge to edge (a single cut between two visuals), short **crop marks**, **bleed** (2 mm by default: the
-  photo is enlarged to cover it, or keeps its size with its edges **mirrored** into the bleed),
-  an optional **space between visuals** (5 mm for instance), and **continuous cut lines** across the whole block, in
-  the colour of your choice (black, grey, white for dark photos, red, cyan or magenta).
-- **Double-sided**: each back is placed so that it lands behind its front (long or short edge flip, optional 180°
-  turn). In a list, **each visual may have its own back**, on its line (drop it on its "Back" slot); the others get
-  the **shared back**. The app finds them itself (an "auto" badge says so): page 2 of a PDF of two pages, or
-  `-recto` / `-verso` (`front` / `back`) files added together. The preview shows **both sides next to each other**.
-- **True preview**: what you see is the exported PDF, rendered by Windows, with the unprintable area shown in red.
-  **Zoom** with the magnifier buttons, Ctrl + wheel or a double click (move around with the middle button, or Alt +
-  click and drag), shown in % of the real size; the fit button brings the whole sheet back in view.
-- **Export as PDF or as JPG**: the PDF keeps the photos as they are (no recompression) and the designer PDFs as
-  vectors; **"Flatten the PDF"** turns each sheet side into a single 300 dpi picture, leaving nothing for the printer
-  to interpret. **"Export as JPG"** writes one 300 dpi picture per sheet side, handy for a photo lab. A notification
-  then offers to open the file (the first picture of a JPG export) or show it in its folder.
-- **Sheet mark** (optional): the name of the file, the date and "sheet 2/5" in small print outside the visuals, cut off
-  with the waste, to sort the sheets at the guillotine.
-- **Projects saved to print again**: "Save the project" writes a `.PageComposeProject` file next to each export, holding a
-  copy of its files and every setting (copies, sizes, backs, reframing, turns); **"Export the project"** writes it without
-  exporting the sheets. A double click on it opens the project as it was, on any PC, in a window of its own; dropped
-  on a window that already holds work, it asks whether to open it in a new window or in place of that work (Ctrl+Z
-  gives it back).
-- **Undo, redo**: Ctrl+Z and Ctrl+Y (or Ctrl+Shift+Z) undo and redo the changes of the settings and of the list.
-- **Number fields**: the Up and Down arrows change the value (Shift: by 10); "0.1" and "0,1" both work.
-- **Checks**: effective resolution of each visual at the chosen size (warning below 200 dpi), cropping when the
-  proportions differ from the size. The notices fit on one line under the preview, which keeps its size: the worst
-  one gives its colour, and a click shows them all.
-- **Smart with files**: phone photos are turned upright (EXIF), a designer PDF with built-in bleed is placed at
-  100 % on its trim box, JPEG files are embedded without recompression and stored only once in the PDF (a JPEG from
-  the web that the PDF library refuses is converted by Windows instead). A
-  non-standard PDF that cannot be imported (some billing software makes them) is converted to a 300 dpi image,
-  with a note saying so.
-- **English and French**: the app and the installer follow the Windows display language; the app language can
-  also be chosen in **Settings** (gear icon).
-- **Windows 11 look** (Fluent, Mica), **light or dark**: it follows the Windows mode, or the theme chosen in Settings.
-- **Updates in one click**: the app tells you when a new version is published on GitHub and installs it for you
-  (stable or beta channel, check at startup can be turned off).
+### Three modes
+
+- **Repeat**: one visual over the whole sheet (business cards, flyers).
+- **Same size**: several visuals of one size, each with its own number of copies (the photos of an order).
+- **Mixed sizes**: several sizes on as few sheets as possible, the cuts numbered in order, and a cutting plan to print
+  for the guillotine.
+
+### Sizes and sheets
+
+- Business cards, ID photos, photo prints (9 × 13 to 20 × 30), Polaroid and Instax frames, folded cards, postcards,
+  flyers, or any size you type.
+- SRA3, A3 and A4, lab prints (10 × 15, 20 × 30, 30 × 45, borderless) or a custom sheet.
+- A text in the white band of the Polaroid and Instax frames: a name, a date.
+
+### Layout
+
+- The layout that holds the most visuals, found automatically; photos turn when they fit better.
+- Bleed, crop marks, cut lines, space between visuals, white margins.
+- Double-sided: one back for all, or one per visual, each landing behind its front.
+- Drag a photo on the preview to choose the part kept; a right click turns it or fits it whole.
+- Resolution and cropping checked for each photo.
+
+### Files
+
+- JPG, PNG, PDF, and iPhone photos (HEIC), WebP and TIFF.
+- Drag and drop files or a whole folder.
+- Photos embedded as they are (no recompression), designer PDFs placed on their trim box.
+
+### Export
+
+- PDF, flattened PDF or JPG at 300 dpi, with a true preview: what you see is the PDF.
+- A mark on each sheet (name, date, sheet 2/5) to sort them at the guillotine.
+- **Projects**: the files and settings of an order in one file, to print it again later.
+- **Presets**: your usual settings in one click.
+
+### And also
+
+Undo and redo (Ctrl+Z, Ctrl+Y), English and French, light or dark theme, updates in one click.
 
 Examples on an SRA3 sheet:
 
