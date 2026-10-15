@@ -30,12 +30,18 @@ internal static class PdfPreviewRenderer
         return await PdfDocument.LoadFromStreamAsync(input);
     }
 
-    /// <summary>The page on white paper, <paramref name="widthPx"/> wide (the height follows the proportions).</summary>
-    public static async Task<BitmapSource> RenderPageAsync(PdfDocument document, uint pageIndex, uint widthPx)
+    /// <summary>
+    /// The page on white paper, <paramref name="widthPx"/> wide (the height follows the proportions). For the screen,
+    /// it is handed over as a BMP rather than a PNG: the same pixels, without compressing them to read them back at
+    /// once (half the time of a render at 3600 px, measured on October 15, 2026); the exports keep the PNG, as always.
+    /// </summary>
+    public static async Task<BitmapSource> RenderPageAsync(PdfDocument document, uint pageIndex, uint widthPx, bool forScreen = false)
     {
         using var page = document.GetPage(pageIndex);
         using var output = new InMemoryRandomAccessStream();
-        await page.RenderToStreamAsync(output, new PdfPageRenderOptions { DestinationWidth = widthPx });
+        var options = new PdfPageRenderOptions { DestinationWidth = widthPx };
+        if (forScreen) options.BitmapEncoderId = Windows.Graphics.Imaging.BitmapEncoder.BmpEncoderId;
+        await page.RenderToStreamAsync(output, options);
         output.Seek(0);
 
         var bitmap = new BitmapImage();

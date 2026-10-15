@@ -51,6 +51,7 @@ public partial class App : Application
         };
 
         PdfRasterizer.DeleteOldFiles();
+        PreviewImages.DeleteOldFiles();
         ProjectStore.DeleteOldFolders();
         var window = new MainWindow(new MainViewModel(Settings));
         MainWindow = window;

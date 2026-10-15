@@ -225,6 +225,20 @@
               </StackPanel>
             </DockPanel>
           </Border>
+
+          <!-- Lighter copies of the photos in the preview (asked by the author, on by default); never in the exports -->
+          <Border Style="{StaticResource Card}">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Left" Style="{StaticResource CardIcon}" Text="&#xE945;" />
+              <CheckBox x:Name="LightPreviewBox" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}"
+                        VerticalAlignment="Center" Margin="16,0,0,0" Click="LightPreview_Click"
+                        AutomationProperties.Name="{local:Tr SettingsLightPreview}" />
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="{local:Tr SettingsLightPreview}" />
+                <TextBlock Style="{StaticResource CardDescription}" Text="{local:Tr SettingsLightPreviewDescription}" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
         </StackPanel>
       </ScrollViewer>
 

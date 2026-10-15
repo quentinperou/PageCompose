@@ -235,7 +235,7 @@ public sealed class MainViewModel : ObservableObject
             OnPropertyChanged(nameof(VisualsDropHint));
         };
 
-        _previewDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(200) };
+        _previewDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(100) }; // 200 until 0.11.0, when a render took a second
         _previewDebounce.Tick += async (_, _) =>
         {
             _previewDebounce.Stop();
@@ -1252,6 +1252,7 @@ public sealed class MainViewModel : ObservableObject
             BackAuto = s.BackAuto,
             Fit = s.Fit?.ToString(),
             Caption = s.Caption,
+            Zoom = s.Zoom,
         };
 
         return new ProjectFile
@@ -1286,7 +1287,7 @@ public sealed class MainViewModel : ObservableObject
             var format = l.FormatId is null ? null : MixedFormats.FirstOrDefault(f => (f.Format?.Id ?? AppSettings.CustomFormatId) == l.FormatId);
             return new LineState(item, info, Math.Clamp(l.Copies, 1, 100_000), (l.Rotation % 360 + 360) % 360 / 90 * 90, format,
                 l.CustomWidth, l.CustomHeight, Math.Clamp(l.CropX, 0, 1), Math.Clamp(l.CropY, 0, 1), back, back is not null && l.BackAuto,
-                Enum.TryParse<FitMode>(l.Fit, out var fit) ? fit : null, l.Caption ?? "");
+                Enum.TryParse<FitMode>(l.Fit, out var fit) ? fit : null, l.Caption ?? "", Math.Clamp(l.Zoom, 1, VisualInfo.MaxZoom));
         }
 
         var lines = new List<LineState>();
@@ -1639,7 +1640,7 @@ public sealed class MainViewModel : ObservableObject
         if (!CanExport) return null;
         try
         {
-            var job = BuildJob([0]);
+            var job = await LightenAsync(BuildJob([0]), PreviewWidthPx); // the copies of the preview, already made
             var pdf = await Task.Run(() =>
             {
                 using var ms = new MemoryStream();
@@ -2056,6 +2057,9 @@ public sealed class MainViewModel : ObservableObject
         SchedulePreview();
     }
 
+    /// <summary>A setting of the preview changed in the Settings window ("Fast preview"): drawn again.</summary>
+    public void RedrawPreview() => SchedulePreview();
+
     private void SchedulePreview()
     {
         _previewDebounce.Stop();
@@ -2395,7 +2399,7 @@ public sealed class MainViewModel : ObservableObject
     }
 
     // " · Fitted": the line lies in its cell its own way (right click on the line).
-    private static string OwnFitText(VisualItem item) => item.Fit switch
+    private static string OwnFitText(VisualItem item) => (item.IsZoomed ? Strings.Format("QualityZoom", item.ZoomPercent) : "") + item.Fit switch
     {
         FitMode.Fill => Strings.Get("QualityOwnFill"),
         FitMode.Fit => Strings.Get("QualityOwnFit"),
@@ -2418,7 +2422,35 @@ public sealed class MainViewModel : ObservableObject
         return all.Count <= 3 ? string.Join(", ", all) : Strings.Format("ListAndMore", string.Join(", ", all.Take(3)), all.Count - 3);
     }
 
+    private bool _previewRunning, _previewAgain;
+
+    // One render at a time (renders side by side slowed each other down): the changes made meanwhile are drawn once it
+    // is over, in their last state only.
     private async Task RefreshPreviewAsync()
+    {
+        if (_previewRunning)
+        {
+            _previewAgain = true;
+            return;
+        }
+
+        _previewRunning = true;
+        try
+        {
+            do
+            {
+                _previewAgain = false;
+                await RenderPreviewAsync();
+            }
+            while (_previewAgain);
+        }
+        finally
+        {
+            _previewRunning = false;
+        }
+    }
+
+    private async Task RenderPreviewAsync()
     {
         int version = ++_previewVersion;
         if (!CanExport)
@@ -2430,17 +2462,20 @@ public sealed class MainViewModel : ObservableObject
         }
 
         var job = BuildJob([PreviewSheetIndex]);
+        uint width = _previewWidthPx;
         IsPreviewBusy = true;
         try
         {
+            job = await LightenAsync(job, width);
             var pdf = await Task.Run(() =>
             {
                 using var ms = new MemoryStream();
                 ImpositionPdfWriter.Write(job, ms);
                 return ms.ToArray();
             });
-            var recto = await PdfPreviewRenderer.RenderAsync(pdf, 0, _previewWidthPx);
-            var verso = job.HasBack ? await PdfPreviewRenderer.RenderAsync(pdf, 1, _previewWidthPx) : null;
+            var document = await PdfPreviewRenderer.LoadAsync(pdf); // once for both sides
+            var recto = await PdfPreviewRenderer.RenderPageAsync(document, 0, width, forScreen: true);
+            var verso = job.HasBack ? await PdfPreviewRenderer.RenderPageAsync(document, 1, width, forScreen: true) : null;
             if (version == _previewVersion)
             {
                 RectoSide.Image = recto;
@@ -2461,6 +2496,49 @@ public sealed class MainViewModel : ObservableObject
         {
             if (version == _previewVersion) IsPreviewBusy = false;
         }
+    }
+
+    /// <summary>
+    /// "Fast preview" (a setting, on by default): each photo of a job drawn on the screen replaced by a lighter copy of
+    /// the size it is shown at <paramref name="widthPx"/> (<see cref="PreviewImages"/>). Only the preview and the
+    /// picture of the recent projects come here: the exports take the job of <see cref="BuildJob"/> as it is, with the
+    /// original files.
+    /// </summary>
+    private async Task<ImpositionJob> LightenAsync(ImpositionJob job, uint widthPx)
+    {
+        if (!_settings.LightPreview) return job;
+
+        // Pixels needed on the long side of each photo: its cell at the scale of the rendering, half as much again for
+        // a photo filled in a cell of other proportions (cropped, it is larger than its cell).
+        double pxPerMm = widthPx / job.Layout.Sheet.Width;
+        var needed = new Dictionary<VisualInfo, double>();
+        void Need(VisualInfo? visual, LayoutCell cell)
+        {
+            if (visual is null) return;
+            double px = Math.Max(cell.Bleed.Width, cell.Bleed.Height) * pxPerMm * 1.5;
+            needed[visual] = Math.Max(needed.GetValueOrDefault(visual), px);
+        }
+        for (int s = 0; s < job.Sheets.Count; s++)
+        {
+            var cells = job.LayoutOf(s).Cells;
+            for (int c = 0; c < cells.Count; c++)
+            {
+                if (job.Sheets[s][c] is not { } front) continue;
+                Need(front, cells[c]);
+                Need(job.BackOf(s, c), cells[c]);
+            }
+        }
+
+        var copies = await Task.WhenAll(needed.Select(async n => (Visual: n.Key, Copy: await PreviewImages.GetAsync(n.Key, n.Value))));
+        var light = copies.Where(c => c.Copy is not null).ToDictionary(c => c.Visual, c => c.Visual with { Path = c.Copy! });
+        if (light.Count == 0) return job;
+        VisualInfo? Light(VisualInfo? v) => v is not null && light.TryGetValue(v, out var copy) ? copy : v;
+        return job with
+        {
+            Sheets = [.. job.Sheets.Select(sheet => sheet.Select(Light).ToArray())],
+            Backs = job.Backs is null ? null : [.. job.Backs.Select(sheet => sheet.Select(Light).ToArray())],
+            Verso = Light(job.Verso),
+        };
     }
 
     /// <param name="sheets">Indices of the sheets, from 0.</param>

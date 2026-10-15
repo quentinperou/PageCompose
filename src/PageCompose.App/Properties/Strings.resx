@@ -459,8 +459,17 @@ The file may be open in another program.</value>
   <data name="QualitySizeTooSmall" xml:space="preserve">
     <value>Size under {0} mm</value>
   </data>
-  <data name="RecenterPhoto" xml:space="preserve">
-    <value>Centre the photo</value>
+  <data name="ResetFraming" xml:space="preserve">
+    <value>Reset the framing</value>
+  </data>
+  <data name="ZoomInPhoto" xml:space="preserve">
+    <value>Zoom into the photo</value>
+  </data>
+  <data name="ZoomInPhotoTooltip" xml:space="preserve">
+    <value>Double click: 100 %</value>
+  </data>
+  <data name="QualityZoom" xml:space="preserve">
+    <value> · Zoom {0} %</value>
   </data>
   <data name="RotateAuto" xml:space="preserve">
     <value>Automatic rotation</value>
@@ -799,6 +808,12 @@ The file may be open in another program.</value>
   </data>
   <data name="SettingsConvertSrgbDescription" xml:space="preserve">
     <value>Adobe RGB, Display P3… become sRGB, for truer colours in the preview and the PDF and JPG exports.</value>
+  </data>
+  <data name="SettingsLightPreview" xml:space="preserve">
+    <value>Fast preview</value>
+  </data>
+  <data name="SettingsLightPreviewDescription" xml:space="preserve">
+    <value>The preview uses lighter copies of the photos, sized for the screen. Exports always keep the original photos.</value>
   </data>
   <data name="ThemeSystem" xml:space="preserve">
     <value>System theme (automatic)</value>

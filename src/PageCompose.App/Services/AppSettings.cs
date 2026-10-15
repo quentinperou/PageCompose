@@ -43,6 +43,13 @@ public sealed class AppSettings
     /// </summary>
     public bool ConvertToSrgb { get; set; } = true;
 
+    /// <summary>
+    /// The preview draws lighter copies of the photos, of the size the screen shows (<see cref="PreviewImages"/>): about
+    /// ten times faster with photos from a camera. Exports always take the original files (on by default, asked by the
+    /// author).
+    /// </summary>
+    public bool LightPreview { get; set; } = true;
+
     /// <summary>Releases offered as updates: stable only, or betas too.</summary>
     [JsonConverter(typeof(JsonStringEnumConverter<UpdateChannel>))]
     public UpdateChannel UpdateChannel { get; set; } = UpdateChannel.Stable;

@@ -103,8 +103,7 @@ public static class Placement
         var content = visual.Content;
         var (cw, ch) = angle % 180 == 90 ? (content.Height, content.Width) : (content.Width, content.Height);
 
-        double sx = target.Width / cw, sy = target.Height / ch;
-        double k = fit == FitMode.Fill ? Math.Max(sx, sy) : Math.Min(sx, sy); // mm per raw unit
+        double k = Scale(visual, target, cw, ch, fit); // mm per raw unit
 
         // The part kept: the visual moved in its own axes (DrawRect is drawn before the turn), by the share of what
         // overflows its area (or of what it leaves free, in Fit mode) given by CropX / CropY.
@@ -160,7 +159,7 @@ public static class Placement
         var content = visual.Content;
         var (cw, ch) = p.AngleDeg % 180 == 90 ? (content.Height, content.Width) : (content.Width, content.Height);
         var target = Target(visual, cell, side, fit);
-        double k = fit == FitMode.Fill ? Math.Max(target.Width / cw, target.Height / ch) : Math.Min(target.Width / cw, target.Height / ch);
+        double k = Scale(visual, target, cw, ch, fit);
         var (overX, overY) = Overflow(visual, target, (int)p.AngleDeg, k);
 
         double a = -p.AngleDeg * Math.PI / 180;
@@ -178,6 +177,13 @@ public static class Placement
         bool framed = side.HasMargins && !cell.Margins.IsEmpty;
         var area = framed ? cell.ImageBleed : cell.Bleed;
         return visual.HasOwnBleed || Mirrored(visual, side, fit) ? (framed ? cell.ImageTrim : cell.Trim) : area;
+    }
+
+    // Millimetres per raw unit: the visual covering its area (Fill) or whole in it (Fit), then enlarged by its zoom.
+    private static double Scale(VisualInfo visual, RectMm target, double cw, double ch, FitMode fit)
+    {
+        double sx = target.Width / cw, sy = target.Height / ch;
+        return (fit == FitMode.Fill ? Math.Max(sx, sy) : Math.Min(sx, sy)) * Math.Clamp(visual.Zoom, 1, VisualInfo.MaxZoom);
     }
 
     // What the visual overflows its area by, along its own axes (negative: what it leaves free), in millimetres.

@@ -261,4 +261,55 @@ public class PlacementTests
         Assert.True(p.DrawRect.Width >= 89 - 1e-9 && p.DrawRect.Height >= 59 - 1e-9);
         Assert.Equal(cell.Bleed.CenterX, p.CenterX, 6);
     }
+
+    // ---- Zoom into the photo (the slider of its line) ----
+
+    [Fact]
+    public void Zoom_enlarges_the_photo_around_the_part_kept_and_lowers_its_resolution()
+    {
+        var photo = Image(1200, 800);
+        var asLaid = Placement.Compute(photo, LandscapeCard, FitMode.Fill);
+        var zoomed = Placement.Compute(photo with { Zoom = 2 }, LandscapeCard, FitMode.Fill);
+
+        Assert.Equal(asLaid.DrawRect.Width * 2, zoomed.DrawRect.Width, 6);
+        Assert.Equal(asLaid.DrawRect.Height * 2, zoomed.DrawRect.Height, 6);
+        Assert.Equal(0, zoomed.DrawRect.X + zoomed.DrawRect.Width / 2, 6); // still centred
+        Assert.Equal(asLaid.EffectiveDpi / 2, zoomed.EffectiveDpi, 6);
+        Assert.Equal(asLaid.Clip, zoomed.Clip);                            // still in its cell
+    }
+
+    [Fact]
+    public void A_zoomed_photo_keeps_the_part_chosen_and_follows_a_drag()
+    {
+        var photo = Image(1200, 800) with { Zoom = 2 };
+
+        // Its left edge kept: on the left edge of the 85 mm cell, drawn around its centre.
+        Assert.Equal(-85 / 2.0, Placement.Compute(photo with { CropX = 0 }, LandscapeCard, FitMode.Fill).DrawRect.X, 6);
+
+        var before = Placement.Compute(photo, LandscapeCard, FitMode.Fill);
+        var (x, _) = Placement.Dragged(photo, LandscapeCard, FitMode.Fill, SideOptions.Recto, -10, 0);
+        var after = Placement.Compute(photo with { CropX = x }, LandscapeCard, FitMode.Fill);
+        Assert.Equal(before.DrawRect.X - 10, after.DrawRect.X, 6);
+    }
+
+    [Fact]
+    public void A_fitted_photo_zoomed_grows_from_its_whole_size()
+    {
+        var photo = Image(1200, 800) with { Fit = FitMode.Fit };
+        var whole = Placement.Compute(photo, LandscapeCard, FitMode.Fill);
+        var zoomed = Placement.Compute(photo with { Zoom = 1.5 }, LandscapeCard, FitMode.Fill);
+
+        Assert.Equal(whole.DrawRect.Width * 1.5, zoomed.DrawRect.Width, 6);
+        Assert.Equal(LandscapeCard.Bleed, zoomed.Clip); // what goes beyond its cell is cut
+    }
+
+    [Fact]
+    public void Zoom_stays_between_1_and_3()
+    {
+        var photo = Image(1200, 800);
+        Assert.Equal(Placement.Compute(photo, LandscapeCard, FitMode.Fill).DrawRect,
+            Placement.Compute(photo with { Zoom = 0.5 }, LandscapeCard, FitMode.Fill).DrawRect);
+        Assert.Equal(Placement.Compute(photo with { Zoom = 3 }, LandscapeCard, FitMode.Fill).DrawRect,
+            Placement.Compute(photo with { Zoom = 7 }, LandscapeCard, FitMode.Fill).DrawRect);
+    }
 }

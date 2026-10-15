@@ -18,7 +18,7 @@ public sealed record PageOption(int Number, string Name)
 /// </summary>
 public sealed record LineState(VisualItem Item, VisualInfo Info, int Copies, int Rotation, FormatOption? Format,
     double CustomWidth, double CustomHeight, double CropX, double CropY, LineState? Back, bool BackAuto, FitMode? Fit,
-    string Caption = "");
+    string Caption = "", double Zoom = 1);
 
 /// <summary>A visual of the list, with its number of copies, and its page when it is a PDF of several pages.</summary>
 public sealed class VisualItem : ObservableObject
@@ -46,7 +46,7 @@ public sealed class VisualItem : ObservableObject
         RotateLeftCommand = new RelayCommand(() => Rotate(-90));
         RotateHalfCommand = new RelayCommand(() => Rotate(180));
         RotateAutoCommand = new RelayCommand(() => Rotate(-_rotation));
-        RecenterCommand = new RelayCommand(() => SetCrop(0.5, 0.5));
+        ResetFramingCommand = new RelayCommand(ResetFraming);
         FitDefaultCommand = new RelayCommand(() => SetFit(null));
         OwnFillCommand = new RelayCommand(() => SetFit(FitMode.Fill));
         OwnFitCommand = new RelayCommand(() => SetFit(FitMode.Fit));
@@ -55,12 +55,12 @@ public sealed class VisualItem : ObservableObject
     private VisualInfo _info;
 
     /// <summary>
-    /// The visual, with the turn chosen by the user (applied on the sheet after the automatic one) and the part of it
-    /// kept, moved on the preview.
+    /// The visual, with the turn chosen by the user (applied on the sheet after the automatic one), the part of it
+    /// kept, moved on the preview, and its zoom.
     /// </summary>
-    public VisualInfo Info => _rotation == 0 && !IsCropMoved && _fit is null
+    public VisualInfo Info => _rotation == 0 && !IsFramed && _fit is null
         ? _info
-        : _info with { UserRotation = _rotation, CropX = _cropX, CropY = _cropY, Fit = _fit };
+        : _info with { UserRotation = _rotation, CropX = _cropX, CropY = _cropY, Fit = _fit, Zoom = _zoom };
 
     private FitMode? _fit;
 
@@ -110,8 +110,46 @@ public sealed class VisualItem : ObservableObject
     {
         if (Math.Abs(x - _cropX) < 1e-9 && Math.Abs(y - _cropY) < 1e-9) return;
         (_cropX, _cropY) = (x, y);
-        OnPropertyChanged(nameof(Info));
-        OnPropertyChanged(nameof(IsCropMoved));
+        FramingChanged();
+    }
+
+    private double _zoom = 1;
+
+    /// <summary>
+    /// The photo enlarged in its cell (<see cref="VisualInfo.Zoom"/>), with the slider of the menu of its line (asked by
+    /// the author): 1 to 3; dragged on the preview, it shows another part. Like the part kept, it belongs to the line.
+    /// </summary>
+    public double Zoom => _zoom;
+
+    /// <summary>The zoom in %, for the slider (100 to 300) and the value beside it.</summary>
+    public double ZoomPercent
+    {
+        get => Math.Round(_zoom * 100);
+        set
+        {
+            double zoom = Math.Clamp(Math.Round(value) / 100, 1, VisualInfo.MaxZoom);
+            if (Math.Abs(zoom - _zoom) < 1e-9) return;
+            _zoom = zoom;
+            FramingChanged();
+        }
+    }
+
+    public bool IsZoomed => _zoom > 1 + 1e-9;
+
+    /// <summary>Moved or zoomed: "Reset the framing" gives it back centred, at 100 %.</summary>
+    public bool IsFramed => IsCropMoved || IsZoomed;
+
+    private void ResetFraming()
+    {
+        if (!IsFramed) return;
+        (_cropX, _cropY, _zoom) = (0.5, 0.5, 1);
+        FramingChanged();
+    }
+
+    private void FramingChanged()
+    {
+        foreach (var name in new[] { nameof(Info), nameof(IsCropMoved), nameof(Zoom), nameof(ZoomPercent), nameof(IsZoomed), nameof(IsFramed) })
+            OnPropertyChanged(name);
         _changed();
     }
 
@@ -143,12 +181,13 @@ public sealed class VisualItem : ObservableObject
         if (other.Format is not null) _format = other.Format;
         (_customWidth, _customHeight) = (other.CustomWidth, other.CustomHeight);
         (_cropX, _cropY) = other.Crop;
+        _zoom = other.Zoom;
         _fit = other.Fit;
         _caption = other.Caption;
     }
 
     public LineState Capture() => new(this, _info, _copies, _rotation, _format, _customWidth, _customHeight, _cropX, _cropY,
-        _back?.Capture(), _isBackAuto, _fit, _caption);
+        _back?.Capture(), _isBackAuto, _fit, _caption, _zoom);
 
     /// <summary>
     /// Takes back what <see cref="Capture"/> saw (or a project opened), its back included, without recomputing
@@ -158,8 +197,8 @@ public sealed class VisualItem : ObservableObject
     {
         if (s.Info.PageNumber != _info.PageNumber) (ThumbnailOutdated, DragImage) = (true, null);
         _info = s.Info;
-        (_copies, _rotation, _format, _customWidth, _customHeight, _cropX, _cropY, _fit, _caption) =
-            (s.Copies, s.Rotation, s.Format, s.CustomWidth, s.CustomHeight, s.CropX, s.CropY, s.Fit, s.Caption);
+        (_copies, _rotation, _format, _customWidth, _customHeight, _cropX, _cropY, _fit, _caption, _zoom) =
+            (s.Copies, s.Rotation, s.Format, s.CustomWidth, s.CustomHeight, s.CropX, s.CropY, s.Fit, s.Caption, s.Zoom);
         _back = s.Back?.Item;
         if (s.Back is { } back) back.Item.Restore(back);
         _isBackAuto = s.BackAuto;
@@ -303,7 +342,8 @@ public sealed class VisualItem : ObservableObject
     public ICommand RotateAutoCommand { get; }
 
     /// <summary>"Centre the photo": the part kept back to the middle, as before it was dragged.</summary>
-    public ICommand RecenterCommand { get; }
+    /// <summary>"Reset the framing" (was "Recenter the photo" until 0.11.0): centred again, at 100 %.</summary>
+    public ICommand ResetFramingCommand { get; }
 
     /// <summary>Back to the general setting "The visual in its cell".</summary>
     public ICommand FitDefaultCommand { get; }

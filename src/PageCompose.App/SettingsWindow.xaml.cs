@@ -40,6 +40,7 @@ public partial class SettingsWindow : Window
         ChannelBox.SelectedItem = ChannelBox.Items.Cast<ChannelOption>().First(o => o.Channel == _settings.UpdateChannel);
         CheckAtStartupBox.IsChecked = _settings.CheckForUpdatesAtStartup;
         ConvertToSrgbBox.IsChecked = _settings.ConvertToSrgb;
+        LightPreviewBox.IsChecked = _settings.LightPreview;
         ShowUpdateState();
         Updater.Checked += Updater_Checked;
         Closed += (_, _) => Updater.Checked -= Updater_Checked;
@@ -191,6 +192,13 @@ public partial class SettingsWindow : Window
     private void ConvertToSrgb_Click(object sender, RoutedEventArgs e)
     {
         _settings.ConvertToSrgb = ConvertToSrgbBox.IsChecked == true;
+        _settings.Save();
+    }
+
+    // The preview is drawn again when the window closes (MainWindow.OpenSettings).
+    private void LightPreview_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.LightPreview = LightPreviewBox.IsChecked == true;
         _settings.Save();
     }
 

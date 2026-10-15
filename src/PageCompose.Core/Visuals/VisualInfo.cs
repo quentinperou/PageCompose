@@ -64,6 +64,15 @@ public sealed record VisualInfo
     public double CropY { get; init; } = 0.5;
 
     /// <summary>
+    /// The visual enlarged in its area, around the part kept (<see cref="CropX"/>, <see cref="CropY"/>): 1 as laid,
+    /// up to <see cref="MaxZoom"/> (chosen with a slider in the menu of its line, asked by the author). It crops more:
+    /// its resolution goes down with it.
+    /// </summary>
+    public double Zoom { get; init; } = 1;
+
+    public const double MaxZoom = 3;
+
+    /// <summary>
     /// How it lies in its cell when chosen for it alone (right click on its line): filled or whole; null: as the
     /// layout says.
     /// </summary>

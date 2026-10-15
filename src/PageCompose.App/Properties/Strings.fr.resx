@@ -459,8 +459,17 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
   <data name="QualitySizeTooSmall" xml:space="preserve">
     <value>Format inférieur à {0} mm</value>
   </data>
-  <data name="RecenterPhoto" xml:space="preserve">
-    <value>Recentrer la photo</value>
+  <data name="ResetFraming" xml:space="preserve">
+    <value>Réinitialiser le cadrage</value>
+  </data>
+  <data name="ZoomInPhoto" xml:space="preserve">
+    <value>Zoom dans la photo</value>
+  </data>
+  <data name="ZoomInPhotoTooltip" xml:space="preserve">
+    <value>Double clic : 100 %</value>
+  </data>
+  <data name="QualityZoom" xml:space="preserve">
+    <value> · Zoom {0} %</value>
   </data>
   <data name="RotateAuto" xml:space="preserve">
     <value>Rotation automatique</value>
@@ -799,6 +808,12 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
   </data>
   <data name="SettingsConvertSrgbDescription" xml:space="preserve">
     <value>Adobe RGB, Display P3… passent en sRGB, pour des couleurs plus justes dans l'aperçu et les exports PDF et JPG.</value>
+  </data>
+  <data name="SettingsLightPreview" xml:space="preserve">
+    <value>Aperçu rapide</value>
+  </data>
+  <data name="SettingsLightPreviewDescription" xml:space="preserve">
+    <value>L'aperçu utilise des copies allégées des photos, à la taille de l'écran. Les exports gardent toujours les photos d'origine.</value>
   </data>
   <data name="ThemeSystem" xml:space="preserve">
     <value>Thème du système (automatique)</value>

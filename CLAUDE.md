@@ -16,6 +16,11 @@ QuentinPerou, with Claude Code (Anthropic)".
 
 ## Project status (October 15, 2026)
 
+Version **0.12.0** (October 15, 2026, made on the shop PC, committed there as QuentinPerou with the tag `v0.12.0`,
+**not pushed**) makes the preview about ten times faster
+with photos from a camera: lighter copies of the photos on screen ("Fast preview", an option, on by default; the
+exports always take the originals), one render at a time, shorter waits; and the zoom into a photo, with a slider in
+the right click menu of its line.
 Version **0.11.0** (October 15, 2026, made on the shop PC, committed there as QuentinPerou with the tag `v0.11.0`,
 **not pushed**: to push from the home PC, after 0.10.0) makes the project a document, as in Word
 or Paint: a title bar drawn by the app with a "File" button (New, New window, Open, Save, Save as, the exports,
@@ -73,7 +78,7 @@ the photo sizes moved to exact inches.
 - Updates from GitHub Releases, as in CropPdf: check at startup (can be turned off), Stable/Beta channel, bar in the
   main window, download checked with SHA-256, silent install and relaunch. The Settings window has CropPdf's cards
   (language, theme, presets, updates, about), on pages chosen from a menu on the left (see below).
-- 1340 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.11.0.exe` locally (Inno Setup 6).
+- 1344 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.12.0.exe` locally (Inno Setup 6).
 - The installer is not signed: the UAC prompt shows "Unknown publisher" (QuentinPerou appears in the file details
   and in Installed apps). Left as is for now (October 10, 2026). A paid certificate would show the author's legal
   name, SignPath Foundation its own name; only a self-signed certificate trusted by hand on each PC shows "QuentinPerou".
@@ -171,7 +176,18 @@ the photo sizes moved to exact inches.
     on by default, in the settings and the presets, shown in the Mixed mode only) writes `<name>-cutting-plan.pdf`
     (`-plan-de-coupe` in French) next to each export, PDF or JPG; the toast says "+ cutting plan".
   - **The preview is the real PDF**, rendered by `Windows.Data.Pdf` (`Services/PdfPreviewRenderer`): no drawing
-    logic is duplicated in the UI.
+    logic is duplicated in the UI. **Fast preview** (0.12.0, the author's audit request; "Aperçu rapide", Settings →
+    General, `AppSettings.LightPreview`, on by default): the photos of the preview are lighter copies
+    (`Services/PreviewImages`: long side 1024 to 6144 px, the size each cell needs at the width rendered, × 1.5 for a
+    filled photo; decoded straight to that size by WIC, colours as stored, JPEG 90 or PNG; none for a PDF, a CMYK JPEG
+    or a photo hardly larger), made once in `%TEMP%\PageCompose\Preview` and named by a fingerprint of the content of
+    the file (path, size, date, first and last 64 KB: another photo under the same name gets its own copy, asked by
+    the author). `MainViewModel.LightenAsync` swaps them into the preview job only (and the picture of the recent
+    projects): **the exports, the cutting plan and the projects never use them** (the author's first concern). Measured
+    with 8 photos of 12 MP: about 1 s per refresh before, 0.1 s after (2.1 s → 0.2 s zoomed). Also in 0.12.0: the
+    screen gets a BMP from the renderer (`forScreen`; the exports keep the PNG), one render at a time (the latest
+    wins), the PDF loaded once for both sides, 100 ms before a refresh (was 200) and 250 ms for the number boxes
+    (`Delay`, was 400). `.local\cs\preview-bench.cs` measures the steps.
   - **Preview zoom** (`MainWindow.xaml.cs`, "Preview zoom"): zoom 1 = the sheets fit the area (Viewbox, no scroll
     bars); above 1 the sides are laid out that many times larger in `PreviewScroll`. Buttons, Ctrl + wheel around the
     mouse, Ctrl + / - / 0, double click; to move: the middle button, or Alt + left button, anywhere, or the left
@@ -381,6 +397,13 @@ the photo sizes moved to exact inches.
   the draw rectangle by that share of the overflow, and `Placement.Dragged` turns a drag on the sheet into it (the
   turn and mirror undone, kept between the edges). Chosen by dragging the photo on the preview (the author's choice
   among three mock-ups); it belongs to the line (`VisualItem.Crop`), not to the presets.
+- **Zoom into a photo** (0.12.0, `VisualInfo.Zoom`, 1 to `MaxZoom` = 3; asked by the author, variant C of three: in the
+  right click menu of the line, with a slider, the value beside it, a double click on the slider giving 100 % back,
+  the menu staying open while it moves; mock-up `.local\maquettes\zoom-photo-menu.png`): `Placement.Scale` multiplies
+  the Fill or Fit scale by it, around the part kept, so a drag shows another part; the clip stays the cell, the
+  effective dpi goes down with it (the resolution notice follows), and the line says " · Zoom 150 %". "Reset the
+  framing" (was "Recenter the photo") gives 100 % and the centre back. It belongs to the line (`VisualItem.Zoom`,
+  undo, duplicate, projects: `ProjectLine.Zoom`), not to the presets.
 - **Mirrored bleed** (`SideOptions.MirrorBleed`, `ImpositionJob.MirrorBleed`, a choice under the bleed, **off by
   default**: the author keeps "Agrandir la photo"): a visual without its own bleed, filled, keeps its size in its trim
   (target = trim) and the bleed takes its edges: `VisualPlacement.MirrorCopies` lists the flipped copies around it that
@@ -447,6 +470,8 @@ the photo sizes moved to exact inches.
   app). Drive the app with UI Automation only (Invoke, Value, Toggle), which reaches the app and nothing else; open
   a project by the command line rather than through the new Windows file dialog, whose name box has no Value pattern.
   The older `.local` scripts that type into a dialog check that it is in the foreground first (`Wait-Dialog`).
+  Never cut the output of a test script (`Select-Object -First`): that stops it before it closes its window and puts
+  the author's settings back (October 15: done by hand afterwards).
 - Do not commit or push unless the author asks. Never push from the shop PC: no GitHub account may be signed in
   there (the author's wish); commits need no account.
 - Commit messages: **no `Co-Authored-By` line for Claude** (the author's choice), whatever a default says. The

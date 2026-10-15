@@ -719,8 +719,17 @@ public partial class MainWindow : Window
         var settings = new SettingsWindow { Owner = this };
         settings.ShowDialog();
         ViewModel.ReloadPresets(); // presets may have been imported
+        ViewModel.RedrawPreview(); // "Fast preview" may have changed
         if (settings.LanguageChanged)
             ((App)Application.Current).ReloadMainWindow(this);
+    }
+
+    // A double click on the zoom slider of a line gives 100 % back (asked by the author).
+    private void ZoomSlider_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        if ((sender as FrameworkElement)?.DataContext is not VisualItem line) return;
+        line.ZoomPercent = 100;
+        e.Handled = true;
     }
 
     // ---- Title bar, File menu (asked by the author) ----

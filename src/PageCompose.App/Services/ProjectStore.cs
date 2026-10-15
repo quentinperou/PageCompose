@@ -53,6 +53,9 @@ public sealed class ProjectLine
     /// <summary>Its own text in the band of its frame; empty: the common one.</summary>
     public string Caption { get; set; } = "";
 
+    /// <summary>The photo enlarged in its cell, 1 to 3 (projects of 0.11.0 and before: 1).</summary>
+    public double Zoom { get; set; } = 1;
+
     public IEnumerable<ProjectLine> WithBack() => Back is null ? [this] : [this, Back];
 }
 

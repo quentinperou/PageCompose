@@ -44,8 +44,8 @@ A4), il convient à toute imprimante qui imprime en taille réelle.
 - Le montage qui place le plus de visuels, trouvé tout seul ; les photos pivotent quand elles tiennent mieux.
 - Fond perdu, traits de coupe, lignes de coupe, espace entre les visuels, marges blanches.
 - Recto verso : un verso commun, ou un par visuel, chacun retombe derrière son recto.
-- Faites glisser une photo dans l'aperçu pour choisir la partie gardée ; un clic droit la fait pivoter ou tenir
-  entière.
+- Faites glisser une photo dans l'aperçu pour choisir la partie gardée ; un clic droit la fait pivoter, tenir
+  entière ou zoomer dedans.
 - Résolution et recadrage contrôlés pour chaque photo.
 
 ### Fichiers
@@ -57,7 +57,8 @@ A4), il convient à toute imprimante qui imprime en taille réelle.
 
 ### Export
 
-- PDF, PDF aplati ou JPG en 300 dpi, avec un aperçu fidèle : ce que vous voyez est le PDF.
+- PDF, PDF aplati ou JPG en 300 dpi, avec un aperçu fidèle : ce que vous voyez est le PDF (dessiné avec des copies
+  allégées des photos, pour la vitesse ; les exports prennent toujours les originaux).
 - Un repère sur chaque feuille (nom, date, feuille 2/5) pour les trier au massicot.
 - **Projets** : les fichiers et réglages d'une commande dans un seul fichier, enregistré comme un document (menu
   Fichier, Ctrl+S), pour la réimprimer plus tard ; les récents dans le menu Fichier, avec leur première feuille.

@@ -43,7 +43,7 @@ printer that prints at actual size.
 - The layout that holds the most visuals, found automatically; photos turn when they fit better.
 - Bleed, crop marks, cut lines, space between visuals, white margins.
 - Double-sided: one back for all, or one per visual, each landing behind its front.
-- Drag a photo on the preview to choose the part kept; a right click turns it or fits it whole.
+- Drag a photo on the preview to choose the part kept; a right click turns it, fits it whole or zooms into it.
 - Resolution and cropping checked for each photo.
 
 ### Files
@@ -55,7 +55,8 @@ printer that prints at actual size.
 
 ### Export
 
-- PDF, flattened PDF or JPG at 300 dpi, with a true preview: what you see is the PDF.
+- PDF, flattened PDF or JPG at 300 dpi, with a true preview: what you see is the PDF (drawn with lighter copies of
+  the photos, for speed; the exports always take the originals).
 - A mark on each sheet (name, date, sheet 2/5) to sort them at the guillotine.
 - **Projects**: the files and settings of an order in one file, saved like a document (File menu, Ctrl+S), to print it
   again later; the recent ones in the File menu, with their first sheet.

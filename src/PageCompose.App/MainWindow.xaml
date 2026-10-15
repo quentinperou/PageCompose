@@ -142,6 +142,27 @@
             <MenuItem Header="{local:Tr LineFitDefault}" Command="{Binding FitDefaultCommand}" IsCheckable="True" IsChecked="{Binding IsFitDefault, Mode=OneWay}" />
             <MenuItem Header="{local:Tr LineFitFill}" Command="{Binding OwnFillCommand}" IsCheckable="True" IsChecked="{Binding IsOwnFill, Mode=OneWay}" />
             <MenuItem Header="{local:Tr LineFitFit}" Command="{Binding OwnFitCommand}" IsCheckable="True" IsChecked="{Binding IsOwnFit, Mode=OneWay}" />
+            <!-- Zoom into the photo (asked by the author): a slider in the menu, its value beside it, a double click on it
+                 gives 100 % back; the menu stays open while it moves, the preview follows -->
+            <Separator />
+            <MenuItem StaysOpenOnClick="True">
+                <MenuItem.Icon>
+                    <TextBlock Text="&#xE71E;" FontFamily="{StaticResource IconFont}" FontSize="16" />
+                </MenuItem.Icon>
+                <MenuItem.Header>
+                    <StackPanel Margin="0,2">
+                        <TextBlock Text="{local:Tr ZoomInPhoto}" />
+                        <DockPanel Width="230" Margin="0,4,0,0">
+                            <TextBlock DockPanel.Dock="Right" Width="46" TextAlignment="Right" FontWeight="SemiBold" VerticalAlignment="Center"
+                                       Text="{Binding ZoomPercent, StringFormat={}{0:0} %}" />
+                            <Slider Minimum="100" Maximum="300" TickFrequency="50" TickPlacement="BottomRight" SmallChange="5" LargeChange="25"
+                                    IsMoveToPointEnabled="True" Margin="0,0,8,0" VerticalAlignment="Center" Value="{Binding ZoomPercent}"
+                                    MouseDoubleClick="ZoomSlider_MouseDoubleClick" ToolTip="{local:Tr ZoomInPhotoTooltip}"
+                                    AutomationProperties.Name="{local:Tr ZoomInPhoto}" />
+                        </DockPanel>
+                    </StackPanel>
+                </MenuItem.Header>
+            </MenuItem>
             <!-- Back to the automatic turn alone (it is kept through every change of the settings until then) -->
             <Separator />
             <MenuItem Header="{local:Tr RotateAuto}" Command="{Binding RotateAutoCommand}" IsEnabled="{Binding IsTurnedByHand}">
@@ -149,8 +170,8 @@
                     <TextBlock Text="&#xE7A7;" FontFamily="{StaticResource IconFont}" FontSize="16" />
                 </MenuItem.Icon>
             </MenuItem>
-            <!-- Back to the middle of the photo, once it was dragged on the preview -->
-            <MenuItem Header="{local:Tr RecenterPhoto}" Command="{Binding RecenterCommand}" IsEnabled="{Binding IsCropMoved}">
+            <!-- Back to the middle of the photo at 100 %, once it was dragged on the preview or zoomed -->
+            <MenuItem Header="{local:Tr ResetFraming}" Command="{Binding ResetFramingCommand}" IsEnabled="{Binding IsFramed}">
                 <MenuItem.Icon>
                     <TextBlock Text="&#xE7AC;" FontFamily="{StaticResource IconFont}" FontSize="16" />
                 </MenuItem.Icon>
@@ -199,10 +220,10 @@
                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal" Margin="8,0,0,0"
                             Visibility="{Binding IsCustomFormat, Converter={StaticResource BoolToVisibility}}">
                     <TextBox Width="64" MinWidth="0" AutomationProperties.Name="{local:Tr WidthMm}"
-                             Text="{Binding CustomWidth, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                             Text="{Binding CustomWidth, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                     <TextBlock Text="×" VerticalAlignment="Center" Margin="6,0" />
                     <TextBox Width="64" MinWidth="0" AutomationProperties.Name="{local:Tr HeightMm}"
-                             Text="{Binding CustomHeight, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                             Text="{Binding CustomHeight, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                     <TextBlock Text="{local:Tr Millimetres}" VerticalAlignment="Center" Margin="6,0,0,0" />
                 </StackPanel>
                 <ComboBox ItemsSource="{Binding DataContext.MixedFormats, RelativeSource={RelativeSource AncestorType=Window}}"
@@ -263,7 +284,7 @@
                             <Button Style="{StaticResource IconButton}" Content="&#xE738;" Command="{Binding DecrementCommand}" Margin="0,0,4,0"
                                     ToolTip="{local:Tr LessCopyTooltip}" AutomationProperties.Name="{local:Tr LessCopyTooltip}" />
                             <TextBox Width="54" MinWidth="54" TextAlignment="Center" AutomationProperties.Name="{local:Tr CopiesLabel}"
-                                     Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged, Delay=400}" ToolTip="{local:Tr CopiesTooltip}" />
+                                     Text="{Binding Copies, UpdateSourceTrigger=PropertyChanged, Delay=250}" ToolTip="{local:Tr CopiesTooltip}" />
                             <Button Style="{StaticResource IconButton}" Content="&#xE710;" Command="{Binding IncrementCommand}" Margin="4,0,0,0"
                                     ToolTip="{local:Tr MoreCopyTooltip}" AutomationProperties.Name="{local:Tr MoreCopyTooltip}" />
                         </StackPanel>
@@ -281,7 +302,7 @@
                         <TextBlock DockPanel.Dock="Left" Width="48" Text="{local:Tr CaptionLabel}" FontSize="12" VerticalAlignment="Center"
                                    Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
                         <TextBox local:NumericInput.Step="0" ToolTip="{local:Tr CaptionLineTooltip}" AutomationProperties.Name="{local:Tr CaptionLabel}"
-                                 Text="{Binding Caption, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                 Text="{Binding Caption, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                     </DockPanel>
                     <ContentControl Margin="0,8,0,0" Content="{Binding}" ContentTemplate="{StaticResource LineBack}"
                                     Visibility="{Binding DataContext.VersoEnabled, RelativeSource={RelativeSource AncestorType=Window}, Converter={StaticResource BoolToVisibility}}" />
@@ -629,7 +650,7 @@
                                                     ToolTip="{local:Tr LessForAllTooltip}" AutomationProperties.Name="{local:Tr LessForAllTooltip}" />
                                             <TextBox Width="54" MinWidth="54" TextAlignment="Center" local:NumericInput.Minimum="1"
                                                      AutomationProperties.Name="{local:Tr CopiesForAll}"
-                                                     Text="{Binding CopiesForAll, UpdateSourceTrigger=PropertyChanged, Delay=400, TargetNullValue=''}" />
+                                                     Text="{Binding CopiesForAll, UpdateSourceTrigger=PropertyChanged, Delay=250, TargetNullValue=''}" />
                                             <Button Style="{StaticResource IconButton}" Content="&#xE710;" Command="{Binding MoreForAllCommand}" Margin="4,0,0,0"
                                                     ToolTip="{local:Tr MoreForAllTooltip}" AutomationProperties.Name="{local:Tr MoreForAllTooltip}" />
                                         </StackPanel>
@@ -701,11 +722,11 @@
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
                                     <TextBlock Text="{local:Tr WidthMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                    <TextBox AutomationProperties.Name="{local:Tr WidthMm}" Text="{Binding CustomWidth, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                    <TextBox AutomationProperties.Name="{local:Tr WidthMm}" Text="{Binding CustomWidth, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="{local:Tr HeightMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                    <TextBox AutomationProperties.Name="{local:Tr HeightMm}" Text="{Binding CustomHeight, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                    <TextBox AutomationProperties.Name="{local:Tr HeightMm}" Text="{Binding CustomHeight, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                 </StackPanel>
                             </Grid>
 
@@ -715,19 +736,19 @@
                                 <UniformGrid Columns="4" Margin="0,4,-8,0">
                                     <StackPanel Margin="0,0,8,0">
                                         <TextBlock Text="{local:Tr MarginTop}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                        <TextBox AutomationProperties.Name="{local:Tr MarginTop}" MinWidth="0" Text="{Binding MarginTop, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                        <TextBox AutomationProperties.Name="{local:Tr MarginTop}" MinWidth="0" Text="{Binding MarginTop, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                     </StackPanel>
                                     <StackPanel Margin="0,0,8,0">
                                         <TextBlock Text="{local:Tr MarginBottom}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                        <TextBox AutomationProperties.Name="{local:Tr MarginBottom}" MinWidth="0" Text="{Binding MarginBottom, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                        <TextBox AutomationProperties.Name="{local:Tr MarginBottom}" MinWidth="0" Text="{Binding MarginBottom, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                     </StackPanel>
                                     <StackPanel Margin="0,0,8,0">
                                         <TextBlock Text="{local:Tr MarginLeft}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                        <TextBox AutomationProperties.Name="{local:Tr MarginLeft}" MinWidth="0" Text="{Binding MarginLeft, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                        <TextBox AutomationProperties.Name="{local:Tr MarginLeft}" MinWidth="0" Text="{Binding MarginLeft, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                     </StackPanel>
                                     <StackPanel Margin="0,0,8,0">
                                         <TextBlock Text="{local:Tr MarginRight}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                        <TextBox AutomationProperties.Name="{local:Tr MarginRight}" MinWidth="0" Text="{Binding MarginRight, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                        <TextBox AutomationProperties.Name="{local:Tr MarginRight}" MinWidth="0" Text="{Binding MarginRight, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                     </StackPanel>
                                 </UniformGrid>
                                 <TextBlock Style="{StaticResource Hint}" Text="{local:Tr MarginsHint}" />
@@ -744,7 +765,7 @@
                         <StackPanel>
                             <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionCaption}" />
                             <TextBox local:NumericInput.Step="0" AutomationProperties.Name="{local:Tr SectionCaption}"
-                                     Text="{Binding CaptionText, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                     Text="{Binding CaptionText, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                             <TextBlock Style="{StaticResource Hint}" Text="{local:Tr CaptionHint}" />
                             <Grid Margin="0,10,0,0">
                                 <Grid.ColumnDefinitions>
@@ -806,16 +827,16 @@
                                 </Grid.RowDefinitions>
                                 <StackPanel>
                                     <TextBlock Text="{local:Tr WidthMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                    <TextBox AutomationProperties.Name="{local:Tr WidthMm}" Text="{Binding CustomSheetWidth, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                    <TextBox AutomationProperties.Name="{local:Tr WidthMm}" Text="{Binding CustomSheetWidth, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
                                     <TextBlock Text="{local:Tr HeightMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                    <TextBox AutomationProperties.Name="{local:Tr HeightMm}" Text="{Binding CustomSheetHeight, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                    <TextBox AutomationProperties.Name="{local:Tr HeightMm}" Text="{Binding CustomSheetHeight, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,10,0,0">
                                     <TextBlock Text="{local:Tr SheetMargin}" VerticalAlignment="Center" />
                                     <TextBox AutomationProperties.Name="{local:Tr SheetMargin}" Width="64" Margin="12,0,6,0"
-                                             Text="{Binding CustomSheetMargin, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                             Text="{Binding CustomSheetMargin, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                     <TextBlock Text="{local:Tr Millimetres}" VerticalAlignment="Center" />
                                 </StackPanel>
                             </Grid>
@@ -864,7 +885,7 @@
                                 </Grid.RowDefinitions>
                                 <CheckBox Content="{local:Tr Bleed}" IsChecked="{Binding BleedEnabled}" VerticalAlignment="Center" />
                                 <TextBox Grid.Column="1" AutomationProperties.Name="{local:Tr BleedMm}" Width="64" Margin="12,2,6,2" VerticalAlignment="Center"
-                                         Text="{Binding BleedMm, UpdateSourceTrigger=PropertyChanged, Delay=400}" IsEnabled="{Binding BleedEnabled}" />
+                                         Text="{Binding BleedMm, UpdateSourceTrigger=PropertyChanged, Delay=250}" IsEnabled="{Binding BleedEnabled}" />
                                 <TextBlock Grid.Column="2" Text="{local:Tr Millimetres}" VerticalAlignment="Center" />
                                 <!-- How the bleed of a photo is made (asked by the author): enlarged (the default), or its edges mirrored -->
                                 <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Margin="28,0,0,4"
@@ -876,7 +897,7 @@
                                 </StackPanel>
                                 <CheckBox Grid.Row="2" Content="{local:Tr Spacing}" IsChecked="{Binding SpacingEnabled}" VerticalAlignment="Center" />
                                 <TextBox Grid.Row="2" Grid.Column="1" AutomationProperties.Name="{local:Tr SpacingMm}" Width="64" Margin="12,2,6,2" VerticalAlignment="Center"
-                                         Text="{Binding SpacingMm, UpdateSourceTrigger=PropertyChanged, Delay=400}" IsEnabled="{Binding SpacingEnabled}" />
+                                         Text="{Binding SpacingMm, UpdateSourceTrigger=PropertyChanged, Delay=250}" IsEnabled="{Binding SpacingEnabled}" />
                                 <TextBlock Grid.Row="2" Grid.Column="2" Text="{local:Tr Millimetres}" VerticalAlignment="Center" />
                             </Grid>
                             <TextBlock Style="{StaticResource Hint}" Text="{local:Tr BleedHint}" />
@@ -892,7 +913,7 @@
                             <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionQuantity}" />
                             <StackPanel Orientation="Horizontal" Visibility="{Binding IsRepeatMode, Converter={StaticResource BoolToVisibility}}">
                                 <TextBox AutomationProperties.Name="{local:Tr Quantity}" Width="90" local:NumericInput.Minimum="1"
-                                         Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged, Delay=400}" />
+                                         Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                 <RadioButton GroupName="unit" Content="{local:Tr UnitItems}" IsChecked="{Binding UnitItems}" Margin="14,0,14,0" VerticalAlignment="Center" />
                                 <RadioButton GroupName="unit" Content="{local:Tr UnitSheets}" IsChecked="{Binding UnitSheets}" VerticalAlignment="Center" />
                             </StackPanel>
