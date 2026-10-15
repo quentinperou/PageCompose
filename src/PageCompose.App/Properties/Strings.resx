@@ -606,6 +606,12 @@ The file may be open in another program.</value>
   <data name="DescribeImage" xml:space="preserve">
     <value>{0} · {1} × {2} px</value>
   </data>
+  <data name="DescribeProfile" xml:space="preserve">
+    <value> · {0}</value>
+  </data>
+  <data name="DescribeProfileConverted" xml:space="preserve">
+    <value> · {0} → sRGB</value>
+  </data>
   <data name="DescribePdf" xml:space="preserve">
     <value>PDF · {0} × {1} mm</value>
   </data>
@@ -787,6 +793,12 @@ The file may be open in another program.</value>
   </data>
   <data name="SettingsThemeDescription" xml:space="preserve">
     <value>Light or dark appearance. Automatic follows the Windows mode.</value>
+  </data>
+  <data name="SettingsConvertSrgb" xml:space="preserve">
+    <value>Convert photos to sRGB when added</value>
+  </data>
+  <data name="SettingsConvertSrgbDescription" xml:space="preserve">
+    <value>Adobe RGB, Display P3… become sRGB, for truer colours in the preview and the PDF and JPG exports.</value>
   </data>
   <data name="ThemeSystem" xml:space="preserve">
     <value>System theme (automatic)</value>
@@ -1062,10 +1074,28 @@ The file may be open in another program.</value>
     <value>Preview</value>
   </data>
   <data name="CopiesForAll" xml:space="preserve">
-    <value>For all lines:</value>
+    <value>Copies for all</value>
   </data>
   <data name="CopiesForAllTooltip" xml:space="preserve">
     <value>The same number of copies on every line</value>
+  </data>
+  <data name="ApplyToAll" xml:space="preserve">
+    <value>Apply to all</value>
+  </data>
+  <data name="FormatForAllLabel" xml:space="preserve">
+    <value>Size:</value>
+  </data>
+  <data name="FormatForAll" xml:space="preserve">
+    <value>Same size for all</value>
+  </data>
+  <data name="ApplyFormatForAll" xml:space="preserve">
+    <value>Apply</value>
+  </data>
+  <data name="FormatForAllTooltip" xml:space="preserve">
+    <value>Gives this size to every line (a custom size is typed on its line)</value>
+  </data>
+  <data name="CopiesForAllLabel" xml:space="preserve">
+    <value>Copies:</value>
   </data>
   <data name="LessForAllTooltip" xml:space="preserve">
     <value>One copy less on every line</value>

@@ -102,7 +102,7 @@
                             ToolTip="{local:Tr RemoveVisualTooltip}" AutomationProperties.Name="{local:Tr RemoveVisualTooltip}" VerticalAlignment="Center" />
                     <StackPanel Margin="10,0,4,0" VerticalAlignment="Center">
                         <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Info.OriginalPath}" />
-                        <TextBlock Text="{Binding Details}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Details}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Details}" />
                         <TextBlock Text="{Binding Quality}" Style="{StaticResource QualityText}" />
                         <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PagePicker}" />
                     </StackPanel>
@@ -187,7 +187,7 @@
                         </StackPanel>
                         <StackPanel Margin="10,0,4,0" VerticalAlignment="Center">
                             <TextBlock Text="{Binding FileName}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" ToolTip="{Binding Info.OriginalPath}" />
-                            <TextBlock Text="{Binding Details}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" />
+                            <TextBlock Text="{Binding Details}" FontSize="12" Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis" ToolTip="{Binding Details}" />
                             <TextBlock Text="{Binding Quality}" Style="{StaticResource QualityText}" />
                             <ContentControl Content="{Binding}" ContentTemplate="{StaticResource PagePicker}" />
                         </StackPanel>
@@ -330,18 +330,55 @@
                                         Visibility="{Binding HasVisuals, Converter={StaticResource BoolToVisibility}}" />
                                 <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionVisuals}" />
                             </DockPanel>
-                            <!-- The copies of every line at once (asked by the author); empty while the lines differ -->
-                            <StackPanel Orientation="Horizontal" Margin="0,0,0,8" ToolTip="{local:Tr CopiesForAllTooltip}"
-                                        Visibility="{Binding ShowCopiesForAll, Converter={StaticResource BoolToVisibility}}">
-                                <TextBlock Text="{local:Tr CopiesForAll}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                <Button Style="{StaticResource IconButton}" Content="&#xE738;" Command="{Binding LessForAllCommand}" Margin="0,0,4,0"
-                                        ToolTip="{local:Tr LessForAllTooltip}" AutomationProperties.Name="{local:Tr LessForAllTooltip}" />
-                                <TextBox Width="54" MinWidth="54" TextAlignment="Center" local:NumericInput.Minimum="1"
-                                         AutomationProperties.Name="{local:Tr CopiesForAll}"
-                                         Text="{Binding CopiesForAll, UpdateSourceTrigger=PropertyChanged, Delay=400, TargetNullValue=''}" />
-                                <Button Style="{StaticResource IconButton}" Content="&#xE710;" Command="{Binding MoreForAllCommand}" Margin="4,0,0,0"
-                                        ToolTip="{local:Tr MoreForAllTooltip}" AutomationProperties.Name="{local:Tr MoreForAllTooltip}" />
-                            </StackPanel>
+                            <!-- "Apply to all", a box of its own (asked by the author, so that it reads apart from the lines), the
+                                 same in Same size and Mixed sizes: in Mixed sizes the size first, on its own row, applied by its button
+                                 only (issue #1; the author chose this layout and the button), then the copies; empty while the lines
+                                 differ -->
+                            <!-- The fill of the mode switch and a control stroke: the card stroke alone was hardly seen in the
+                                 light theme and not at all in the dark one (the author's remark) -->
+                            <Border Margin="0,0,0,8" Padding="10,6,10,8" CornerRadius="6" BorderThickness="1"
+                                    Background="{DynamicResource SubtleFillColorTertiaryBrush}"
+                                    BorderBrush="{DynamicResource ControlStrokeColorSecondaryBrush}"
+                                    Visibility="{Binding ShowCopiesForAll, Converter={StaticResource BoolToVisibility}}">
+                                <StackPanel>
+                                    <TextBlock Text="{local:Tr ApplyToAll}" FontSize="12" FontWeight="SemiBold" Margin="0,0,0,6"
+                                               Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="*" />
+                                        </Grid.ColumnDefinitions>
+                                        <Grid.RowDefinitions>
+                                            <RowDefinition Height="Auto" />
+                                            <RowDefinition Height="Auto" />
+                                        </Grid.RowDefinitions>
+                                        <TextBlock Text="{local:Tr FormatForAllLabel}" VerticalAlignment="Center" Margin="0,0,10,6"
+                                                   Visibility="{Binding ShowFormatForAll, Converter={StaticResource BoolToVisibility}}" />
+                                        <DockPanel Grid.Column="1" Margin="0,0,0,6" Visibility="{Binding ShowFormatForAll, Converter={StaticResource BoolToVisibility}}">
+                                            <Button DockPanel.Dock="Right" Content="{local:Tr ApplyFormatForAll}" Margin="6,0,0,0" Padding="10,4"
+                                                    Command="{Binding ApplyFormatForAllCommand}" IsEnabled="{Binding CanApplyFormatForAll}"
+                                                    ToolTip="{local:Tr FormatForAllTooltip}" />
+                                            <Grid>
+                                                <ComboBox ItemsSource="{Binding FormatsForAll}" SelectedItem="{Binding FormatForAll}" DisplayMemberPath="Name"
+                                                          HorizontalAlignment="Stretch" AutomationProperties.Name="{local:Tr FormatForAll}" />
+                                                <TextBlock Text="{local:Tr FormatForAll}" IsHitTestVisible="False" Margin="12,0,32,0" VerticalAlignment="Center"
+                                                           Foreground="{DynamicResource TextFillColorSecondaryBrush}" TextTrimming="CharacterEllipsis"
+                                                           Visibility="{Binding FormatForAll, Converter={StaticResource NullToVisible}}" />
+                                            </Grid>
+                                        </DockPanel>
+                                        <TextBlock Grid.Row="1" Text="{local:Tr CopiesForAllLabel}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" ToolTip="{local:Tr CopiesForAllTooltip}">
+                                            <Button Style="{StaticResource IconButton}" Content="&#xE738;" Command="{Binding LessForAllCommand}" Margin="0,0,4,0"
+                                                    ToolTip="{local:Tr LessForAllTooltip}" AutomationProperties.Name="{local:Tr LessForAllTooltip}" />
+                                            <TextBox Width="54" MinWidth="54" TextAlignment="Center" local:NumericInput.Minimum="1"
+                                                     AutomationProperties.Name="{local:Tr CopiesForAll}"
+                                                     Text="{Binding CopiesForAll, UpdateSourceTrigger=PropertyChanged, Delay=400, TargetNullValue=''}" />
+                                            <Button Style="{StaticResource IconButton}" Content="&#xE710;" Command="{Binding MoreForAllCommand}" Margin="4,0,0,0"
+                                                    ToolTip="{local:Tr MoreForAllTooltip}" AutomationProperties.Name="{local:Tr MoreForAllTooltip}" />
+                                        </StackPanel>
+                                    </Grid>
+                                </StackPanel>
+                            </Border>
                             <ItemsControl ItemsSource="{Binding Visuals}" ItemTemplate="{StaticResource ComposeRow}" />
                             <Button Style="{StaticResource DropZoneButton}" Click="BrowseVisuals_Click" AutomationProperties.Name="{local:Tr DropVisualsAdd}">
                                 <StackPanel>

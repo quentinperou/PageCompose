@@ -80,6 +80,18 @@ public sealed record VisualInfo
     public (double Width, double Height) TurnedContentSize =>
         (BaseRotation + UserRotation) % 180 == 90 ? (Content.Height, Content.Width) : (Content.Width, Content.Height);
 
+    /// <summary>
+    /// The colour profile of a photo as read in the file chosen (null: none, read as sRGB). It stays on the copy
+    /// converted to sRGB (<see cref="ProfileConverted"/>), for the line to say from what.
+    /// </summary>
+    public ColorProfile? Profile { get; init; }
+
+    /// <summary>The photo was converted from <see cref="Profile"/> to sRGB at import (<see cref="Path"/> is the copy).</summary>
+    public bool ProfileConverted { get; init; }
+
+    /// <summary>A photo whose colours are only right once converted: a profile that is not sRGB, left as it is.</summary>
+    public bool HasForeignProfile => Kind == VisualKind.Image && Profile is { IsSrgb: false } && !ProfileConverted;
+
     /// <summary>File chosen by the user, when <see cref="Path"/> is a stand-in for it (a PDF converted to an image).</summary>
     public string? SourcePath { get; init; }
 

@@ -39,6 +39,7 @@ public partial class SettingsWindow : Window
         ChannelBox.Items.Add(new ChannelOption(UpdateChannel.Beta, Strings.Get("UpdateChannelBeta")));
         ChannelBox.SelectedItem = ChannelBox.Items.Cast<ChannelOption>().First(o => o.Channel == _settings.UpdateChannel);
         CheckAtStartupBox.IsChecked = _settings.CheckForUpdatesAtStartup;
+        ConvertToSrgbBox.IsChecked = _settings.ConvertToSrgb;
         ShowUpdateState();
         Updater.Checked += Updater_Checked;
         Closed += (_, _) => Updater.Checked -= Updater_Checked;
@@ -183,6 +184,13 @@ public partial class SettingsWindow : Window
     private void CheckAtStartup_Click(object sender, RoutedEventArgs e)
     {
         _settings.CheckForUpdatesAtStartup = CheckAtStartupBox.IsChecked == true;
+        _settings.Save();
+    }
+
+    // For the photos added from now on: those already in the list stay as they were read.
+    private void ConvertToSrgb_Click(object sender, RoutedEventArgs e)
+    {
+        _settings.ConvertToSrgb = ConvertToSrgbBox.IsChecked == true;
         _settings.Save();
     }
 

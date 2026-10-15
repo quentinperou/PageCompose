@@ -171,6 +171,7 @@ public sealed class MainViewModel : ObservableObject
         _settings = settings;
         Formats = [.. ItemFormats.All.Select(f => new FormatOption(f)), new FormatOption(null)];
         MixedFormats = Formats;
+        FormatsForAll = [.. Formats.Where(f => !f.IsCustom)];
         Sheets = [.. SheetFormats.All.Select(s => new SheetOption(s)), new SheetOption(null)];
 
         _mode = settings.Mode;
@@ -213,6 +214,7 @@ public sealed class MainViewModel : ObservableObject
         ClearVisualsCommand = new RelayCommand(ClearVisuals);
         MoreForAllCommand = new RelayCommand(() => AllLines(line => line.Copies++));
         LessForAllCommand = new RelayCommand(() => AllLines(line => line.Copies--));
+        ApplyFormatForAllCommand = new RelayCommand(ApplyFormatForAll);
         PreviousSheetCommand = new RelayCommand(() => PreviewSheetIndex--);
         NextSheetCommand = new RelayCommand(() => PreviewSheetIndex++);
         Notices.CollectionChanged += (_, _) =>
@@ -498,6 +500,45 @@ public sealed class MainViewModel : ObservableObject
 
     public ICommand MoreForAllCommand { get; }
     public ICommand LessForAllCommand { get; }
+
+    // ---- The size of every line at once, in Mixed sizes (issue #1 of the author) ----
+    // On its own row above the copies, and applied by a button only: choosing in the list changes nothing (his
+    // choice, after a first version that applied the size at once and overwrote the sizes chosen line by line).
+
+    public bool ShowFormatForAll => _mode == LayoutMode.Mixed && Visuals.Count > 1;
+
+    /// <summary>The preset sizes: a custom size stays typed line by line.</summary>
+    public IReadOnlyList<FormatOption> FormatsForAll { get; }
+
+    private FormatOption? _formatToApply;
+
+    /// <summary>
+    /// The size chosen in the list, applied by <see cref="ApplyFormatForAllCommand"/>. Before any choice: the size of
+    /// every line when they all have the same preset size, else nothing.
+    /// </summary>
+    public FormatOption? FormatForAll
+    {
+        get => _formatToApply ?? (Visuals.Count > 0 && Visuals[0].Format is { IsCustom: false } first && Visuals.All(v => v.Format == first) ? first : null);
+        set
+        {
+            if (value is not { IsCustom: false } format || format == _formatToApply) return;
+            _formatToApply = format;
+            OnPropertyChanged(nameof(FormatForAll));
+            OnPropertyChanged(nameof(CanApplyFormatForAll));
+        }
+    }
+
+    /// <summary>A size is chosen, and some line has another one.</summary>
+    public bool CanApplyFormatForAll => FormatForAll is { } f && Visuals.Any(v => v.Format != f);
+
+    public ICommand ApplyFormatForAllCommand { get; }
+
+    private void ApplyFormatForAll()
+    {
+        if (FormatForAll is not { } format) return;
+        _formatToApply = null; // the list then shows the size of every line
+        AllLines(line => line.Format = format);
+    }
 
     // Every line changed, then one recomputation (not one per line: packing mixed sizes is the costly part).
     private void AllLines(Action<VisualItem> change)
@@ -1380,7 +1421,13 @@ public sealed class MainViewModel : ObservableObject
             return await ConvertAsync(path);
         try
         {
-            return (VisualLoader.Load(path, pageNumber), null, null);
+            var info = VisualLoader.Load(path, pageNumber);
+            // A photo in Adobe RGB, Display P3…: the PDF, the preview and the JPG export would ignore its profile and
+            // show it dull, so Windows converts it to sRGB (an option of the settings, on by default; the setting is
+            // the shared App.Settings, as this method is static).
+            if (info.HasForeignProfile && App.Settings.ConvertToSrgb)
+                return await ConvertAsync(path, info.Profile);
+            return (info, null, null);
         }
         catch (VisualLoadException ex) when (ex.Error == VisualLoadError.Unreadable &&
                                              string.Equals(Path.GetExtension(path), ".pdf", StringComparison.OrdinalIgnoreCase))
@@ -1408,17 +1455,19 @@ public sealed class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// An iPhone HEIC, a WebP, a TIFF: decoded by Windows into a JPEG, then read as any photo; the line keeps the name
-    /// and the type of the file ("HEIC · 4032 × 3024 px").
+    /// An iPhone HEIC, a WebP, a TIFF, or a photo with a colour <paramref name="profile"/> other than sRGB: decoded by
+    /// Windows into a JPEG in sRGB, then read as any photo; the line keeps the name and the type of the file
+    /// ("HEIC · 4032 × 3024 px"), and says from which profile it was converted.
     /// </summary>
-    private static async Task<(VisualInfo? Info, string? Note, string? Error)> ConvertAsync(string path)
+    private static async Task<(VisualInfo? Info, string? Note, string? Error)> ConvertAsync(string path, ColorProfile? profile = null)
     {
         string name = Path.GetFileName(path);
         if (!File.Exists(path)) return (null, null, Strings.Format("LoadNotFound", path));
         try
         {
             string jpeg = await PhotoConverter.ConvertAsync(path);
-            return (VisualLoader.Load(jpeg) with { SourcePath = path }, null, null);
+            var info = VisualLoader.Load(jpeg) with { SourcePath = path };
+            return (profile is null ? info : info with { Profile = profile, ProfileConverted = true }, null, null);
         }
         catch (VisualLoadException ex)
         {
@@ -1920,6 +1969,7 @@ public sealed class MainViewModel : ObservableObject
                      nameof(SheetWidth), nameof(SheetHeight), nameof(MarginGeometry), nameof(PlaceholderCells), nameof(PreviewHint),
                      nameof(PreviewSheetIndex), nameof(PreviewSheetLabel), nameof(HasSeveralSheets), nameof(CutNumbers),
                      nameof(HasAnyVisual), nameof(ShowCutLineColor), nameof(ShowCopiesForAll), nameof(CopiesForAll), nameof(ShowFoldMarks),
+                     nameof(ShowFormatForAll), nameof(FormatForAll), nameof(CanApplyFormatForAll),
                      nameof(ShowCaption),
                  })
             OnPropertyChanged(name);

@@ -322,8 +322,12 @@ public sealed class VisualItem : ObservableObject
         if (v.Kind == VisualKind.Image)
         {
             var (w, h) = v.TurnedContentSize;
-            // A PDF converted to an image reads "PDF · 1075 × 721 px".
-            return Strings.Format("DescribeImage", Path.GetExtension(v.OriginalPath).TrimStart('.').ToUpperInvariant(), $"{w:0}", $"{h:0}");
+            // A PDF converted to an image reads "PDF · 1075 × 721 px"; a photo of another profile than sRGB says it,
+            // "· Adobe RGB (1998) → sRGB" once converted at import.
+            string image = Strings.Format("DescribeImage", Path.GetExtension(v.OriginalPath).TrimStart('.').ToUpperInvariant(), $"{w:0}", $"{h:0}");
+            return v.Profile is { IsSrgb: false } profile
+                ? image + Strings.Format(v.ProfileConverted ? "DescribeProfileConverted" : "DescribeProfile", profile.Name)
+                : image;
         }
 
         string pdf = Strings.Format("DescribePdf", $"{Units.PtToMm(v.FullWidth):0.#}", $"{Units.PtToMm(v.FullHeight):0.#}");

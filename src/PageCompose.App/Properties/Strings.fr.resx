@@ -606,6 +606,12 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
   <data name="DescribeImage" xml:space="preserve">
     <value>{0} · {1} × {2} px</value>
   </data>
+  <data name="DescribeProfile" xml:space="preserve">
+    <value> · {0}</value>
+  </data>
+  <data name="DescribeProfileConverted" xml:space="preserve">
+    <value> · {0} → sRGB</value>
+  </data>
   <data name="DescribePdf" xml:space="preserve">
     <value>PDF · {0} × {1} mm</value>
   </data>
@@ -787,6 +793,12 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
   </data>
   <data name="SettingsThemeDescription" xml:space="preserve">
     <value>Apparence claire ou sombre. Le mode automatique suit celui de Windows.</value>
+  </data>
+  <data name="SettingsConvertSrgb" xml:space="preserve">
+    <value>Convertir les photos en sRGB à l'import</value>
+  </data>
+  <data name="SettingsConvertSrgbDescription" xml:space="preserve">
+    <value>Adobe RGB, Display P3… passent en sRGB, pour des couleurs plus justes dans l'aperçu et les exports PDF et JPG.</value>
   </data>
   <data name="ThemeSystem" xml:space="preserve">
     <value>Thème du système (automatique)</value>
@@ -1062,10 +1074,28 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
     <value>Aperçu</value>
   </data>
   <data name="CopiesForAll" xml:space="preserve">
-    <value>Pour toutes :</value>
+    <value>Exemplaires pour tous</value>
   </data>
   <data name="CopiesForAllTooltip" xml:space="preserve">
     <value>Le même nombre d'exemplaires sur toutes les lignes</value>
+  </data>
+  <data name="ApplyToAll" xml:space="preserve">
+    <value>Appliquer à tous</value>
+  </data>
+  <data name="FormatForAllLabel" xml:space="preserve">
+    <value>Format :</value>
+  </data>
+  <data name="FormatForAll" xml:space="preserve">
+    <value>Même format pour toutes</value>
+  </data>
+  <data name="ApplyFormatForAll" xml:space="preserve">
+    <value>Appliquer</value>
+  </data>
+  <data name="FormatForAllTooltip" xml:space="preserve">
+    <value>Donne ce format à toutes les lignes (une taille personnalisée se saisit sur sa ligne)</value>
+  </data>
+  <data name="CopiesForAllLabel" xml:space="preserve">
+    <value>Exemplaires :</value>
   </data>
   <data name="LessForAllTooltip" xml:space="preserve">
     <value>Un exemplaire de moins sur chaque ligne</value>

@@ -96,6 +96,7 @@ public static class VisualLoader
             Content = new RawBox(0, 0, h.Width, h.Height),
             BaseRotation = rotation,
             BaseMirror = mirror,
+            Profile = h.Profile,
         };
     }
 

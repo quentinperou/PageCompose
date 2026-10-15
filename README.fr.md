@@ -30,7 +30,7 @@ A4), il convient à toute imprimante qui imprime en taille réelle.
 - **Même format** : plusieurs visuels d'un même format, chacun avec son nombre d'exemplaires (les photos d'une
   commande).
 - **Multi-formats** : plusieurs formats sur le moins de feuilles possible, les coupes numérotées dans l'ordre, et un
-  plan de coupe à imprimer pour le massicot.
+  plan de coupe à imprimer pour le massicot. Un même format ou un même nombre d'exemplaires pour toutes les photos.
 
 ### Formats et feuilles
 
@@ -53,6 +53,7 @@ A4), il convient à toute imprimante qui imprime en taille réelle.
 - JPG, PNG, PDF, et photos d'iPhone (HEIC), WebP et TIFF.
 - Glisser-déposer de fichiers ou d'un dossier entier.
 - Photos intégrées telles quelles (sans recompression), PDF de graphiste calés sur leur zone de coupe.
+- Photos en Adobe RGB, Display P3… converties en sRGB à l'import, pour des couleurs justes (une option des paramètres).
 
 ### Export
 

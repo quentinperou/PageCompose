@@ -14,8 +14,13 @@ QuentinPerou, with Claude Code (Anthropic)".
 
 **Talk to the author in French.** Code, comments, commit messages and these docs are in English.
 
-## Project status (October 11, 2026)
+## Project status (October 15, 2026)
 
+Version **0.10.0** (October 15, 2026, made on the shop PC, committed there as QuentinPerou, **not pushed**: to push
+from the home PC) converts the photos whose colour profile is not sRGB (Adobe RGB, Display P3…) to sRGB when they are
+added (an option of Settings → General, on by default), adds a size for every line at once in Mixed sizes, with an
+"Apply" button, in an "Apply to all" box with the copies (issue #1), and pins
+a fixed `System.Security.Cryptography.Pkcs` (the 8.0.1 brought by PDFsharp has known vulnerabilities).
 Version **0.9.0** (October 11, 2026: commit "PageCompose 0.9.0", tag `v0.9.0`, GitHub release with its patch note)
 adds the copies of every line at once, a text in the band of the Polaroid and Instax frames (font and colour of the
 PC, embedded in the PDF), the folded cards (four sizes laid open, dashed fold marks), the mirrored bleed (an option),
@@ -63,7 +68,7 @@ the photo sizes moved to exact inches.
 - Updates from GitHub Releases, as in CropPdf: check at startup (can be turned off), Stable/Beta channel, bar in the
   main window, download checked with SHA-256, silent install and relaunch. The Settings window has CropPdf's cards
   (language, theme, presets, updates, about), on pages chosen from a menu on the left (see below).
-- 1327 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.9.0.exe` locally (Inno Setup 6).
+- 1336 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.10.0.exe` locally (Inno Setup 6).
 - The installer is not signed: the UAC prompt shows "Unknown publisher" (QuentinPerou appears in the file details
   and in Installed apps). Left as is for now (October 10, 2026). A paid certificate would show the author's legal
   name, SignPath Foundation its own name; only a self-signed certificate trusted by hand on each PC shows "QuentinPerou".
@@ -87,6 +92,13 @@ the photo sizes moved to exact inches.
   - `Visuals/VisualLoader`: JPEG/PNG headers read without decoding, EXIF orientation, PDF through PDFsharp;
     errors are `VisualLoadException` with a `VisualLoadError` code that the UI translates. `ConvertedExtensions`
     (HEIC / HEIF, WebP, TIFF): taken by `IsSupported`, but converted by the app first (`NeedsConversion`);
+  - `Visuals/ColorProfile`: the ICC profile of a JPEG (APP2 "ICC_PROFILE" segments, joined in order) or a PNG (iCCP,
+    zlib; or an sRGB chunk, the profile winning when both are there), read by `ImageHeaderReader` without decoding:
+    its name ("desc", ICC v2 text or v4 "mluc") and whether it is sRGB, **by its primaries** (rXYZ / gXYZ / bXYZ within
+    0.01 of sRGB in D50: the small "c2" sRGB profiles of the web count), by its name without primaries.
+    `VisualInfo.Profile`, `ProfileConverted`, `HasForeignProfile`. Why: PDFsharp declares a JPEG `/DeviceRGB`, so a RIP
+    and Windows (preview, JPG, flattened PDF) ignore the profile inside it, and an Adobe RGB photo printed dull
+    (checked October 15: Adobe RGB 60,160,90 should be sRGB 0,162,84; the render gave 60,160,90);
   - `Visuals/BackPairs`: fronts and backs told apart by their names among files added together (`recto` / `verso`,
     `front` / `back`, a word of its own, any case; same folder and rest of the name, the extension may differ);
   - `Pdf/ImpositionPdfWriter`: writes the PDF (PDFsharp 6.2.4, MIT); `ImpositionJob.SheetLayouts` gives each sheet
@@ -123,8 +135,14 @@ the photo sizes moved to exact inches.
     does not draw it): take them only when PageCompose is in the foreground, never another application.
   - `Services/Updater`: check at startup, download to `%TEMP%\PageCompose-Update`, run the installer with
     `/SP- /SILENT /NORESTART /CLOSEAPPLICATIONS /FORCECLOSEAPPLICATIONS /RELAUNCH=1` (the `.iss` relaunches the app).
-  - `ViewModels/MainViewModel`: modes, `VisualItem` list (thumbnail, copies, dpi; "Pour toutes : [−] [n] [+]" sets the
-    copies of every line at once, `CopiesForAll`, one recomputation), recomputed on every change;
+  - `ViewModels/MainViewModel`: modes, `VisualItem` list (thumbnail, copies, dpi), recomputed on every change. Over
+    the lines, a box "Appliquer à tous" ("Apply to all", `ShowCopiesForAll`; in the Same size and Mixed sizes lists
+    alike): in Mixed sizes first "Format : [list] [Appliquer]" (`FormatForAll` / `FormatsForAll`, the preset sizes,
+    empty while the lines differ, a custom size staying typed per line; choosing in the list changes nothing until
+    "Appliquer", `ApplyFormatForAllCommand`: asked by the author, GitHub issue #1), then "Exemplaires : [−] [n] [+]"
+    (`CopiesForAll`, every line at once, one recomputation; the copies never change the sizes). The box is filled
+    with `SubtleFillColorTertiaryBrush` and outlined with `ControlStrokeColorSecondaryBrush` (the card stroke alone
+    vanished in the dark theme; the stronger ones were too dark in the light one);
     the preview is regenerated 200 ms after the last change, for the displayed sheet only.
   - **Mixed mode** (`RecomputeMixed`): uses the `Visuals` list of Compose; each line has its own size
     (`VisualItem.Format`, `MixedFormats`: the preset sizes and "Custom", whose width and height are typed on the line,
@@ -185,7 +203,11 @@ the photo sizes moved to exact inches.
     flattened on white where transparent, and saved full size as a JPEG of quality 95 in the same `Converted`
     folder (once per file version); `SourcePath` keeps the original ("HEIC · 4032 × 3024 px"). HEIC needs the
     "HEIF Image Extensions" and "HEVC Video Extensions" of the Store: without them, the line is refused with
-    `LoadHeicCodec`, which names them.
+    `LoadHeicCodec`, which names them. **A photo whose profile is not sRGB** (`HasForeignProfile`: Adobe RGB, Display
+    P3, ProPhoto, CMYK…) goes the same way when `AppSettings.ConvertToSrgb` is on ("Convertir les photos en sRGB à
+    l'import", Settings → General, on by default, asked by the author on October 15; the photos already in the list
+    stay as they were read); its line says "· Adobe RGB (1998) → sRGB" (off: "· Adobe RGB (1998)"), with the whole
+    details line as tooltip. sRGB photos and photos without a profile are never touched.
   - Exports ("Export as PDF" / "Export as JPG": same "as" on both buttons, "JPG" everywhere in the UI): the PDF as
     it is; "Flatten the PDF" and "Export as JPG" render each page of that PDF with
     `Windows.Data.Pdf` at 300 dpi (`Services/SheetExporter`: JPEG quality 95, 300 dpi in the file), then
@@ -293,8 +315,10 @@ the photo sizes moved to exact inches.
 - A visual turns a quarter when its proportions oppose those of its area (`Placement`); an area square within 1 µm
   turns nothing: cell edges are sums, and rounding used to make the 79 × 79 Polaroid image area "taller" in some
   cells only, so one photo turned when the space between visuals changed.
-- Images: embedded **without recompression**, once per PDF; EXIF orientation applied; warning below 200 dpi,
-  error below 150 dpi.
+- Images: embedded **without recompression**, once per PDF (except the copies converted by Windows: HEIC, WebP, TIFF,
+  JPEG refused by PDFsharp, and photos of another profile than sRGB, JPEG 95); EXIF orientation applied; warning
+  below 200 dpi, error below 150 dpi. **All the colours that leave the app are sRGB** (designer PDFs aside: kept as
+  they are, their own colour spaces left to the RIP).
 - A PDF with a TrimBox is placed at 100 % on the trim and clipped to the layout bleed.
 - Back: cells mirrored according to the flip (long edge: vertical axis; short edge: horizontal axis). Crop marks
   and continuous cut lines (`ImpositionJob.CutLines`: every cut, across the block of trims) on the front only.
@@ -392,7 +416,8 @@ the photo sizes moved to exact inches.
 
 ## Commands
 
-- Build: `dotnet build PageCompose.slnx` (no warning expected).
+- Build: `dotnet build PageCompose.slnx` (no warning expected, the NuGet audit included: a vulnerable package brought by
+  another is pinned to a fixed version in the csproj, as `System.Security.Cryptography.Pkcs` 10.0.13 for PDFsharp).
 - Tests: `dotnet test tests/PageCompose.Core.Tests`.
 - Run: `dotnet run --project src/PageCompose.App` (files or folders given as arguments are added as visuals).
 - Full build with installer: `.\scripts\build.ps1` (options `-SkipTests`, `-NoInstaller`), output in `dist\`.

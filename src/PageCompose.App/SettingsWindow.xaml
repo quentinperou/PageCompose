@@ -211,6 +211,20 @@
               </StackPanel>
             </DockPanel>
           </Border>
+
+          <!-- Colour profiles: photos that are not sRGB converted when added (on by default) -->
+          <Border Style="{StaticResource Card}">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Left" Style="{StaticResource CardIcon}" Text="&#xE91B;" />
+              <CheckBox x:Name="ConvertToSrgbBox" DockPanel.Dock="Right" Style="{StaticResource ToggleSwitch}"
+                        VerticalAlignment="Center" Margin="16,0,0,0" Click="ConvertToSrgb_Click"
+                        AutomationProperties.Name="{local:Tr SettingsConvertSrgb}" />
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="{local:Tr SettingsConvertSrgb}" />
+                <TextBlock Style="{StaticResource CardDescription}" Text="{local:Tr SettingsConvertSrgbDescription}" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
         </StackPanel>
       </ScrollViewer>
 

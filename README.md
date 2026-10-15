@@ -29,7 +29,7 @@ printer that prints at actual size.
 - **Repeat**: one visual over the whole sheet (business cards, flyers).
 - **Same size**: several visuals of one size, each with its own number of copies (the photos of an order).
 - **Mixed sizes**: several sizes on as few sheets as possible, the cuts numbered in order, and a cutting plan to print
-  for the guillotine.
+  for the guillotine. One size or one number of copies for every photo at once.
 
 ### Sizes and sheets
 
@@ -51,6 +51,7 @@ printer that prints at actual size.
 - JPG, PNG, PDF, and iPhone photos (HEIC), WebP and TIFF.
 - Drag and drop files or a whole folder.
 - Photos embedded as they are (no recompression), designer PDFs placed on their trim box.
+- Photos in Adobe RGB, Display P3… converted to sRGB when added, for true colours (an option of the settings).
 
 ### Export
 

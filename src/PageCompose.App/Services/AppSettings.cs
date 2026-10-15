@@ -37,6 +37,12 @@ public sealed class AppSettings
     /// <summary>Ask GitHub for a newer version when the app starts.</summary>
     public bool CheckForUpdatesAtStartup { get; set; } = true;
 
+    /// <summary>
+    /// A photo whose colour profile is not sRGB (Adobe RGB, Display P3…) is converted to sRGB when it is added: else
+    /// its colours are wrong in the PDF, the preview and the JPG export (on by default, the author's choice).
+    /// </summary>
+    public bool ConvertToSrgb { get; set; } = true;
+
     /// <summary>Releases offered as updates: stable only, or betas too.</summary>
     [JsonConverter(typeof(JsonStringEnumConverter<UpdateChannel>))]
     public UpdateChannel UpdateChannel { get; set; } = UpdateChannel.Stable;
