@@ -16,8 +16,13 @@ QuentinPerou, with Claude Code (Anthropic)".
 
 ## Project status (October 15, 2026)
 
-Version **0.10.0** (October 15, 2026, made on the shop PC, committed there as QuentinPerou, **not pushed**: to push
-from the home PC) converts the photos whose colour profile is not sRGB (Adobe RGB, Display P3…) to sRGB when they are
+Version **0.11.0** (October 15, 2026, made on the shop PC, committed there as QuentinPerou with the tag `v0.11.0`,
+**not pushed**: to push from the home PC, after 0.10.0) makes the project a document, as in Word
+or Paint: a title bar drawn by the app with a "File" button (New, New window, Open, Save, Save as, the exports,
+Settings, Quit, with their shortcuts) and the recent projects with their first sheet, the name of the project in the
+title bar with a dot while changes are not saved, and "Save the changes?" on closing a project saved or opened.
+Version **0.10.0** (October 15, 2026, made on the shop PC, committed there as QuentinPerou with the tag `v0.10.0`,
+**not pushed**: to push from the home PC) converts the photos whose colour profile is not sRGB (Adobe RGB, Display P3…) to sRGB when they are
 added (an option of Settings → General, on by default), adds a size for every line at once in Mixed sizes, with an
 "Apply" button, in an "Apply to all" box with the copies (issue #1), and pins
 a fixed `System.Security.Cryptography.Pkcs` (the 8.0.1 brought by PDFsharp has known vulnerabilities).
@@ -68,7 +73,7 @@ the photo sizes moved to exact inches.
 - Updates from GitHub Releases, as in CropPdf: check at startup (can be turned off), Stable/Beta channel, bar in the
   main window, download checked with SHA-256, silent install and relaunch. The Settings window has CropPdf's cards
   (language, theme, presets, updates, about), on pages chosen from a menu on the left (see below).
-- 1336 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.10.0.exe` locally (Inno Setup 6).
+- 1340 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.11.0.exe` locally (Inno Setup 6).
 - The installer is not signed: the UAC prompt shows "Unknown publisher" (QuentinPerou appears in the file details
   and in Installed apps). Left as is for now (October 10, 2026). A paid certificate would show the author's legal
   name, SignPath Foundation its own name; only a self-signed certificate trusted by hand on each PC shows "QuentinPerou".
@@ -129,7 +134,8 @@ the photo sizes moved to exact inches.
     (`DefaultCheckBoxStyle`, `AccentButtonStyle`…): `{StaticResource {x:Type CheckBox}}` finds the classic Windows
     style. Icons use the "Segoe Fluent Icons" font.
   - **Mica** (`Services/MicaBackdrop`, Windows 11 22H2+): the windows get the material of their title bar
-    (DWM system backdrop); their XAML `ApplicationBackgroundBrush` stays as the fallback elsewhere. The settings
+    (DWM system backdrop; the main window draws its own title bar since 0.11.0, on that material, see "Title bar and
+    File menu"); their XAML `ApplicationBackgroundBrush` stays as the fallback elsewhere. The settings
     column is transparent on it (only its cards stand out), the preview sits on `LayerFillColorDefaultBrush` with a
     rounded top-left corner, like the content of Windows 11 apps. Screen copies are needed to see Mica (PrintWindow
     does not draw it): take them only when PageCompose is in the foreground, never another application.
@@ -241,8 +247,10 @@ the photo sizes moved to exact inches.
     project" (`SaveProject`, Export section, settings and presets, off by default) writes `<name>.PageComposeProject`
     next to each export, PDF or JPG: a zip renamed, `project.json` (`ProjectFile`: the settings as a `LayoutPreset`, the quantity, the Repeat visual, the shared back,
     the lines with copies, page, turn, part kept, size, own back and its "auto") and a copy of each file once
-    (`files/1/IMG_0042.HEIC`: a folder each, so that the names stay). "Export the project", a button under the box
-    (asked by the author, who chose its words), writes it alone, without exporting the sheets (`ExportProjectAsync`). A double click (ProgID `PageCompose.Project`, icon
+    (`files/1/IMG_0042.HEIC`: a folder each, so that the names stay), and since 0.11.0 `preview.png`, the front of the
+    first sheet 120 px wide (`ProjectStore.ReadPreview`, for the recent projects). The project written next to an
+    export becomes the file of the job (see "File menu" below); the "Export the project" button of 0.7.0 to 0.10.0 is
+    gone (File > Save replaces it, the author's remark). A double click (ProgID `PageCompose.Project`, icon
     `{app}\ProjectFile.ico`, chosen by the author: the preset page in front of a paler one) or a drop opens it: extracted
     to `%TEMP%\PageCompose\Projects\<name>-<hash>` (folders older than a day deleted at startup), it takes the place of
     the job in progress (Ctrl+Z gives it back); the export then offers its folder and name. A double click starts a
@@ -250,6 +258,31 @@ the photo sizes moved to exact inches.
     window" (the default: another process of the app with the file, as a double click) or "Replace". `Window_Drop`
     answers the drop before any question (`Dispatcher.Yield`): a dialog shown inside the drop held Explorer until it
     was answered.
+  - **Title bar and File menu** (0.11.0, asked by the author, variant A + C (1) of his mock-ups,
+    `.local\maquettes\recents-*.png`): the window draws its own title bar (`WindowChrome`, `CaptionHeight` 32,
+    `GlassFrameThickness` -1, `UseAeroCaptionButtons`: Windows keeps drawing its buttons, snap layouts included, and
+    Mica stays behind the whole window): the logo (the frame of the .ico for the scale of the screen, `ShowTitleIcon`),
+    "PageCompose", the "File" button (a real button with the arrow of a menu, variant C of three: as plain text it did
+    not read as a button), then the name of the project, in the middle of the bar when it fits between "File" and the
+    buttons of Windows, else right after "File" (`PlaceProjectName`, asked by the author). Maximized, the content is
+    moved in by the resize border (`FitMaximized`). "File" opens one panel (`FilePanel`, a Popup): the commands on the
+    left (New Ctrl+N, New window Ctrl+Shift+N, Open… Ctrl+O, Save Ctrl+S, Save as… Ctrl+Shift+S, Export as PDF Ctrl+E,
+    Export as JPG, Settings Ctrl+,, Quit Alt+F4; Alt+F opens it), the recent projects on the right with the first sheet
+    of each (`RecentProjectItem`; the 10 last opened or saved, `Core/RecentFiles`, stored in
+    `%LOCALAPPDATA%\PageCompose\recent.json` by `Services/RecentProjects`, read again each time the panel opens, a file
+    no longer there dropped; "Clear the list").
+  - **The project as a document** (0.11.0, the author's decisions): a job is "Untitled" until it is saved or opened,
+    then its `.PageComposeProject` file (`MainViewModel.ProjectDocument`: its path and its `JobState` when saved; each
+    undo step keeps its document, so Ctrl+Z after "New" or after opening gives the job back with its file). The window
+    starts on an untitled job (the last settings, no visual). Save writes into its file (asked the first time), Save
+    as always asks; the box "Save the project" of the Export section stays and its project becomes the file of the job.
+    The name has a dot (●) while a project saved or opened has changes (`IsModified`, the state compared with the one
+    saved, counted 600 ms after a change as undo); closing, "New", another project in its place or an update ask
+    "Save the changes to “name”?" (`SaveChangesWindow`: Save / Don't save / Cancel) only for such a project: a job
+    never saved closes as it always did (the author's choice). The language change closes the old window without
+    asking (`CloseForReload`). "New" empties the window and keeps the settings (offered when the author hesitated, a job
+    often looks like the one before; confirmed by him after trying it); "New window" starts another process. A number being typed is taken before saving
+    (`CommitTyping`). "Remove all" keeps the project (the lines only).
   - **Undo, redo** (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z; shortcuts only, the author's choice): `MainViewModel` keeps the
     whole job (`JobState`: the settings through `CapturePreset`, the quantity, `VisualItem.Capture()` of each line,
     the same objects) 600 ms after the last change, up to 100 steps; `RestoreState` puts the same lines back
@@ -407,8 +440,13 @@ the photo sizes moved to exact inches.
 - Never drop a file into the hot folders of the shop's GP Controller: that prints at once, on expensive paper.
 - Shop details (IP addresses, hot folder names) stay out of committed files: they belong in `CLAUDE.local.md`.
 - Manual tests of the app open windows and dialogs on the author's screen: keep them short, close the app, and do
-  not leave test settings in `%LOCALAPPDATA%\PageCompose\settings.json` or test presets in `presets.json` (back them
-  up and put them back, as the `.local` scripts do).
+  not leave test settings in `%LOCALAPPDATA%\PageCompose\settings.json`, test presets in `presets.json` or test
+  projects in `recent.json` (back them up and put them back, as the `.local` scripts do).
+- **Never send keys (SendKeys, keyboard events) in a new test**: Windows may refuse to bring the app to the front
+  while the author works in another one, and the keys go there (October 15, 2026: a Ctrl+S then Escape went to another
+  app). Drive the app with UI Automation only (Invoke, Value, Toggle), which reaches the app and nothing else; open
+  a project by the command line rather than through the new Windows file dialog, whose name box has no Value pattern.
+  The older `.local` scripts that type into a dialog check that it is in the foreground first (`Wait-Dialog`).
 - Do not commit or push unless the author asks. Never push from the shop PC: no GitHub account may be signed in
   there (the author's wish); commits need no account.
 - Commit messages: **no `Co-Authored-By` line for Claude** (the author's choice), whatever a default says. The

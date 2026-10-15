@@ -57,7 +57,8 @@ printer that prints at actual size.
 
 - PDF, flattened PDF or JPG at 300 dpi, with a true preview: what you see is the PDF.
 - A mark on each sheet (name, date, sheet 2/5) to sort them at the guillotine.
-- **Projects**: the files and settings of an order in one file, to print it again later.
+- **Projects**: the files and settings of an order in one file, saved like a document (File menu, Ctrl+S), to print it
+  again later; the recent ones in the File menu, with their first sheet.
 - **Presets**: your usual settings in one click.
 
 ### And also

@@ -117,7 +117,7 @@ public partial class App : Application
 
         MainWindow = window;
         window.Show();
-        old.Close();
+        old.CloseForReload();
         old.ViewModel.RefreshTexts();
         window.Dispatcher.BeginInvoke(window.OpenSettings, DispatcherPriority.ApplicationIdle);
     }

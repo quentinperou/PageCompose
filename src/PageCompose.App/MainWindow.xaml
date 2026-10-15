@@ -4,7 +4,7 @@
         xmlns:local="clr-namespace:PageCompose.App"
         xmlns:vm="clr-namespace:PageCompose.App.ViewModels"
         xmlns:services="clr-namespace:PageCompose.App.Services"
-        Title="{local:Tr AppTitle}" Icon="Assets/PageCompose.ico"
+        Title="{Binding WindowTitle}" Icon="Assets/PageCompose.ico"
         Width="1360" Height="900" MinWidth="1040" MinHeight="680" WindowStartupLocation="CenterScreen"
         FontFamily="Segoe UI Variable Text, Segoe UI" FontSize="14"
         Foreground="{DynamicResource TextFillColorPrimaryBrush}" Background="{DynamicResource ApplicationBackgroundBrush}"
@@ -12,7 +12,89 @@
         Drop="Window_Drop" Closing="Window_Closing" PreviewKeyDown="Window_PreviewKeyDown" PreviewKeyUp="Window_PreviewKeyUp"
         PreviewMouseDown="Window_PreviewMouseDown">
 
+    <!-- The title bar is drawn by the app, to hold "File" (as in Paint, asked by the author); Windows keeps drawing its
+         buttons (snap layouts included) on the glass of the frame, and Mica stays behind the whole window. -->
+    <WindowChrome.WindowChrome>
+        <WindowChrome CaptionHeight="32" GlassFrameThickness="-1" UseAeroCaptionButtons="True" CornerRadius="0" />
+    </WindowChrome.WindowChrome>
+
     <Window.Resources>
+        <!-- "File" in the title bar: a button that looks like one, with the arrow of a menu (variant C, chosen by the
+             author: as plain text it did not read as a button); kept pressed while its panel is open -->
+        <Style x:Key="TitleBarButton" TargetType="Button">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            <Setter Property="Height" Value="26" />
+            <Setter Property="Padding" Value="10,0" />
+            <Setter Property="FocusVisualStyle" Value="{DynamicResource DefaultControlFocusVisualStyle}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" CornerRadius="4" Padding="{TemplateBinding Padding}" BorderThickness="1"
+                                Background="{DynamicResource ControlFillColorDefaultBrush}" BorderBrush="{DynamicResource ControlStrokeColorDefaultBrush}">
+                            <ContentPresenter VerticalAlignment="Center" />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource ControlFillColorSecondaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="Tag" Value="Open">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource ControlFillColorTertiaryBrush}" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <!-- A command of the File panel: icon, name, shortcut -->
+        <Style x:Key="FileCommand" TargetType="Button">
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            <Setter Property="HorizontalContentAlignment" Value="Stretch" />
+            <Setter Property="Margin" Value="4,1" />
+            <Setter Property="FocusVisualStyle" Value="{DynamicResource DefaultControlFocusVisualStyle}" />
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="Bg" Background="Transparent" CornerRadius="4" Padding="12,7">
+                            <ContentPresenter />
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsKeyboardFocused" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource SubtleFillColorSecondaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsPressed" Value="True">
+                                <Setter TargetName="Bg" Property="Background" Value="{DynamicResource SubtleFillColorTertiaryBrush}" />
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter Property="Opacity" Value="0.4" />
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+        <Style x:Key="FileCommandIcon" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="{StaticResource IconFont}" />
+            <Setter Property="FontSize" Value="16" />
+            <Setter Property="Width" Value="30" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+        </Style>
+        <Style x:Key="FileCommandKeys" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="Margin" Value="24,0,0,0" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorSecondaryBrush}" />
+        </Style>
+        <Style x:Key="FileSeparator" TargetType="Border">
+            <Setter Property="Height" Value="1" />
+            <Setter Property="Margin" Value="0,4" />
+            <Setter Property="Background" Value="{DynamicResource DividerStrokeColorDefaultBrush}" />
+        </Style>
+
         <!-- Rounded thumbnail -->
         <DataTemplate x:Key="Thumbnail" DataType="{x:Type vm:VisualItem}">
             <Grid Width="48" Height="48">
@@ -229,17 +311,192 @@
                 </DataTrigger>
             </DataTemplate.Triggers>
         </DataTemplate>
+
+        <!-- A recent project of the File panel: its first sheet in small, its name, when and where -->
+        <DataTemplate x:Key="RecentProject" DataType="{x:Type vm:RecentProjectItem}">
+            <Button Style="{StaticResource FileCommand}" Click="RecentProject_Click" ToolTip="{Binding Path}"
+                    AutomationProperties.Name="{Binding Name}">
+                <DockPanel>
+                    <!-- The paper of the sheet is white in both themes, as the preview -->
+                    <Border DockPanel.Dock="Left" Width="31" Height="44" Background="White" BorderThickness="1"
+                            BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" VerticalAlignment="Center">
+                        <Grid>
+                            <Image Source="{Binding Preview}" Stretch="Uniform" RenderOptions.BitmapScalingMode="HighQuality" />
+                            <!-- A project saved before 0.11.0 has no picture of its sheet -->
+                            <TextBlock Text="&#xE8A5;" FontFamily="{StaticResource IconFont}" FontSize="16" Foreground="#808080"
+                                       HorizontalAlignment="Center" VerticalAlignment="Center"
+                                       Visibility="{Binding Preview, Converter={StaticResource NullToVisible}}" />
+                        </Grid>
+                    </Border>
+                    <StackPanel Margin="14,0,0,0" VerticalAlignment="Center">
+                        <TextBlock Text="{Binding Name}" FontWeight="SemiBold" TextTrimming="CharacterEllipsis" />
+                        <TextBlock Text="{Binding Detail}" FontSize="12" Margin="0,2,0,0" TextTrimming="CharacterEllipsis"
+                                   Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                    </StackPanel>
+                </DockPanel>
+            </Button>
+        </DataTemplate>
+
+        <!-- The texts of the title bar fade while the window is not the active one, as in Windows -->
+        <Style x:Key="TitleText" TargetType="TextBlock">
+            <Setter Property="FontSize" Value="12" />
+            <Setter Property="VerticalAlignment" Value="Center" />
+            <Setter Property="Foreground" Value="{DynamicResource TextFillColorPrimaryBrush}" />
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding IsActive, RelativeSource={RelativeSource AncestorType=Window}}" Value="False">
+                    <Setter Property="Foreground" Value="{DynamicResource TextFillColorTertiaryBrush}" />
+                </DataTrigger>
+            </Style.Triggers>
+        </Style>
     </Window.Resources>
 
-    <Grid>
+    <Grid x:Name="WindowRoot">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="32" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="470" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
 
+        <!-- ==================== Title bar ==================== -->
+        <!-- The logo, the name of the app, "File", then the name of the project (asked by the author): in the middle of
+             the bar when there is room, else after "File" (PlaceProjectName). The rest is the caption of the window
+             (drag, double click, its menu); Windows draws its buttons on the right. -->
+        <Grid x:Name="TitleBar" Grid.ColumnSpan="2" SizeChanged="TitleBar_SizeChanged">
+            <StackPanel x:Name="TitleLeft" Orientation="Horizontal" HorizontalAlignment="Left" SizeChanged="TitleBar_SizeChanged">
+                <Image x:Name="TitleIcon" Width="16" Height="16" Margin="16,0,0,0" VerticalAlignment="Center" />
+                <TextBlock Style="{StaticResource TitleText}" Text="{local:Tr AppTitle}" Margin="10,0,0,0" />
+                <Button x:Name="FileButton" Style="{StaticResource TitleBarButton}" Margin="16,0,0,0"
+                        VerticalAlignment="Center" WindowChrome.IsHitTestVisibleInChrome="True" Click="FileButton_Click"
+                        AutomationProperties.Name="{local:Tr FileMenu}">
+                    <StackPanel Orientation="Horizontal">
+                        <TextBlock Text="{local:Tr FileMenu}" />
+                        <TextBlock Text="&#xE70D;" FontFamily="{StaticResource IconFont}" FontSize="9" Margin="8,1,0,0" VerticalAlignment="Center" />
+                    </StackPanel>
+                </Button>
+            </StackPanel>
+            <TextBlock x:Name="ProjectName" Style="{StaticResource TitleText}" Text="{Binding ProjectCaption, NotifyOnTargetUpdated=True}"
+                       HorizontalAlignment="Left" TextTrimming="CharacterEllipsis" TargetUpdated="ProjectName_TargetUpdated" />
+        </Grid>
+
+        <!-- The File panel (variant A + C of the mock-ups, chosen by the author): the commands on the left, the recent
+             projects on the right with their first sheet. -->
+        <Popup x:Name="FilePanel" PlacementTarget="{Binding ElementName=FileButton}" Placement="Bottom"
+               VerticalOffset="3" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade"
+               Opened="FilePanel_Opened" Closed="FilePanel_Closed">
+            <Grid Margin="12,0,12,18">
+                <!-- The shadow on a layer of its own: on the panel, it would blur its texts -->
+                <Border CornerRadius="8" Background="{DynamicResource FlyoutBackground}">
+                    <Border.Effect>
+                        <DropShadowEffect BlurRadius="18" ShadowDepth="4" Direction="270" Opacity="0.22" />
+                    </Border.Effect>
+                </Border>
+                <Border CornerRadius="8" BorderThickness="1" Background="{DynamicResource FlyoutBackground}"
+                        BorderBrush="{DynamicResource FlyoutBorderBrush}" PreviewKeyDown="FilePanel_PreviewKeyDown"
+                        KeyboardNavigation.TabNavigation="Cycle" KeyboardNavigation.DirectionalNavigation="Cycle">
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="Auto" MinWidth="280" />
+                            <ColumnDefinition Width="Auto" />
+                            <ColumnDefinition Width="390" />
+                        </Grid.ColumnDefinitions>
+
+                        <StackPanel Margin="0,4">
+                            <Button x:Name="FileNewButton" Style="{StaticResource FileCommand}" Click="FileNew_Click">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource FileCommandIcon}" Text="&#xE8A5;" />
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource FileCommandKeys}" Text="Ctrl+N" />
+                                    <TextBlock Text="{local:Tr FileNew}" />
+                                </DockPanel>
+                            </Button>
+                            <Button Style="{StaticResource FileCommand}" Click="FileNewWindow_Click">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource FileCommandIcon}" Text="&#xE737;" />
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource FileCommandKeys}" Text="{local:Tr ShortcutNewWindow}" />
+                                    <TextBlock Text="{local:Tr FileNewWindow}" />
+                                </DockPanel>
+                            </Button>
+                            <Button Style="{StaticResource FileCommand}" Click="FileOpen_Click">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource FileCommandIcon}" Text="&#xE8E5;" />
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource FileCommandKeys}" Text="Ctrl+O" />
+                                    <TextBlock Text="{local:Tr FileOpen}" />
+                                </DockPanel>
+                            </Button>
+                            <Border Style="{StaticResource FileSeparator}" />
+                            <Button Style="{StaticResource FileCommand}" Click="FileSave_Click" IsEnabled="{Binding CanSaveProject}">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource FileCommandIcon}" Text="&#xE74E;" />
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource FileCommandKeys}" Text="Ctrl+S" />
+                                    <TextBlock Text="{local:Tr FileSave}" />
+                                </DockPanel>
+                            </Button>
+                            <Button Style="{StaticResource FileCommand}" Click="FileSaveAs_Click" IsEnabled="{Binding CanSaveProject}">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource FileCommandIcon}" Text="&#xE792;" />
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource FileCommandKeys}" Text="{local:Tr ShortcutSaveAs}" />
+                                    <TextBlock Text="{local:Tr FileSaveAs}" />
+                                </DockPanel>
+                            </Button>
+                            <Border Style="{StaticResource FileSeparator}" />
+                            <Button Style="{StaticResource FileCommand}" Click="FileExportPdf_Click" IsEnabled="{Binding CanExport}">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource FileCommandIcon}" Text="&#xEA90;" />
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource FileCommandKeys}" Text="Ctrl+E" />
+                                    <TextBlock Text="{local:Tr FileExportPdf}" />
+                                </DockPanel>
+                            </Button>
+                            <Button Style="{StaticResource FileCommand}" Click="FileExportJpeg_Click" IsEnabled="{Binding CanExport}">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource FileCommandIcon}" Text="&#xEB9F;" />
+                                    <TextBlock Text="{local:Tr FileExportJpeg}" />
+                                </DockPanel>
+                            </Button>
+                            <Border Style="{StaticResource FileSeparator}" />
+                            <Button Style="{StaticResource FileCommand}" Click="FileSettings_Click">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource FileCommandIcon}" Text="&#xE713;" />
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource FileCommandKeys}" Text="Ctrl+," />
+                                    <TextBlock Text="{local:Tr FileSettings}" />
+                                </DockPanel>
+                            </Button>
+                            <Border Style="{StaticResource FileSeparator}" />
+                            <Button Style="{StaticResource FileCommand}" Click="FileQuit_Click">
+                                <DockPanel>
+                                    <TextBlock DockPanel.Dock="Left" Style="{StaticResource FileCommandIcon}" />
+                                    <TextBlock DockPanel.Dock="Right" Style="{StaticResource FileCommandKeys}" Text="Alt+F4" />
+                                    <TextBlock Text="{local:Tr FileQuit}" />
+                                </DockPanel>
+                            </Button>
+                        </StackPanel>
+
+                        <Border Grid.Column="1" Width="1" Background="{DynamicResource DividerStrokeColorDefaultBrush}" />
+
+                        <DockPanel Grid.Column="2">
+                            <TextBlock DockPanel.Dock="Top" Text="{local:Tr RecentProjects}" FontSize="12" FontWeight="SemiBold" Margin="16,10,16,4"
+                                       Foreground="{DynamicResource TextFillColorSecondaryBrush}" />
+                            <StackPanel DockPanel.Dock="Bottom" Visibility="{Binding HasRecentProjects, Converter={StaticResource BoolToVisibility}}">
+                                <Border Style="{StaticResource FileSeparator}" />
+                                <Button Style="{StaticResource FileCommand}" Margin="4,0,4,5" Click="ClearRecentProjects_Click">
+                                    <TextBlock Text="{local:Tr ClearRecentProjects}" Margin="4,0,0,0" />
+                                </Button>
+                            </StackPanel>
+                            <TextBlock Style="{StaticResource Hint}" Text="{local:Tr NoRecentProjects}" Margin="16,6,16,16"
+                                       Visibility="{Binding HasRecentProjects, Converter={StaticResource InverseBoolToVisibility}}" />
+                            <ScrollViewer VerticalScrollBarVisibility="Auto" MaxHeight="590" Focusable="False">
+                                <ItemsControl ItemsSource="{Binding RecentProjectList}" ItemTemplate="{StaticResource RecentProject}" Focusable="False" />
+                            </ScrollViewer>
+                        </DockPanel>
+                    </Grid>
+                </Border>
+            </Grid>
+        </Popup>
+
         <!-- ==================== Settings panel ==================== -->
         <!-- On the window background (Mica on Windows 11, as the title bar): only the cards stand out. -->
-        <DockPanel Grid.Column="0">
+        <DockPanel Grid.Row="1" Grid.Column="0">
             <!-- Only the export buttons stay fixed at the bottom: their options are in the last section (asked by the author) -->
             <Border DockPanel.Dock="Bottom" Padding="20,14" BorderBrush="{DynamicResource DividerStrokeColorDefaultBrush}" BorderThickness="0,1,0,0">
                 <Grid>
@@ -659,9 +916,6 @@
                             <CheckBox Content="{local:Tr SheetMark}" IsChecked="{Binding SheetMark}" ToolTip="{local:Tr SheetMarkTooltip}" />
                             <!-- A .PageComposeProject next to the export: its files and settings, opened again by a double click -->
                             <CheckBox Content="{local:Tr SaveProject}" IsChecked="{Binding SaveProject}" ToolTip="{local:Tr SaveProjectTooltip}" />
-                            <!-- The project alone, without exporting the sheets (asked by the author) -->
-                            <Button Content="{local:Tr ExportProject}" Click="ExportProject_Click" IsEnabled="{Binding HasAnyVisual}"
-                                    HorizontalAlignment="Left" Padding="12,4" Margin="0,8,0,0" ToolTip="{local:Tr ExportProjectTooltip}" />
                         </StackPanel>
                     </Border>
                 </StackPanel>
@@ -670,9 +924,9 @@
 
         <!-- ==================== Preview ==================== -->
         <!-- The content layer of Windows 11 apps: a lighter surface with a rounded corner, beside the Mica column. -->
-        <Border Grid.Column="1" Background="{DynamicResource LayerFillColorDefaultBrush}"
+        <Border Grid.Row="1" Grid.Column="1" Background="{DynamicResource LayerFillColorDefaultBrush}"
                 BorderBrush="{DynamicResource CardStrokeColorDefaultBrush}" BorderThickness="1,1,0,0" CornerRadius="8,0,0,0" />
-        <Grid Grid.Column="1" Margin="28,22,28,18">
+        <Grid Grid.Row="1" Grid.Column="1" Margin="28,22,28,18">
             <Grid.RowDefinitions>
                 <RowDefinition Height="Auto" />
                 <RowDefinition Height="Auto" />

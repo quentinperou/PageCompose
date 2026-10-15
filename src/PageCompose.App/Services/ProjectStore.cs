@@ -57,8 +57,9 @@ public sealed class ProjectLine
 }
 
 /// <summary>
-/// The .PageComposeProject files (asked by the author): a zip under another name, holding "project.json" and a copy of each
-/// file of the project ("files/1/IMG_0042.HEIC"…), so that it opens on any PC, even when the originals have moved.
+/// The .PageComposeProject files (asked by the author): a zip under another name, holding "project.json", a copy of each
+/// file of the project ("files/1/IMG_0042.HEIC"…), so that it opens on any PC, even when the originals have moved, and
+/// "preview.png", the first sheet in small for the recent projects (since 0.11.0).
 /// </summary>
 public static class ProjectStore
 {
@@ -66,6 +67,7 @@ public static class ProjectStore
     public const string FileExtension = ".PageComposeProject";
 
     private const string ProjectEntry = "project.json";
+    private const string PreviewEntry = "preview.png";
     private const string FilesFolder = "files/";
 
     private static readonly string OpenedFolder = Path.Combine(Path.GetTempPath(), "PageCompose", "Projects");
@@ -76,8 +78,11 @@ public static class ProjectStore
 
     public static bool IsProjectFile(string path) => Path.GetExtension(path).Equals(FileExtension, StringComparison.OrdinalIgnoreCase);
 
-    /// <summary>Writes the project and a copy of each of its files (once each, however many lines use it).</summary>
-    public static void Save(string path, ProjectFile job)
+    /// <summary>
+    /// Writes the project and a copy of each of its files (once each, however many lines use it), with
+    /// <paramref name="preview"/>, a small PNG of its first sheet, shown in the recent projects.
+    /// </summary>
+    public static void Save(string path, ProjectFile job, byte[]? preview = null)
     {
         var entries = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase); // file → entry
         var lines = new[] { job.Repeat, job.SharedBack }.OfType<ProjectLine>().Concat(job.Visuals).SelectMany(l => l.WithBack()).ToList();
@@ -98,6 +103,11 @@ public static class ProjectStore
         {
             using (var writer = new StreamWriter(zip.CreateEntry(ProjectEntry).Open(), new UTF8Encoding(false)))
                 writer.Write(JsonSerializer.Serialize(saved, Json));
+            if (preview is not null)
+            {
+                using var stream = zip.CreateEntry(PreviewEntry, CompressionLevel.NoCompression).Open();
+                stream.Write(preview);
+            }
             foreach (var (file, entry) in entries)
             {
                 var level = Compressed.Contains(Path.GetExtension(file).ToLowerInvariant()) ? CompressionLevel.NoCompression : CompressionLevel.Optimal;
@@ -150,6 +160,24 @@ public static class ProjectStore
         catch (Exception ex) when (ex is JsonException or InvalidOperationException or NotSupportedException)
         {
             throw new InvalidDataException("Damaged PageCompose project.", ex);
+        }
+    }
+
+    /// <summary>The small picture of the first sheet; null for a project saved before 0.11.0, or a file unreadable.</summary>
+    public static byte[]? ReadPreview(string path)
+    {
+        try
+        {
+            using var zip = ZipFile.OpenRead(path);
+            if (zip.GetEntry(PreviewEntry) is not { Length: > 0 and < 4_000_000 } entry) return null;
+            using var stream = entry.Open();
+            using var copy = new MemoryStream();
+            stream.CopyTo(copy);
+            return copy.ToArray();
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            return null;
         }
     }
 

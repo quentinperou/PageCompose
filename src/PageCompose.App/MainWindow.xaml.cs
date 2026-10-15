@@ -5,6 +5,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using Microsoft.Win32;
 using PageCompose.App.Services;
@@ -22,6 +23,8 @@ public partial class MainWindow : Window
         InitializeComponent();
         DataContext = viewModel;
         MicaBackdrop.Apply(this);
+        ShowTitleIcon();
+        StateChanged += (_, _) => FitMaximized();
         ApplyZoom();
         viewModel.AskPdfPages = pdfs =>
         {
@@ -52,7 +55,8 @@ public partial class MainWindow : Window
         if (files.Count > 0) await ViewModel.AddFilesAsync(files);
     }
 
-    // In a window that already holds work, the project takes its place or opens in a new window, as asked.
+    // In a window that already holds work, the project takes its place or opens in a new window, as asked; the changes
+    // of the project it replaces are saved first if wanted.
     private async Task OpenProjectAsync(string path)
     {
         if (ViewModel.HasAnyVisual)
@@ -61,11 +65,11 @@ public partial class MainWindow : Window
             if (ask.ShowDialog() != true) return;
             if (!ask.Replace)
             {
-                // Another window of the app, as a double click on the file gives.
-                Process.Start(new ProcessStartInfo(Environment.ProcessPath!) { ArgumentList = { path }, UseShellExecute = false });
+                StartWindow(path); // as a double click on the file gives
                 return;
             }
         }
+        if (!await ConfirmLeaveProjectAsync()) return;
 
         string? error = null;
         try
@@ -228,19 +232,6 @@ public partial class MainWindow : Window
         await RunExportAsync(() => ViewModel.ExportJpegAsync(dialog.FileName));
     }
 
-    // The project alone (.PageComposeProject), without the sheets.
-    private async void ExportProject_Click(object sender, RoutedEventArgs e)
-    {
-        var dialog = ExportDialog(Strings.Get("ExportProjectDialogTitle"), Strings.Get("ProjectFilter"),
-            Path.ChangeExtension(ViewModel.SuggestedFileName(), ProjectStore.FileExtension));
-        if (dialog.ShowDialog(this) != true) return;
-        await RunExportAsync(async () =>
-        {
-            await ViewModel.ExportProjectAsync(dialog.FileName);
-            return [dialog.FileName];
-        });
-    }
-
     private SaveFileDialog ExportDialog(string title, string filter, string fileName) => new()
     {
         Title = title,
@@ -248,6 +239,10 @@ public partial class MainWindow : Window
         FileName = fileName,
         InitialDirectory = ViewModel.LastExportFolder is { } folder && Directory.Exists(folder) ? folder : ViewModel.FirstVisualFolder ?? "",
     };
+
+    // A number being typed reaches the job a moment later (its box waits): taken now, before saving or exporting.
+    private static void CommitTyping() =>
+        (Keyboard.FocusedElement as TextBox)?.GetBindingExpression(TextBox.TextProperty)?.UpdateSource();
 
     // The toast shows the progress, then offers to open the file or show it in its folder.
     private async Task RunExportAsync(Func<Task<IReadOnlyList<string>>> export)
@@ -535,6 +530,12 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
+        if (e.Key == Key.Escape && FilePanel.IsOpen) // opened with the mouse: the keyboard is still on the window
+        {
+            FilePanel.IsOpen = false;
+            e.Handled = true;
+            return;
+        }
         if (e.Key == Key.System && e.SystemKey is Key.LeftAlt or Key.RightAlt)
         {
             UpdateSheetCursor(alt: true); // not handled: Alt keeps its usual part in Windows
@@ -549,12 +550,38 @@ public partial class MainWindow : Window
             e.Handled = true;
             return;
         }
+        // The File menu: Alt+F opens it, and its commands have their usual shortcuts.
+        if (e.Key == Key.System && e.SystemKey == Key.F && Keyboard.Modifiers == ModifierKeys.Alt)
+        {
+            OpenFilePanel(keyboard: true);
+            e.Handled = true;
+            return;
+        }
+        if (Keyboard.Modifiers == (ModifierKeys.Control | ModifierKeys.Shift))
+        {
+            switch (e.Key)
+            {
+                case Key.N: StartWindow(); break;
+                case Key.S: _ = SaveProjectAsync(saveAs: true); break;
+                default: return;
+            }
+            e.Handled = true;
+            return;
+        }
         if (Keyboard.Modifiers != ModifierKeys.Control) return;
         switch (e.Key)
         {
             case Key.Add or Key.OemPlus: SetZoom(_zoom * ZoomStep); break;
             case Key.Subtract or Key.OemMinus: SetZoom(_zoom / ZoomStep); break;
             case Key.D0 or Key.NumPad0: SetZoom(1); break;
+            case Key.N: _ = NewProjectAsync(); break;
+            case Key.O: _ = ChooseProjectAsync(); break;
+            case Key.S: _ = SaveProjectAsync(saveAs: false); break;
+            case Key.E:
+                CommitTyping();
+                if (ViewModel.CanExport) Export_Click(this, e);
+                break;
+            case Key.OemComma: OpenSettings(); break;
             default: return;
         }
         e.Handled = true;
@@ -611,6 +638,9 @@ public partial class MainWindow : Window
     private async void UpdateInstall_Click(object sender, RoutedEventArgs e)
     {
         if (Updater.Available is not { } release)
+            return;
+        // The installer closes the app: the changes of the project first, if wanted.
+        if (!await ConfirmLeaveProjectAsync())
             return;
 
         UpdateActions.Visibility = Visibility.Collapsed;
@@ -693,7 +723,246 @@ public partial class MainWindow : Window
             ((App)Application.Current).ReloadMainWindow(this);
     }
 
-    private void Window_Closing(object? sender, CancelEventArgs e) => ViewModel.SaveSettings();
+    // ---- Title bar, File menu (asked by the author) ----
+    // The job is a document: "Untitled" until it is saved, then its .PageComposeProject file. Only a project saved or
+    // opened asks to save its changes (on closing, "New", another project); a job never saved closes as it always did.
+
+    // The icon of the title bar: the frame of the .ico drawn for the scale of the screen (the small sizes are
+    // hand-fitted to whole pixels; the 256 px PNG would be blurry at 16 px).
+    private void ShowTitleIcon()
+    {
+        double size = 16 * VisualTreeHelper.GetDpi(this).DpiScaleX;
+        var frames = new IconBitmapDecoder(new Uri("pack://application:,,,/Assets/PageCompose.ico"), BitmapCreateOptions.None,
+            BitmapCacheOption.OnLoad).Frames;
+        TitleIcon.Source = frames.Where(f => f.PixelWidth >= size - 0.5).MinBy(f => f.PixelWidth) ?? frames.MaxBy(f => f.PixelWidth);
+    }
+
+    protected override void OnDpiChanged(DpiScale oldDpi, DpiScale newDpi)
+    {
+        base.OnDpiChanged(oldDpi, newDpi);
+        ShowTitleIcon();
+    }
+
+    // Maximized, a window without the Windows title bar reaches beyond the screen by its resize border: its content
+    // is moved back in.
+    private void FitMaximized()
+    {
+        var border = SystemParameters.WindowResizeBorderThickness;
+        WindowRoot.Margin = WindowState == WindowState.Maximized
+            ? new Thickness(border.Left + 4, border.Top + 4, border.Right + 4, border.Bottom + 4)
+            : new Thickness(0);
+    }
+
+    // The width Windows keeps for its buttons on the right of the title bar (minimize, maximize, close).
+    private const double CaptionButtonsWidth = 140;
+
+    private void TitleBar_SizeChanged(object sender, SizeChangedEventArgs e) => PlaceProjectName();
+
+    private void ProjectName_TargetUpdated(object? sender, System.Windows.Data.DataTransferEventArgs e) => PlaceProjectName();
+
+    // The name of the project in the middle of the title bar when it fits between "File" and the buttons of Windows,
+    // else right after "File" (asked by the author), shortened with "…" when even that is too narrow.
+    private void PlaceProjectName()
+    {
+        const double gap = 12;
+        double width = TitleBar.ActualWidth, after = TitleLeft.ActualWidth + 10, end = width - CaptionButtonsWidth;
+        (ProjectName.Margin, ProjectName.MaxWidth) = (new Thickness(0), double.PositiveInfinity); // measured alone
+        ProjectName.Measure(new Size(double.PositiveInfinity, double.PositiveInfinity));
+        double text = ProjectName.DesiredSize.Width, middle = (width - text) / 2;
+        double left = middle >= after + gap && middle + text <= end - gap ? middle : after;
+        ProjectName.Margin = new Thickness(left, 0, 0, 0);
+        ProjectName.MaxWidth = Math.Max(0, end - gap - left);
+    }
+
+    private void FileButton_Click(object sender, RoutedEventArgs e) => OpenFilePanel(keyboard: false);
+
+    private void OpenFilePanel(bool keyboard)
+    {
+        if (FilePanel.IsOpen) return;
+        CommitTyping();
+        ViewModel.ReloadRecentProjects();
+        FilePanel.IsOpen = true;
+        if (keyboard) Dispatcher.BeginInvoke(() => FileNewButton.Focus(), DispatcherPriority.Input);
+    }
+
+    private void FilePanel_Opened(object? sender, EventArgs e) => FileButton.Tag = "Open";
+
+    private void FilePanel_Closed(object? sender, EventArgs e) => FileButton.Tag = null;
+
+    private void FilePanel_PreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Escape) return;
+        FilePanel.IsOpen = false;
+        FileButton.Focus();
+        e.Handled = true;
+    }
+
+    private async void FileNew_Click(object sender, RoutedEventArgs e)
+    {
+        FilePanel.IsOpen = false;
+        await NewProjectAsync();
+    }
+
+    private async Task NewProjectAsync()
+    {
+        if (await ConfirmLeaveProjectAsync()) ViewModel.NewProject();
+    }
+
+    private void FileNewWindow_Click(object sender, RoutedEventArgs e)
+    {
+        FilePanel.IsOpen = false;
+        StartWindow();
+    }
+
+    /// <summary>Another window of the app (a process of its own), empty or with a project.</summary>
+    private static void StartWindow(string? project = null)
+    {
+        var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
+        if (project is not null) start.ArgumentList.Add(project);
+        Process.Start(start);
+    }
+
+    private async void FileOpen_Click(object sender, RoutedEventArgs e)
+    {
+        FilePanel.IsOpen = false;
+        await ChooseProjectAsync();
+    }
+
+    private async Task ChooseProjectAsync()
+    {
+        var dialog = new OpenFileDialog
+        {
+            Title = Strings.Get("OpenProjectDialogTitle"),
+            Filter = Strings.Get("ProjectFilter"),
+            InitialDirectory = ViewModel.ProjectFolder ?? (ViewModel.LastExportFolder is { } folder && Directory.Exists(folder) ? folder : ""),
+        };
+        if (dialog.ShowDialog(this) == true) await OpenProjectAsync(dialog.FileName);
+    }
+
+    private async void RecentProject_Click(object sender, RoutedEventArgs e)
+    {
+        FilePanel.IsOpen = false;
+        if ((sender as FrameworkElement)?.DataContext is not RecentProjectItem recent) return;
+        if (!File.Exists(recent.Path))
+        {
+            ViewModel.ForgetRecentProject(recent.Path);
+            MessageBox.Show(this, Strings.Format("ProjectMissing", recent.Name), Strings.Get("AppTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            return;
+        }
+        await OpenProjectAsync(recent.Path);
+    }
+
+    private void ClearRecentProjects_Click(object sender, RoutedEventArgs e) => ViewModel.ClearRecentProjects();
+
+    private async void FileSave_Click(object sender, RoutedEventArgs e)
+    {
+        FilePanel.IsOpen = false;
+        await SaveProjectAsync(saveAs: false);
+    }
+
+    private async void FileSaveAs_Click(object sender, RoutedEventArgs e)
+    {
+        FilePanel.IsOpen = false;
+        await SaveProjectAsync(saveAs: true);
+    }
+
+    /// <summary>
+    /// "Save" (Ctrl+S): into the file of the project, asked the first time; "Save as": always asked. True once saved.
+    /// </summary>
+    private async Task<bool> SaveProjectAsync(bool saveAs)
+    {
+        CommitTyping();
+        if (!ViewModel.CanSaveProject) return false;
+        string? path = saveAs ? null : ViewModel.ProjectPath;
+        if (path is null)
+        {
+            var dialog = new SaveFileDialog
+            {
+                Title = Strings.Get("SaveProjectDialogTitle"),
+                Filter = Strings.Get("ProjectFilter"),
+                FileName = ViewModel.ProjectPath is { } current
+                    ? Path.GetFileName(current)
+                    : Path.ChangeExtension(ViewModel.SuggestedFileName(), ProjectStore.FileExtension),
+                InitialDirectory = ViewModel.ProjectFolder
+                                   ?? (ViewModel.LastExportFolder is { } folder && Directory.Exists(folder) ? folder : ViewModel.FirstVisualFolder ?? ""),
+            };
+            if (dialog.ShowDialog(this) != true) return false;
+            path = dialog.FileName;
+        }
+
+        try
+        {
+            await ViewModel.SaveProjectAsync(path);
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            ViewModel.Toast.Hide();
+            MessageBox.Show(this, Strings.Format("ProjectSaveFailed", ex.Message), Strings.Get("AppTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Before another job takes the place of a project saved or opened, or the window closes: its changes saved first if
+    /// wanted. False: stay as it is (cancelled, or the save did not happen).
+    /// </summary>
+    private async Task<bool> ConfirmLeaveProjectAsync()
+    {
+        CommitTyping();
+        if (!ViewModel.HasUnsavedChanges()) return true;
+        var ask = new SaveChangesWindow(ViewModel.ProjectTitle) { Owner = this };
+        if (ask.ShowDialog() != true) return false;
+        return !ask.Save || await SaveProjectAsync(saveAs: false);
+    }
+
+    private void FileExportPdf_Click(object sender, RoutedEventArgs e)
+    {
+        FilePanel.IsOpen = false;
+        Export_Click(sender, e);
+    }
+
+    private void FileExportJpeg_Click(object sender, RoutedEventArgs e)
+    {
+        FilePanel.IsOpen = false;
+        ExportJpeg_Click(sender, e);
+    }
+
+    private void FileSettings_Click(object sender, RoutedEventArgs e)
+    {
+        FilePanel.IsOpen = false;
+        OpenSettings();
+    }
+
+    private void FileQuit_Click(object sender, RoutedEventArgs e)
+    {
+        FilePanel.IsOpen = false;
+        Close();
+    }
+
+    // Asked once (a project with changes) before closing; the language change closes it without asking (the job goes on
+    // in the new window), and so does an update being installed (asked before it starts).
+    private bool _closeAsked;
+
+    /// <summary>For a language change: the window is replaced by another on the same job.</summary>
+    public void CloseForReload()
+    {
+        _closeAsked = true;
+        Close();
+    }
+
+    private async void Window_Closing(object? sender, CancelEventArgs e)
+    {
+        if (!_closeAsked && !_installingUpdate && ViewModel.HasUnsavedChanges())
+        {
+            e.Cancel = true;
+            if (!await ConfirmLeaveProjectAsync()) return;
+            _closeAsked = true;
+            _ = Dispatcher.BeginInvoke(Close);
+            return;
+        }
+        ViewModel.SaveSettings();
+    }
 
     protected override void OnClosed(EventArgs e)
     {

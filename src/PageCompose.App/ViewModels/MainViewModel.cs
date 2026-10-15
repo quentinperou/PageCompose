@@ -2,6 +2,7 @@ using System.Collections.ObjectModel;
 using System.Windows;
 using System.Windows.Input;
 using System.Windows.Media;
+using System.Windows.Media.Imaging;
 using System.Windows.Threading;
 using PageCompose.App.Services;
 using PageCompose.Core;
@@ -161,6 +162,7 @@ public sealed class MainViewModel : ObservableObject
     private const uint PreviewWidthPx = 1400;
     private const uint MaxPreviewWidthPx = 3600; // about 285 dpi on SRA3: sharp at high zoom, about 50 MB per side
     private const int ThumbnailPx = 160;
+    private const uint ProjectPreviewPx = 120; // the first sheet in the recent projects (about 31 × 44 at 200 % zoom)
 
     private readonly AppSettings _settings;
     private readonly DispatcherTimer _previewDebounce;
@@ -1081,17 +1083,22 @@ public sealed class MainViewModel : ObservableObject
     public string? LastExportFolder => _settings.LastExportFolder;
 
     /// <summary>Folder of the first visual, offered by default for the export.</summary>
-    public string? FirstVisualFolder => _projectFolder ?? Path.GetDirectoryName(ActiveVisuals().FirstOrDefault()?.Info.OriginalPath);
+    public string? FirstVisualFolder => ProjectFolder ?? Path.GetDirectoryName(ActiveVisuals().FirstOrDefault()?.Info.OriginalPath);
+
+    /// <summary>Folder of the project file, offered first for its exports and for "Save as".</summary>
+    public string? ProjectFolder => _document.Path is { } path ? Path.GetDirectoryName(path) : null;
 
     // ---- Undo, redo (Ctrl+Z, Ctrl+Y; asked by the author) ----
     // The whole job is taken HistoryDelayMs after the last change, so that typing a number is one step, and at most
     // HistoryLength steps are kept. A step taken back puts the same lines back, their thumbnails with them.
 
+    // The project of each state goes with it: Ctrl+Z after "New" or after opening a project gives the job back with its file.
     private sealed record JobState(string SettingsJson, LayoutPreset Settings, int Quantity, LineState? Repeat, LineState? SharedBack,
-        IReadOnlyList<LineState> Lines, string CaptionText = "")
+        IReadOnlyList<LineState> Lines, string CaptionText, ProjectDocument Doc)
     {
         public bool SameAs(JobState other) => SettingsJson == other.SettingsJson && Quantity == other.Quantity && CaptionText == other.CaptionText &&
-                                              Repeat == other.Repeat && SharedBack == other.SharedBack && Lines.SequenceEqual(other.Lines);
+                                              Repeat == other.Repeat && SharedBack == other.SharedBack && Lines.SequenceEqual(other.Lines) &&
+                                              ReferenceEquals(Doc, other.Doc);
     }
 
     private const int HistoryDelayMs = 600, HistoryLength = 100;
@@ -1104,7 +1111,7 @@ public sealed class MainViewModel : ObservableObject
     {
         var settings = CapturePreset("");
         return new JobState(System.Text.Json.JsonSerializer.Serialize(settings), settings, Quantity, RepeatVisual?.Capture(),
-            Verso?.Capture(), [.. Visuals.Select(v => v.Capture())], CaptionText);
+            Verso?.Capture(), [.. Visuals.Select(v => v.Capture())], CaptionText, _document);
     }
 
     private void RememberLater()
@@ -1122,6 +1129,7 @@ public sealed class MainViewModel : ObservableObject
         if (_undo.Count > HistoryLength) _undo.RemoveAt(0);
         _redo.Clear();
         _current = now;
+        DocumentChanged();
     }
 
     /// <summary>Ctrl+Z: the job as it was before the last change; false when there is none.</summary>
@@ -1158,11 +1166,13 @@ public sealed class MainViewModel : ObservableObject
             state.Repeat?.Item.Restore(state.Repeat);
             state.SharedBack?.Item.Restore(state.SharedBack);
             (_repeatVisual, _verso) = (state.Repeat?.Item, state.SharedBack?.Item);
+            _document = state.Doc;
         }
         finally
         {
             _restoring = false;
         }
+        DocumentChanged();
 
         foreach (var name in new[] { nameof(Quantity), nameof(RepeatVisual), nameof(HasRepeatVisual), nameof(Verso), nameof(HasVerso), nameof(CaptionText) })
             OnPropertyChanged(name);
@@ -1181,11 +1191,51 @@ public sealed class MainViewModel : ObservableObject
         .SelectMany(i => i.Back is { } back ? new[] { i, back } : [i]);
 
     // ---- Projects (.PageComposeProject) ----
+    // The job is a document, as in Word or Paint (asked by the author): "Untitled" until it is saved or opened, then its
+    // file, saved again by Ctrl+S. Its name is in the title bar, with a dot while changes are not saved.
 
-    /// <summary>Folder and name of the project opened last: offered for its export.</summary>
-    private string? _projectFolder, _projectName;
+    /// <summary>The project file of the job, and its state when it was saved or opened (shared by its undo steps).</summary>
+    private sealed class ProjectDocument
+    {
+        public string? Path;
+        public JobState? Saved;
+    }
 
-    private ProjectFile ToProjectFile()
+    private ProjectDocument _document = new();
+
+    /// <summary>The file of the job; null while it has never been saved nor opened.</summary>
+    public string? ProjectPath => _document.Path;
+
+    public string ProjectTitle => _document.Path is { } path ? Path.GetFileNameWithoutExtension(path) : Strings.Get("UntitledProject");
+
+    /// <summary>
+    /// A project saved or opened has changed since: the dot in the title bar, and the question on closing. A job never
+    /// saved has no file to save into: it closes as it always did (the author's choice).
+    /// </summary>
+    public bool IsModified => _document.Saved is { } saved && !_current.SameAs(saved);
+
+    /// <summary>In the title bar of the window (drawn by the app) and the taskbar.</summary>
+    public string ProjectCaption => ProjectTitle + (IsModified ? " ●" : "");
+
+    public string WindowTitle => Strings.Format("WindowTitle", ProjectCaption);
+
+    /// <summary>"Save" has something to write: a visual, or a project already saved (emptied since).</summary>
+    public bool CanSaveProject => HasAnyVisual || _document.Path is not null;
+
+    private void DocumentChanged()
+    {
+        foreach (var name in new[] { nameof(ProjectPath), nameof(ProjectTitle), nameof(IsModified), nameof(ProjectCaption), nameof(WindowTitle), nameof(CanSaveProject) })
+            OnPropertyChanged(name);
+    }
+
+    /// <summary>The changes of the last moment counted (they are taken a moment after the last one): before closing, opening, saving.</summary>
+    public bool HasUnsavedChanges()
+    {
+        if (_historyDebounce.IsEnabled) Remember();
+        return IsModified;
+    }
+
+    private ProjectFile ToProjectFile(JobState state)
     {
         static ProjectLine Line(LineState s) => new()
         {
@@ -1204,7 +1254,6 @@ public sealed class MainViewModel : ObservableObject
             Caption = s.Caption,
         };
 
-        var state = CaptureState();
         return new ProjectFile
         {
             Settings = state.Settings,
@@ -1217,8 +1266,9 @@ public sealed class MainViewModel : ObservableObject
     }
 
     /// <summary>
-    /// Opens a project (double click on a .PageComposeProject file, or dropped on the window): it takes the place of the job
-    /// in progress, which Ctrl+Z gives back. Its files that cannot be read are left out, and said so.
+    /// Opens a project (double click on a .PageComposeProject file, dropped on the window, File menu): it becomes the job
+    /// of the window, in place of the one in progress, which Ctrl+Z gives back. Its files that cannot be read are left
+    /// out, and said so.
     /// </summary>
     /// <exception cref="InvalidDataException">Not a PageCompose project, or a damaged one.</exception>
     public async Task OpenProjectAsync(string path)
@@ -1246,9 +1296,12 @@ public sealed class MainViewModel : ObservableObject
         var shared = job.SharedBack is { } sb ? await Line(sb, i => CreateItem(i, _ => Verso = null)) : null;
 
         if (_historyDebounce.IsEnabled) Remember();
-        RestoreState(new JobState("", job.Settings, Math.Clamp(job.Quantity, 0, 100_000), repeat, shared, lines, job.CaptionText ?? ""));
+        var document = new ProjectDocument { Path = Path.GetFullPath(path) };
+        RestoreState(new JobState("", job.Settings, Math.Clamp(job.Quantity, 0, 100_000), repeat, shared, lines, job.CaptionText ?? "", document));
         Remember(); // one step: Ctrl+Z gives the job before it back
-        (_projectFolder, _projectName) = (Path.GetDirectoryName(Path.GetFullPath(path)), Path.GetFileNameWithoutExtension(path));
+        document.Saved = _current;
+        DocumentChanged();
+        RecentProjects.Add(path);
         FilesMessage = errors.Count > 0 ? string.Join(" ", errors.Take(3)) : null;
         Toast.ShowMessage(Strings.Get("ProjectOpened"),
             Strings.Format("ProjectOpenedDetail", Path.GetFileName(path), Strings.Count("Visuals", lines.Count + (repeat is null ? 0 : 1))));
@@ -1492,7 +1545,7 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>File name offered for the export, with the .pdf extension (the JPEG export changes it).</summary>
     public string SuggestedFileName()
     {
-        if (_projectName is not null) return _projectName + ".pdf"; // a project opened, printed again
+        if (_document.Path is { } project) return Path.GetFileNameWithoutExtension(project) + ".pdf"; // the name of its project
         var item = CurrentItemSize() ?? default;
         string size = $"{item.Width:0}x{item.Height:0}"; // whole millimetres: 10 x 15 reads 102x152, not 101,6x152,4
         string name = _mode switch
@@ -1549,26 +1602,105 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>There is something to save as a project: a visual, in the list or in the Repeat mode.</summary>
     public bool HasAnyVisual => ActiveVisuals().Any();
 
-    /// <summary>"Save the project only": the .PageComposeProject file, without exporting the sheets.</summary>
-    public async Task ExportProjectAsync(string path)
+    /// <summary>"Save", "Save as" (File menu): the project to <paramref name="path"/>, which becomes the file of the job.</summary>
+    public async Task SaveProjectAsync(string path)
     {
-        if (!HasAnyVisual) return;
         Toast.ShowProgress(Strings.Get("SavingProject"), Path.GetFileName(path));
-        var job = ToProjectFile();
-        await Task.Run(() => ProjectStore.Save(path, job));
+        await WriteProjectFileAsync(path);
         Toast.ShowDone(Strings.Get("ToastProjectSaved"), Path.GetFileName(path), [path]);
-        _settings.LastExportFolder = Path.GetDirectoryName(path);
-        SaveSettings();
     }
 
-    /// <summary>When asked: the project next to the export ("name.PageComposeProject"). Returns its path, or null.</summary>
+    /// <summary>When asked: the project next to the export ("name.PageComposeProject"), then the file of the job. Returns its path, or null.</summary>
     private async Task<string?> WriteProjectAsync(string exportPath)
     {
         if (!SaveProject) return null;
         string path = Path.Combine(Path.GetDirectoryName(exportPath) ?? "", Path.GetFileNameWithoutExtension(exportPath) + ProjectStore.FileExtension);
-        var job = ToProjectFile();
-        await Task.Run(() => ProjectStore.Save(path, job));
+        await WriteProjectFileAsync(path);
         return path;
+    }
+
+    // The job as it is now; a change made while it is written is a change still to save.
+    private async Task WriteProjectFileAsync(string path)
+    {
+        if (_historyDebounce.IsEnabled) Remember();
+        var state = _current;
+        var job = ToProjectFile(state);
+        var preview = await FirstSheetPngAsync();
+        await Task.Run(() => ProjectStore.Save(path, job, preview));
+        _document.Path = Path.GetFullPath(path);
+        _document.Saved = state;
+        DocumentChanged();
+        RecentProjects.Add(path);
+    }
+
+    // The first sheet in small (its front), for the recent projects; none when nothing is laid or it cannot be drawn.
+    private async Task<byte[]?> FirstSheetPngAsync()
+    {
+        if (!CanExport) return null;
+        try
+        {
+            var job = BuildJob([0]);
+            var pdf = await Task.Run(() =>
+            {
+                using var ms = new MemoryStream();
+                ImpositionPdfWriter.Write(job, ms);
+                return ms.ToArray();
+            });
+            var picture = await PdfPreviewRenderer.RenderAsync(pdf, 0, ProjectPreviewPx);
+            var encoder = new PngBitmapEncoder();
+            encoder.Frames.Add(BitmapFrame.Create(picture));
+            using var png = new MemoryStream();
+            encoder.Save(png);
+            return png.ToArray();
+        }
+        catch (Exception ex) when (ex is not OutOfMemoryException)
+        {
+            return null; // whatever went wrong with the picture, the project is saved all the same
+        }
+    }
+
+    /// <summary>
+    /// "New" (Ctrl+N): an empty job in this window, "Untitled", with the same settings: a job often looks like the one
+    /// before (the author's choice). Ctrl+Z gives the job back, with its file.
+    /// </summary>
+    public void NewProject()
+    {
+        if (_historyDebounce.IsEnabled) Remember();
+        RestoreState(_current with { Repeat = null, SharedBack = null, Lines = [], CaptionText = "", Doc = new ProjectDocument() });
+        Remember();
+        FilesMessage = null;
+        VersoError = null;
+    }
+
+    // ---- Recent projects (File menu) ----
+
+    public ObservableCollection<RecentProjectItem> RecentProjectList { get; } = [];
+
+    public bool HasRecentProjects => RecentProjectList.Count > 0;
+
+    /// <summary>Read again each time the menu opens: another window may have saved a project meanwhile.</summary>
+    public void ReloadRecentProjects()
+    {
+        RecentProjectList.Clear();
+        foreach (var file in RecentProjects.Load())
+        {
+            var item = new RecentProjectItem(file);
+            RecentProjectList.Add(item);
+            _ = item.LoadPreviewAsync();
+        }
+        OnPropertyChanged(nameof(HasRecentProjects));
+    }
+
+    public void ForgetRecentProject(string path)
+    {
+        RecentProjects.Remove(path);
+        ReloadRecentProjects();
+    }
+
+    public void ClearRecentProjects()
+    {
+        RecentProjects.Clear();
+        ReloadRecentProjects();
     }
 
     /// <summary>
@@ -1693,6 +1825,7 @@ public sealed class MainViewModel : ObservableObject
         FilesMessage = null;
         VersoError = null;
         OnPropertyChanged(nameof(VisualsDropHint));
+        DocumentChanged(); // "Untitled" in the new language
         Recompute();
         SchedulePreview();
     }
@@ -1767,9 +1900,9 @@ public sealed class MainViewModel : ObservableObject
         if (Visuals.Remove(item)) Changed();
     }
 
+    // "Remove all": the lines only, the job keeps its project ("New" starts another one).
     private void ClearVisuals()
     {
-        (_projectFolder, _projectName) = (null, null);
         Visuals.Clear();
         FilesMessage = null;
         Changed();
@@ -1968,7 +2101,7 @@ public sealed class MainViewModel : ObservableObject
                      nameof(Layout), nameof(Plan), nameof(Headline), nameof(Details), nameof(PlanText), nameof(CanExport),
                      nameof(SheetWidth), nameof(SheetHeight), nameof(MarginGeometry), nameof(PlaceholderCells), nameof(PreviewHint),
                      nameof(PreviewSheetIndex), nameof(PreviewSheetLabel), nameof(HasSeveralSheets), nameof(CutNumbers),
-                     nameof(HasAnyVisual), nameof(ShowCutLineColor), nameof(ShowCopiesForAll), nameof(CopiesForAll), nameof(ShowFoldMarks),
+                     nameof(HasAnyVisual), nameof(CanSaveProject), nameof(ShowCutLineColor), nameof(ShowCopiesForAll), nameof(CopiesForAll), nameof(ShowFoldMarks),
                      nameof(ShowFormatForAll), nameof(FormatForAll), nameof(CanApplyFormatForAll),
                      nameof(ShowCaption),
                  })

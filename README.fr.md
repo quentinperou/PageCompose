@@ -59,7 +59,8 @@ A4), il convient à toute imprimante qui imprime en taille réelle.
 
 - PDF, PDF aplati ou JPG en 300 dpi, avec un aperçu fidèle : ce que vous voyez est le PDF.
 - Un repère sur chaque feuille (nom, date, feuille 2/5) pour les trier au massicot.
-- **Projets** : les fichiers et réglages d'une commande dans un seul fichier, pour la réimprimer plus tard.
+- **Projets** : les fichiers et réglages d'une commande dans un seul fichier, enregistré comme un document (menu
+  Fichier, Ctrl+S), pour la réimprimer plus tard ; les récents dans le menu Fichier, avec leur première feuille.
 - **Préréglages** : vos réglages habituels en un clic.
 
 ### Et aussi

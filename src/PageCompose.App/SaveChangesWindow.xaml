@@ -1,0 +1,21 @@
+<Window x:Class="PageCompose.App.SaveChangesWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:PageCompose.App"
+        Title="{local:Tr SaveChangesTitle}"
+        Width="460" SizeToContent="Height" ResizeMode="NoResize"
+        WindowStartupLocation="CenterOwner" ShowInTaskbar="False"
+        Foreground="{DynamicResource TextFillColorPrimaryBrush}" Background="{DynamicResource ApplicationBackgroundBrush}">
+
+  <StackPanel Margin="24,20,24,24">
+    <TextBlock x:Name="MessageText" TextWrapping="Wrap" />
+
+    <StackPanel Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,20,0,0">
+      <Button x:Name="SaveButton" Content="{local:Tr SaveChangesSave}" Style="{DynamicResource AccentButtonStyle}" MinWidth="96"
+              IsDefault="True" Click="Save_Click" />
+      <Button Content="{local:Tr SaveChangesDiscard}" MinWidth="96" Margin="8,0,0,0" Click="Discard_Click" />
+      <!-- Cancel, or the window closed: nothing happens, the project stays open -->
+      <Button Content="{local:Tr Cancel}" MinWidth="96" Margin="8,0,0,0" IsCancel="True" />
+    </StackPanel>
+  </StackPanel>
+</Window>

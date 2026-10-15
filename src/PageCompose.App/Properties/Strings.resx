@@ -959,14 +959,89 @@ The file may be open in another program.</value>
   <data name="ProjectOpenFailed" xml:space="preserve">
     <value>Cannot open the project: {0}</value>
   </data>
-  <data name="ExportProject" xml:space="preserve">
-    <value>Export the project</value>
+  <data name="SaveProjectDialogTitle" xml:space="preserve">
+    <value>Save the project</value>
   </data>
-  <data name="ExportProjectTooltip" xml:space="preserve">
-    <value>The .PageComposeProject file alone (files and settings), without exporting the sheets.</value>
+  <data name="OpenProjectDialogTitle" xml:space="preserve">
+    <value>Open a project</value>
   </data>
-  <data name="ExportProjectDialogTitle" xml:space="preserve">
-    <value>Export the project</value>
+  <data name="FileMenu" xml:space="preserve">
+    <value>File</value>
+  </data>
+  <data name="FileNew" xml:space="preserve">
+    <value>New</value>
+  </data>
+  <data name="FileNewWindow" xml:space="preserve">
+    <value>New window</value>
+  </data>
+  <data name="FileOpen" xml:space="preserve">
+    <value>Open…</value>
+  </data>
+  <data name="FileSave" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="FileSaveAs" xml:space="preserve">
+    <value>Save as…</value>
+  </data>
+  <data name="FileExportPdf" xml:space="preserve">
+    <value>Export as PDF</value>
+  </data>
+  <data name="FileExportJpeg" xml:space="preserve">
+    <value>Export as JPG</value>
+  </data>
+  <data name="FileSettings" xml:space="preserve">
+    <value>Settings</value>
+  </data>
+  <data name="FileQuit" xml:space="preserve">
+    <value>Quit</value>
+  </data>
+  <data name="ShortcutNewWindow" xml:space="preserve">
+    <value>Ctrl+Shift+N</value>
+  </data>
+  <data name="ShortcutSaveAs" xml:space="preserve">
+    <value>Ctrl+Shift+S</value>
+  </data>
+  <data name="RecentProjects" xml:space="preserve">
+    <value>Recent</value>
+  </data>
+  <data name="NoRecentProjects" xml:space="preserve">
+    <value>The projects you open or save show here.</value>
+  </data>
+  <data name="ClearRecentProjects" xml:space="preserve">
+    <value>Clear the list</value>
+  </data>
+  <data name="RecentToday" xml:space="preserve">
+    <value>Today {0}</value>
+  </data>
+  <data name="RecentYesterday" xml:space="preserve">
+    <value>Yesterday {0}</value>
+  </data>
+  <data name="RecentProjectDetail" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="ProjectMissing" xml:space="preserve">
+    <value>“{0}” is no longer there: it was moved or deleted.</value>
+  </data>
+  <data name="ProjectSaveFailed" xml:space="preserve">
+    <value>Cannot save the project: {0}</value>
+  </data>
+  <data name="UntitledProject" xml:space="preserve">
+    <value>Untitled</value>
+  </data>
+  <data name="WindowTitle" xml:space="preserve">
+    <value>{0} — PageCompose</value>
+  </data>
+  <data name="SaveChangesTitle" xml:space="preserve">
+    <value>Save the changes</value>
+  </data>
+  <data name="SaveChangesMessage" xml:space="preserve">
+    <value>Save the changes to “{0}”?</value>
+  </data>
+  <data name="SaveChangesSave" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="SaveChangesDiscard" xml:space="preserve">
+    <value>Don't save</value>
   </data>
   <data name="ProjectFilter" xml:space="preserve">
     <value>PageCompose projects (*.PageComposeProject)|*.PageComposeProject</value>
