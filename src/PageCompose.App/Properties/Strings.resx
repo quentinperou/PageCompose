@@ -173,6 +173,9 @@
   <data name="Format_IdPhoto" xml:space="preserve">
     <value>ID photo 35 × 45</value>
   </data>
+  <data name="Format_RaffleTicket" xml:space="preserve">
+    <value>Raffle ticket 150 × 50</value>
+  </data>
   <data name="Format_Photo9x13" xml:space="preserve">
     <value>Photo 9 × 13</value>
   </data>
@@ -1270,5 +1273,86 @@ The file may be open in another program.</value>
   </data>
   <data name="ProjectDropsMissingMany" xml:space="preserve">
     <value>{0} files of this project could not be opened: saving it will remove them from the project. Save anyway?</value>
+  </data>
+  <data name="SectionNumbering" xml:space="preserve">
+    <value>Numbering</value>
+  </data>
+  <data name="NumberingEnable" xml:space="preserve">
+    <value>Number each visual</value>
+  </data>
+  <data name="NumberingFirst" xml:space="preserve">
+    <value>First number</value>
+  </data>
+  <data name="NumberingDigits" xml:space="preserve">
+    <value>Digits</value>
+  </data>
+  <data name="NumberingPrefix" xml:space="preserve">
+    <value>Text before</value>
+  </data>
+  <data name="NumberingSuffix" xml:space="preserve">
+    <value>Text after</value>
+  </data>
+  <data name="NumberingOrder" xml:space="preserve">
+    <value>Order</value>
+  </data>
+  <data name="NumberingPile" xml:space="preserve">
+    <value>In a pile (the cut piles follow on)</value>
+  </data>
+  <data name="NumberingBySheet" xml:space="preserve">
+    <value>By sheet</value>
+  </data>
+  <data name="NumberingPlace1" xml:space="preserve">
+    <value>Place 1</value>
+  </data>
+  <data name="NumberingPlace2" xml:space="preserve">
+    <value>Place 2</value>
+  </data>
+  <data name="NumberingDirection" xml:space="preserve">
+    <value>Way</value>
+  </data>
+  <data name="NumberingFromCorner" xml:space="preserve">
+    <value>From the top left corner of the visual to that of the number.</value>
+  </data>
+  <data name="NumberingSize" xml:space="preserve">
+    <value>Height</value>
+  </data>
+  <data name="NumberingBackground" xml:space="preserve">
+    <value>Background</value>
+  </data>
+  <data name="NumberBackgroundNone" xml:space="preserve">
+    <value>None</value>
+  </data>
+  <data name="NumberColor_Black" xml:space="preserve">
+    <value>Black</value>
+  </data>
+  <data name="NumberColor_White" xml:space="preserve">
+    <value>White</value>
+  </data>
+  <data name="NumberColor_Grey" xml:space="preserve">
+    <value>Grey</value>
+  </data>
+  <data name="NumberColor_Red" xml:space="preserve">
+    <value>Red</value>
+  </data>
+  <data name="NumberColor_Blue" xml:space="preserve">
+    <value>Blue</value>
+  </data>
+  <data name="NumberDirection_Horizontal" xml:space="preserve">
+    <value>Horizontal</value>
+  </data>
+  <data name="NumberDirection_Vertical" xml:space="preserve">
+    <value>Vertical, upwards</value>
+  </data>
+  <data name="NumberDirection_HorizontalInverted" xml:space="preserve">
+    <value>Horizontal, upside down</value>
+  </data>
+  <data name="NumberDirection_VerticalInverted" xml:space="preserve">
+    <value>Vertical, downwards</value>
+  </data>
+  <data name="NumberingRange" xml:space="preserve">
+    <value>From {0} to {1}</value>
+  </data>
+  <data name="NumberingPiles" xml:space="preserve">
+    <value> · piles of {0} sheets</value>
   </data>
 </root>

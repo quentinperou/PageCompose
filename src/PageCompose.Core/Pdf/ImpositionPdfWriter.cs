@@ -44,6 +44,8 @@ public static class CutLineColors
 /// <param name="CutLineColor">Colour of the cut lines, drawn over the visuals (the crop marks stay black).</param>
 /// <param name="MirrorBleed">The bleed takes the edges of the visuals, mirrored, instead of enlarging them (see <see cref="SideOptions.MirrorBleed"/>).</param>
 /// <param name="Caption">How the captions of the visuals (<see cref="VisualInfo.Caption"/>) are written in the band of their frame; null: none.</param>
+/// <param name="Numbering">How the numbers of the visuals are written, on the front; null: none.</param>
+/// <param name="Numbers">The number of each visual, sheet by sheet as <paramref name="Sheets"/> (see <see cref="Pdf.Numbering.Assign"/>).</param>
 public sealed record ImpositionJob(
     SheetLayout Layout,
     IReadOnlyList<VisualInfo?[]> Sheets,
@@ -59,7 +61,9 @@ public sealed record ImpositionJob(
     IReadOnlyList<string>? Marks = null,
     CutLineColor CutLineColor = CutLineColor.Black,
     bool MirrorBleed = false,
-    CaptionStyle? Caption = null)
+    CaptionStyle? Caption = null,
+    NumberingStyle? Numbering = null,
+    IReadOnlyList<int?[]>? Numbers = null)
 {
     /// <summary>Layout of sheet <paramref name="index"/> (from 0).</summary>
     public SheetLayout LayoutOf(int index) => SheetLayouts?[index] ?? Layout;
@@ -144,7 +148,8 @@ public static class ImpositionPdfWriter
             {
                 var (layout, sheet) = (job.LayoutOf(s), job.Sheets[s]);
                 var recto = layout.Cells.Select((cell, i) => (cell, visual: sheet[i])).ToList();
-                DrawSide(doc, layout, recto, ImageOf, job.Fit, rectoSide, job.CutLines ? job.CutLineColor : null, job.Marks?[s], job.Caption);
+                DrawSide(doc, layout, recto, ImageOf, job.Fit, rectoSide, job.CutLines ? job.CutLineColor : null, job.Marks?[s], job.Caption,
+                    job.Numbering is null ? null : job.Numbers?[s], job.Numbering);
 
                 if (job.HasBack)
                 {
@@ -194,7 +199,7 @@ public static class ImpositionPdfWriter
 
     private static void DrawSide(PdfDocument doc, SheetLayout layout, List<(LayoutCell cell, VisualInfo? visual)> cells,
         Func<VisualInfo, XImage> imageOf, FitMode fit, SideOptions side, CutLineColor? cutLines, string? mark = null,
-        CaptionStyle? caption = null)
+        CaptionStyle? caption = null, int?[]? numbers = null, NumberingStyle? numbering = null)
     {
         var page = doc.AddPage();
         page.Width = XUnit.FromMillimeter(layout.Sheet.Width);
@@ -209,6 +214,14 @@ public static class ImpositionPdfWriter
             foreach (var (cell, visual) in cells)
                 if (visual?.Caption is { Length: > 0 } text && !string.IsNullOrWhiteSpace(text))
                     DrawCaption(gfx, cell, text.Trim(), caption);
+        }
+
+        // The number of each visual, on the front.
+        if (!side.IsVerso && numbering is not null && numbers is not null)
+        {
+            for (int i = 0; i < cells.Count && i < numbers.Length; i++)
+                if (cells[i].visual is not null && numbers[i] is { } number)
+                    DrawNumber(gfx, cells[i].cell, numbering.Text(number), numbering);
         }
 
         // A space wider than the bleed leaves a white band between two visuals. Painting it white changes nothing on
@@ -290,6 +303,45 @@ public static class ImpositionPdfWriter
         var state = gfx.Save();
         if (Caption.AngleOf(cell) is var angle and not 0) gfx.RotateAtTransform(angle, new XPoint(cx, cy));
         gfx.DrawString(text, font, new XSolidBrush(XColor.FromArgb(r, g, b)), new XRect(cx - w / 2, cy - h / 2, w, h), XStringFormats.Center);
+        gfx.Restore(state);
+    }
+
+    // The number of a visual at each of its places, from the top left corner of the visual as it stands (a size laid a
+    // quarter turn is turned clockwise, as its margins), clipped to its trim. The corner given is that of the number as
+    // it lies: turned about it, then moved back into that corner.
+    private static void DrawNumber(XGraphics gfx, LayoutCell cell, string text, NumberingStyle style)
+    {
+        GlobalFontSettings.FontResolver ??= new WindowsFonts();
+        var font = new XFont(WindowsFonts.Register(style.Family, style.FontFile), Units.MmToPt(Math.Max(0.5, style.SizeMm)));
+        var (r, g, b) = style.Color.Rgb();
+        var brush = new XSolidBrush(XColor.FromArgb(r, g, b));
+        var size = gfx.MeasureString(text, font);
+        double pad = style.Background is null ? 0 : Units.MmToPt(NumberingStyle.BackgroundPaddingMm);
+        double w = size.Width + 2 * pad, h = size.Height + 2 * pad;
+
+        var t = cell.Trim;
+        var state = gfx.Save();
+        gfx.IntersectClip(ToPt(t));
+        gfx.TranslateTransform(Units.MmToPt(cell.Rotated ? t.Right : t.X), Units.MmToPt(t.Y));
+        if (cell.Rotated) gfx.RotateTransform(90);
+        foreach (var place in style.Places)
+        {
+            var at = gfx.Save();
+            gfx.TranslateTransform(Units.MmToPt(place.X), Units.MmToPt(place.Y));
+            switch (place.Direction)
+            {
+                case NumberDirection.Vertical: gfx.TranslateTransform(0, w); gfx.RotateTransform(-90); break;
+                case NumberDirection.HorizontalInverted: gfx.TranslateTransform(w, h); gfx.RotateTransform(180); break;
+                case NumberDirection.VerticalInverted: gfx.TranslateTransform(h, 0); gfx.RotateTransform(90); break;
+            }
+            if (style.Background is { } background)
+            {
+                var (br, bg, bb) = background.Rgb();
+                gfx.DrawRectangle(new XSolidBrush(XColor.FromArgb(br, bg, bb)), new XRect(0, 0, w, h));
+            }
+            gfx.DrawString(text, font, brush, new XRect(pad, pad, size.Width, size.Height), XStringFormats.TopLeft);
+            gfx.Restore(at);
+        }
         gfx.Restore(state);
     }
 

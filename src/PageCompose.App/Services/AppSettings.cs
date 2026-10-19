@@ -130,6 +130,9 @@ public sealed class AppSettings
     [JsonConverter(typeof(JsonStringEnumConverter<CutLineColor>))]
     public CutLineColor CutLineColor { get; set; } = CutLineColor.Grey;
 
+    /// <summary>The numbering of the visuals (off by default).</summary>
+    public NumberingSettings Numbering { get; set; } = new();
+
     // A missing or damaged file just means default settings: preferences are never worth an error message.
     public static AppSettings Load()
     {

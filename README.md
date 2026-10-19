@@ -33,7 +33,7 @@ printer that prints at actual size.
 
 ### Sizes and sheets
 
-- Business cards, ID photos, photo prints (9 × 13 to 20 × 30), Polaroid and Instax frames, folded cards, postcards,
+- Business cards, ID photos, raffle tickets, photo prints (9 × 13 to 20 × 30), Polaroid and Instax frames, folded cards, postcards,
   flyers, or any size you type.
 - SRA3, A3 and A4, lab prints (10 × 15, 20 × 30, 30 × 45, borderless) or a custom sheet.
 - A text in the white band of the Polaroid and Instax frames: a name, a date.
@@ -58,6 +58,8 @@ printer that prints at actual size.
 - PDF, flattened PDF or JPG at 300 dpi, with a true preview: what you see is the PDF (drawn with lighter copies of
   the photos, for speed; the exports always take the originals).
 - A mark on each sheet (name, date, sheet 2/5) to sort them at the guillotine.
+- **Numbering**: a number on each visual (raffle tickets, numbered cards), at one or two places, by sheet or in a pile
+  so that the cut piles come out in order.
 - **Projects**: the files and settings of an order in one file, saved like a document (File menu, Ctrl+S), to print it
   again later; the recent ones in the File menu, with their first sheet.
 - **Presets**: your usual settings in one click.

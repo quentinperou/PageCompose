@@ -350,7 +350,12 @@ the photo sizes moved to exact inches.
     added, the other files are (the author's requests after a first version that took the first page then).
   - Every text box holds a number: an implicit style gives them `NumericInput` (Up / Down arrows, Shift: by 10,
     `NumericInput.Minimum`; "." and "," both become the decimal separator of the PC) and `TextWrapping="Wrap"`, which
-    hides the Fluent clear button (it hid the digits of narrow boxes). A text box for text sets `NumericInput.Step="0"`. The settings column's `ScrollViewer` is not focusable, or a keyboard focus frame shows
+    hides the Fluent clear button (it hid the digits of narrow boxes). A text box for text sets `NumericInput.Step="0"`.
+    **Dragging a label** (asked by the author, as in Photoshop or Figma): `NumericInput.Scrubs="{Binding ElementName=…Box}"`
+    on the label of a number (a text block, or the check box of Bleed and Space) changes its box when dragged sideways: a
+    step of the box every 4 pixels (Shift: ten times more; Alt: a tenth in a box bound to a double), from 3 pixels of
+    movement on (a click without dragging puts the cursor in the box, its number selected; a check box keeps its click);
+    the cursor shows ↔ only while the box can change (shown and enabled). On the 20 labels of the settings column. The settings column's `ScrollViewer` is not focusable, or a keyboard focus frame shows
     around the whole column.
   - Settings column: the sections have no number in their title (asked by the author in 0.5.0: some are hidden in
     some modes, the numbers then jumped). The title, the Settings button and the presets are fixed at the top (asked by the author), the
@@ -397,6 +402,7 @@ the photo sizes moved to exact inches.
   10 × 15 = 4 × 6 in (101.6 × 152.4), 13 × 18 = 5 × 7 in, 15 × 20 = 6 × 8 in, 20 × 30 = 8 × 12 in (203.2 × 304.8),
   30 × 45 = 12 × 18 in. So four 10 × 15 fill a 20 × 30 exactly (rounded to 102 × 152 they did not). The SRA3 / A3 / A4
   reference table did not change. Business card: 85 × 55. ID photo: 35 × 45 (`IdPhoto`, eight on a 10 × 15 print).
+  Raffle ticket: 150 × 50 (`RaffleTicket`, with its stub, 16 on SRA3; asked by the author with the numbering).
 - Crop marks need 3 mm around the block: on a lab print, where the visuals reach the edges, they cost visuals; the
   app then says how many fit without them.
 - Both orientations are tried; on a tie the requested one is kept.
@@ -459,6 +465,19 @@ the photo sizes moved to exact inches.
   folded in is narrower); `LayoutOptions.FoldMarks` ("Traits de pliage", in the size section, settings and presets,
   on by default) adds `SheetLayout.FoldMarks`, built as the crop marks in line with each fold and drawn dashed
   (0.8 / 0.6 mm), in the room kept for marks. Not in the Mixed mode (packed as their open size).
+- **Numbering** (asked by the author after a mock-up, `.local\numbering-mockups.cs`; Repeat and Same size, not Mixed
+  sizes): `Core/Pdf/Numbering` (`NumberingStyle`, `NumberPlace`, `Numbering.Assign`), `ImpositionJob.Numbering` and
+  `Numbers` (a number per cell, never in `VisualInfo`, so that a photo stays stored once), settings in
+  `Services/NumberingSettings` (in the settings, the presets, undo and the projects through `LayoutPreset.Numbering`), the
+  card "Numérotation" after "Texte dans la bande". The first number, its digits ("D3": 007), a text before and after
+  ("N° " by default); the order **by sheet** by default (the author's choice after trying it) or in a pile (down the
+  sheets cell by cell: the sheets stacked and cut give piles in order; a last sheet partly filled gives shorter piles,
+  the numbers still following on); one or two
+  places (the author wanted "Emplacement 2", not "souche": not only for tickets), each the top left corner of the number
+  as it lies, in millimetres from that of the visual, and its way (horizontal, vertical upwards, upside down, vertical
+  downwards: asked by the author); a TrueType font of the PC (the caption list, Segoe UI by default), its height in mm,
+  a colour (black, white, grey, red, blue), and an optional background behind it (asked by the author, "to secure a
+  text"; 0.8 mm around). Written on the front only, clipped to the trim, turned with a size laid a quarter turn.
 - **Text in the band** (`VisualInfo.Caption`, `ImpositionJob.Caption` = `CaptionStyle`, `Core/Pdf/Caption`; asked by the
   author, mock-up accepted): in the thickest white margin of a frame when 8 mm or more (Polaroid 22, Instax 18), centred,
   em = 36 % of the band, shrunk to 88 % of its length, upright as its frame (`Caption.AngleOf`: a frame laid a quarter

@@ -334,6 +334,16 @@
         </DataTemplate>
 
         <!-- A recent project of the File panel: its first sheet in small, its name, when and where -->
+        <!-- A colour of the numbers or of their background: its swatch (none: an empty frame) and its name -->
+        <DataTemplate x:Key="NumberColorItem" DataType="{x:Type vm:NumberColorOption}">
+            <StackPanel Orientation="Horizontal">
+                <Border Width="14" Height="14" CornerRadius="3" Margin="0,0,8,0" VerticalAlignment="Center"
+                        Background="{Binding Swatch}" BorderThickness="1"
+                        BorderBrush="{DynamicResource ControlStrongStrokeColorDefaultBrush}" />
+                <TextBlock Text="{Binding Name}" VerticalAlignment="Center" />
+            </StackPanel>
+        </DataTemplate>
+
         <DataTemplate x:Key="RecentProject" DataType="{x:Type vm:RecentProjectItem}">
             <Button Style="{StaticResource FileCommand}" Click="RecentProject_Click" ToolTip="{Binding Path}"
                     AutomationProperties.Name="{Binding Name}">
@@ -644,11 +654,11 @@
                                                            Visibility="{Binding FormatForAll, Converter={StaticResource NullToVisible}}" />
                                             </Grid>
                                         </DockPanel>
-                                        <TextBlock Grid.Row="1" Text="{local:Tr CopiesForAllLabel}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        <TextBlock local:NumericInput.Scrubs="{Binding ElementName=CopiesForAllBox}" Grid.Row="1" Text="{local:Tr CopiesForAllLabel}" VerticalAlignment="Center" Margin="0,0,10,0" />
                                         <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" ToolTip="{local:Tr CopiesForAllTooltip}">
                                             <Button Style="{StaticResource IconButton}" Content="&#xE738;" Command="{Binding LessForAllCommand}" Margin="0,0,4,0"
                                                     ToolTip="{local:Tr LessForAllTooltip}" AutomationProperties.Name="{local:Tr LessForAllTooltip}" />
-                                            <TextBox Width="54" MinWidth="54" TextAlignment="Center" local:NumericInput.Minimum="1"
+                                            <TextBox x:Name="CopiesForAllBox" Width="54" MinWidth="54" TextAlignment="Center" local:NumericInput.Minimum="1"
                                                      AutomationProperties.Name="{local:Tr CopiesForAll}"
                                                      Text="{Binding CopiesForAll, UpdateSourceTrigger=PropertyChanged, Delay=250, TargetNullValue=''}" />
                                             <Button Style="{StaticResource IconButton}" Content="&#xE710;" Command="{Binding MoreForAllCommand}" Margin="4,0,0,0"
@@ -721,12 +731,12 @@
                                     <ColumnDefinition Width="*" />
                                 </Grid.ColumnDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="{local:Tr WidthMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                    <TextBox AutomationProperties.Name="{local:Tr WidthMm}" Text="{Binding CustomWidth, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                    <TextBlock local:NumericInput.Scrubs="{Binding ElementName=FormatWidthBox}" Text="{local:Tr WidthMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBox x:Name="FormatWidthBox" AutomationProperties.Name="{local:Tr WidthMm}" Text="{Binding CustomWidth, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Text="{local:Tr HeightMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                    <TextBox AutomationProperties.Name="{local:Tr HeightMm}" Text="{Binding CustomHeight, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                    <TextBlock local:NumericInput.Scrubs="{Binding ElementName=FormatHeightBox}" Text="{local:Tr HeightMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBox x:Name="FormatHeightBox" AutomationProperties.Name="{local:Tr HeightMm}" Text="{Binding CustomHeight, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                 </StackPanel>
                             </Grid>
 
@@ -735,20 +745,20 @@
                             <StackPanel Visibility="{Binding MarginsEnabled, Converter={StaticResource BoolToVisibility}}">
                                 <UniformGrid Columns="4" Margin="0,4,-8,0">
                                     <StackPanel Margin="0,0,8,0">
-                                        <TextBlock Text="{local:Tr MarginTop}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                        <TextBox AutomationProperties.Name="{local:Tr MarginTop}" MinWidth="0" Text="{Binding MarginTop, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                        <TextBlock local:NumericInput.Scrubs="{Binding ElementName=MarginTopBox}" Text="{local:Tr MarginTop}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                        <TextBox x:Name="MarginTopBox" AutomationProperties.Name="{local:Tr MarginTop}" MinWidth="0" Text="{Binding MarginTop, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                     </StackPanel>
                                     <StackPanel Margin="0,0,8,0">
-                                        <TextBlock Text="{local:Tr MarginBottom}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                        <TextBox AutomationProperties.Name="{local:Tr MarginBottom}" MinWidth="0" Text="{Binding MarginBottom, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                        <TextBlock local:NumericInput.Scrubs="{Binding ElementName=MarginBottomBox}" Text="{local:Tr MarginBottom}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                        <TextBox x:Name="MarginBottomBox" AutomationProperties.Name="{local:Tr MarginBottom}" MinWidth="0" Text="{Binding MarginBottom, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                     </StackPanel>
                                     <StackPanel Margin="0,0,8,0">
-                                        <TextBlock Text="{local:Tr MarginLeft}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                        <TextBox AutomationProperties.Name="{local:Tr MarginLeft}" MinWidth="0" Text="{Binding MarginLeft, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                        <TextBlock local:NumericInput.Scrubs="{Binding ElementName=MarginLeftBox}" Text="{local:Tr MarginLeft}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                        <TextBox x:Name="MarginLeftBox" AutomationProperties.Name="{local:Tr MarginLeft}" MinWidth="0" Text="{Binding MarginLeft, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                     </StackPanel>
                                     <StackPanel Margin="0,0,8,0">
-                                        <TextBlock Text="{local:Tr MarginRight}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                        <TextBox AutomationProperties.Name="{local:Tr MarginRight}" MinWidth="0" Text="{Binding MarginRight, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                        <TextBlock local:NumericInput.Scrubs="{Binding ElementName=MarginRightBox}" Text="{local:Tr MarginRight}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                        <TextBox x:Name="MarginRightBox" AutomationProperties.Name="{local:Tr MarginRight}" MinWidth="0" Text="{Binding MarginRight, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                     </StackPanel>
                                 </UniformGrid>
                                 <TextBlock Style="{StaticResource Hint}" Text="{local:Tr MarginsHint}" />
@@ -808,6 +818,144 @@
                         </StackPanel>
                     </Border>
 
+                    <!-- Numbering (asked by the author: raffle tickets, numbered cards…): a number on each visual, at one or two
+                         places, each its own way; by sheet by default, or in a pile so that the sheets stacked and cut give piles in order -->
+                    <Border Style="{StaticResource Card}" Visibility="{Binding ShowNumbering, Converter={StaticResource BoolToVisibility}}">
+                        <StackPanel>
+                            <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionNumbering}" />
+                            <CheckBox Content="{local:Tr NumberingEnable}" IsChecked="{Binding NumberingEnabled}" />
+                            <StackPanel Margin="0,8,0,0" Visibility="{Binding NumberingEnabled, Converter={StaticResource BoolToVisibility}}">
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="20" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock local:NumericInput.Scrubs="{Binding ElementName=NumberingFirstBox}" Text="{local:Tr NumberingFirst}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBox x:Name="NumberingFirstBox" Grid.Column="1" Width="80" Margin="0,2" VerticalAlignment="Center" AutomationProperties.Name="{local:Tr NumberingFirst}"
+                                             Text="{Binding NumberingFirst, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                    <TextBlock local:NumericInput.Scrubs="{Binding ElementName=NumberingDigitsBox}" Grid.Column="3" Text="{local:Tr NumberingDigits}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBox x:Name="NumberingDigitsBox" Grid.Column="4" Width="56" Margin="0,2" VerticalAlignment="Center" AutomationProperties.Name="{local:Tr NumberingDigits}"
+                                             Text="{Binding NumberingDigits, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                    <TextBlock Grid.Row="1" Text="{local:Tr NumberingPrefix}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBox Grid.Row="1" Grid.Column="1" Width="80" Margin="0,2" VerticalAlignment="Center" local:NumericInput.Step="0"
+                                             AutomationProperties.Name="{local:Tr NumberingPrefix}"
+                                             Text="{Binding NumberingPrefix, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                    <TextBlock Grid.Row="1" Grid.Column="3" Text="{local:Tr NumberingSuffix}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBox Grid.Row="1" Grid.Column="4" Width="56" Margin="0,2" VerticalAlignment="Center" local:NumericInput.Step="0"
+                                             AutomationProperties.Name="{local:Tr NumberingSuffix}"
+                                             Text="{Binding NumberingSuffix, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                </Grid>
+
+                                <TextBlock Text="{local:Tr NumberingOrder}" Margin="0,10,0,2" />
+                                <RadioButton GroupName="NumberingOrder" Content="{local:Tr NumberingBySheet}" IsChecked="{Binding NumberingBySheet}" />
+                                <RadioButton GroupName="NumberingOrder" Content="{local:Tr NumberingPile}" IsChecked="{Binding NumberingInPile}" />
+
+                                <Rectangle Height="1" Fill="{DynamicResource DividerStrokeColorDefaultBrush}" Margin="0,10" />
+
+                                <!-- The places: the top left corner of the number, from that of the visual, and its way -->
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="10" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="{local:Tr NumberingPlace1}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                    <TextBlock local:NumericInput.Scrubs="{Binding ElementName=NumberX1Box}" Grid.Column="1" Text="X" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                    <TextBox x:Name="NumberX1Box" Grid.Column="2" Width="64" Margin="0,2" VerticalAlignment="Center" AutomationProperties.Name="{local:Tr NumberingPlace1}"
+                                             Text="{Binding NumberX1, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                    <TextBlock local:NumericInput.Scrubs="{Binding ElementName=NumberY1Box}" Grid.Column="3" Text="Y" VerticalAlignment="Center" Margin="12,0,6,0" />
+                                    <TextBox x:Name="NumberY1Box" Grid.Column="4" Width="64" Margin="0,2" VerticalAlignment="Center"
+                                             Text="{Binding NumberY1, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                    <TextBlock Grid.Column="5" Text="{local:Tr Millimetres}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                                    <TextBlock Grid.Row="1" Text="{local:Tr NumberingDirection}" VerticalAlignment="Center" Margin="0,0,12,0" HorizontalAlignment="Right" />
+                                    <ComboBox Grid.Row="1" Grid.Column="1" Grid.ColumnSpan="5" Margin="0,4,0,0" HorizontalAlignment="Stretch"
+                                              ItemsSource="{Binding NumberDirections}" SelectedItem="{Binding NumberDirection1}"
+                                              AutomationProperties.Name="{local:Tr NumberingDirection}" />
+
+                                    <CheckBox Grid.Row="3" Content="{local:Tr NumberingPlace2}" IsChecked="{Binding NumberingSecond}" VerticalAlignment="Center" Margin="0,0,12,0" />
+                                    <TextBlock local:NumericInput.Scrubs="{Binding ElementName=NumberX2Box}" Grid.Row="3" Grid.Column="1" Text="X" VerticalAlignment="Center" Margin="0,0,6,0" IsEnabled="{Binding NumberingSecond}" />
+                                    <TextBox x:Name="NumberX2Box" Grid.Row="3" Grid.Column="2" Width="64" Margin="0,2" VerticalAlignment="Center" IsEnabled="{Binding NumberingSecond}"
+                                             AutomationProperties.Name="{local:Tr NumberingPlace2}"
+                                             Text="{Binding NumberX2, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                    <TextBlock local:NumericInput.Scrubs="{Binding ElementName=NumberY2Box}" Grid.Row="3" Grid.Column="3" Text="Y" VerticalAlignment="Center" Margin="12,0,6,0" IsEnabled="{Binding NumberingSecond}" />
+                                    <TextBox x:Name="NumberY2Box" Grid.Row="3" Grid.Column="4" Width="64" Margin="0,2" VerticalAlignment="Center" IsEnabled="{Binding NumberingSecond}"
+                                             Text="{Binding NumberY2, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                    <TextBlock Grid.Row="3" Grid.Column="5" Text="{local:Tr Millimetres}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                                    <TextBlock Grid.Row="4" Text="{local:Tr NumberingDirection}" VerticalAlignment="Center" Margin="0,0,12,0" HorizontalAlignment="Right"
+                                               IsEnabled="{Binding NumberingSecond}" />
+                                    <ComboBox Grid.Row="4" Grid.Column="1" Grid.ColumnSpan="5" Margin="0,4,0,0" HorizontalAlignment="Stretch" IsEnabled="{Binding NumberingSecond}"
+                                              ItemsSource="{Binding NumberDirections}" SelectedItem="{Binding NumberDirection2}"
+                                              AutomationProperties.Name="{local:Tr NumberingDirection}" />
+                                </Grid>
+                                <TextBlock Style="{StaticResource Hint}" Text="{local:Tr NumberingFromCorner}" />
+
+                                <Grid Margin="0,10,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="*" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <Grid.RowDefinitions>
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                        <RowDefinition Height="Auto" />
+                                    </Grid.RowDefinitions>
+                                    <TextBlock Text="{local:Tr CaptionFont}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <!-- Each font shown in itself -->
+                                    <ComboBox Grid.Column="1" Grid.ColumnSpan="3" ItemsSource="{Binding CaptionFonts}" SelectedItem="{Binding SelectedNumberFont}"
+                                              HorizontalAlignment="Stretch" AutomationProperties.Name="{local:Tr CaptionFont}"
+                                              VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling">
+                                        <ComboBox.ItemsPanel>
+                                            <ItemsPanelTemplate>
+                                                <VirtualizingStackPanel />
+                                            </ItemsPanelTemplate>
+                                        </ComboBox.ItemsPanel>
+                                        <ComboBox.ItemTemplate>
+                                            <DataTemplate DataType="{x:Type services:FontChoice}">
+                                                <TextBlock Text="{Binding Name}" FontFamily="{Binding Name}" FontSize="15" />
+                                            </DataTemplate>
+                                        </ComboBox.ItemTemplate>
+                                    </ComboBox>
+                                    <TextBlock local:NumericInput.Scrubs="{Binding ElementName=NumberSizeBox}" Grid.Row="1" Text="{local:Tr NumberingSize}" VerticalAlignment="Center" Margin="0,8,10,0" />
+                                    <StackPanel Grid.Row="1" Grid.Column="1" Orientation="Horizontal" Margin="0,8,0,0">
+                                        <TextBox x:Name="NumberSizeBox" Width="64" VerticalAlignment="Center" AutomationProperties.Name="{local:Tr NumberingSize}"
+                                                 Text="{Binding NumberSizeMm, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                        <TextBlock Text="{local:Tr Millimetres}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                                    </StackPanel>
+                                    <TextBlock Grid.Row="1" Grid.Column="2" Text="{local:Tr CaptionColorLabel}" VerticalAlignment="Center" Margin="14,8,10,0" />
+                                    <ComboBox Grid.Row="1" Grid.Column="3" Margin="0,8,0,0" MinWidth="130" ItemsSource="{Binding NumberColors}"
+                                              SelectedItem="{Binding SelectedNumberColor}" AutomationProperties.Name="{local:Tr CaptionColorLabel}"
+                                              ItemTemplate="{StaticResource NumberColorItem}" />
+                                    <TextBlock Grid.Row="2" Grid.Column="2" Text="{local:Tr NumberingBackground}" VerticalAlignment="Center" Margin="14,8,10,0" />
+                                    <ComboBox Grid.Row="2" Grid.Column="3" Margin="0,8,0,0" MinWidth="130" ItemsSource="{Binding NumberBackgrounds}"
+                                              SelectedItem="{Binding SelectedNumberBackground}" AutomationProperties.Name="{local:Tr NumberingBackground}"
+                                              ItemTemplate="{StaticResource NumberColorItem}" />
+                                </Grid>
+
+                                <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0" Text="{Binding NumberingSummary}"
+                                           Visibility="{Binding NumberingSummary, Converter={StaticResource NullToCollapsed}}" />
+                            </StackPanel>
+                        </StackPanel>
+                    </Border>
+
                     <!-- Sheet -->
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
@@ -826,16 +974,16 @@
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
                                 <StackPanel>
-                                    <TextBlock Text="{local:Tr WidthMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                    <TextBox AutomationProperties.Name="{local:Tr WidthMm}" Text="{Binding CustomSheetWidth, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                    <TextBlock local:NumericInput.Scrubs="{Binding ElementName=SheetWidthBox}" Text="{local:Tr WidthMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBox x:Name="SheetWidthBox" AutomationProperties.Name="{local:Tr WidthMm}" Text="{Binding CustomSheetWidth, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                 </StackPanel>
                                 <StackPanel Grid.Column="2">
-                                    <TextBlock Text="{local:Tr HeightMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
-                                    <TextBox AutomationProperties.Name="{local:Tr HeightMm}" Text="{Binding CustomSheetHeight, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                    <TextBlock local:NumericInput.Scrubs="{Binding ElementName=SheetHeightBox}" Text="{local:Tr HeightMm}" Foreground="{DynamicResource TextFillColorSecondaryBrush}" FontSize="12" Margin="0,0,0,4" />
+                                    <TextBox x:Name="SheetHeightBox" AutomationProperties.Name="{local:Tr HeightMm}" Text="{Binding CustomSheetHeight, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                 </StackPanel>
                                 <StackPanel Grid.Row="1" Grid.ColumnSpan="3" Orientation="Horizontal" Margin="0,10,0,0">
-                                    <TextBlock Text="{local:Tr SheetMargin}" VerticalAlignment="Center" />
-                                    <TextBox AutomationProperties.Name="{local:Tr SheetMargin}" Width="64" Margin="12,0,6,0"
+                                    <TextBlock local:NumericInput.Scrubs="{Binding ElementName=SheetMarginBox}" Text="{local:Tr SheetMargin}" VerticalAlignment="Center" />
+                                    <TextBox x:Name="SheetMarginBox" AutomationProperties.Name="{local:Tr SheetMargin}" Width="64" Margin="12,0,6,0"
                                              Text="{Binding CustomSheetMargin, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                     <TextBlock Text="{local:Tr Millimetres}" VerticalAlignment="Center" />
                                 </StackPanel>
@@ -883,8 +1031,8 @@
                                     <RowDefinition Height="Auto" />
                                     <RowDefinition Height="Auto" />
                                 </Grid.RowDefinitions>
-                                <CheckBox Content="{local:Tr Bleed}" IsChecked="{Binding BleedEnabled}" VerticalAlignment="Center" />
-                                <TextBox Grid.Column="1" AutomationProperties.Name="{local:Tr BleedMm}" Width="64" Margin="12,2,6,2" VerticalAlignment="Center"
+                                <CheckBox local:NumericInput.Scrubs="{Binding ElementName=BleedBox}" Content="{local:Tr Bleed}" IsChecked="{Binding BleedEnabled}" VerticalAlignment="Center" />
+                                <TextBox x:Name="BleedBox" Grid.Column="1" AutomationProperties.Name="{local:Tr BleedMm}" Width="64" Margin="12,2,6,2" VerticalAlignment="Center"
                                          Text="{Binding BleedMm, UpdateSourceTrigger=PropertyChanged, Delay=250}" IsEnabled="{Binding BleedEnabled}" />
                                 <TextBlock Grid.Column="2" Text="{local:Tr Millimetres}" VerticalAlignment="Center" />
                                 <!-- How the bleed of a photo is made (asked by the author): enlarged (the default), or its edges mirrored -->
@@ -895,8 +1043,8 @@
                                     <RadioButton GroupName="bleedMode" Content="{local:Tr BleedMirror}" IsChecked="{Binding MirrorBleed}"
                                                  ToolTip="{local:Tr BleedMirrorTooltip}" />
                                 </StackPanel>
-                                <CheckBox Grid.Row="2" Content="{local:Tr Spacing}" IsChecked="{Binding SpacingEnabled}" VerticalAlignment="Center" />
-                                <TextBox Grid.Row="2" Grid.Column="1" AutomationProperties.Name="{local:Tr SpacingMm}" Width="64" Margin="12,2,6,2" VerticalAlignment="Center"
+                                <CheckBox local:NumericInput.Scrubs="{Binding ElementName=SpacingBox}" Grid.Row="2" Content="{local:Tr Spacing}" IsChecked="{Binding SpacingEnabled}" VerticalAlignment="Center" />
+                                <TextBox x:Name="SpacingBox" Grid.Row="2" Grid.Column="1" AutomationProperties.Name="{local:Tr SpacingMm}" Width="64" Margin="12,2,6,2" VerticalAlignment="Center"
                                          Text="{Binding SpacingMm, UpdateSourceTrigger=PropertyChanged, Delay=250}" IsEnabled="{Binding SpacingEnabled}" />
                                 <TextBlock Grid.Row="2" Grid.Column="2" Text="{local:Tr Millimetres}" VerticalAlignment="Center" />
                             </Grid>
@@ -910,9 +1058,9 @@
                     <!-- Quantity -->
                     <Border Style="{StaticResource Card}">
                         <StackPanel>
-                            <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionQuantity}" />
+                            <TextBlock local:NumericInput.Scrubs="{Binding ElementName=QuantityBox}" Style="{StaticResource CardTitle}" Text="{local:Tr SectionQuantity}" />
                             <StackPanel Orientation="Horizontal" Visibility="{Binding IsRepeatMode, Converter={StaticResource BoolToVisibility}}">
-                                <TextBox AutomationProperties.Name="{local:Tr Quantity}" Width="90" local:NumericInput.Minimum="1"
+                                <TextBox x:Name="QuantityBox" AutomationProperties.Name="{local:Tr Quantity}" Width="90" local:NumericInput.Minimum="1"
                                          Text="{Binding Quantity, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                 <RadioButton GroupName="unit" Content="{local:Tr UnitItems}" IsChecked="{Binding UnitItems}" Margin="14,0,14,0" VerticalAlignment="Center" />
                                 <RadioButton GroupName="unit" Content="{local:Tr UnitSheets}" IsChecked="{Binding UnitSheets}" VerticalAlignment="Center" />

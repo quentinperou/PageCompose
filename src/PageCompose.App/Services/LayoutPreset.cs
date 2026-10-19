@@ -85,6 +85,9 @@ public sealed class LayoutPreset
     [JsonConverter(typeof(JsonStringEnumConverter<CutLineColor>))]
     public CutLineColor CutLineColor { get; set; } = CutLineColor.Grey;
 
+    /// <summary>The numbering of the visuals (presets of 0.12.x and before: none).</summary>
+    public NumberingSettings Numbering { get; set; } = new();
+
     public override string ToString() => Name;
 }
 

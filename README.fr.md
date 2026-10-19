@@ -34,7 +34,7 @@ A4), il convient à toute imprimante qui imprime en taille réelle.
 
 ### Formats et feuilles
 
-- Cartes de visite, photos d'identité, tirages photo (du 9 × 13 au 20 × 30), cadres Polaroid et Instax, cartes
+- Cartes de visite, photos d'identité, tickets de tombola, tirages photo (du 9 × 13 au 20 × 30), cadres Polaroid et Instax, cartes
   pliées, cartes postales, flyers, ou une taille libre.
 - SRA3, A3 et A4, tirages labo (10 × 15, 20 × 30, 30 × 45, sans marge) ou une feuille personnalisée.
 - Un texte dans la bande blanche des cadres Polaroid et Instax : un prénom, une date.
@@ -60,6 +60,8 @@ A4), il convient à toute imprimante qui imprime en taille réelle.
 - PDF, PDF aplati ou JPG en 300 dpi, avec un aperçu fidèle : ce que vous voyez est le PDF (dessiné avec des copies
   allégées des photos, pour la vitesse ; les exports prennent toujours les originaux).
 - Un repère sur chaque feuille (nom, date, feuille 2/5) pour les trier au massicot.
+- **Numérotation** : un numéro sur chaque visuel (tickets de tombola, cartes numérotées), à un ou deux emplacements, par
+  feuille ou en pile pour que les piles coupées sortent dans l'ordre.
 - **Projets** : les fichiers et réglages d'une commande dans un seul fichier, enregistré comme un document (menu
   Fichier, Ctrl+S), pour la réimprimer plus tard ; les récents dans le menu Fichier, avec leur première feuille.
 - **Préréglages** : vos réglages habituels en un clic.

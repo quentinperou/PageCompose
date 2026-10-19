@@ -11,11 +11,11 @@ internal sealed class WindowsFonts : IFontResolver
 {
     private static readonly ConcurrentDictionary<string, string> Files = new(StringComparer.OrdinalIgnoreCase);
 
-    // The captions ask for their font under a name of their own: Segoe UI chosen for them (one file, the regular face)
-    // took the place of the regular and bold Segoe UI of the cutting plan.
+    // The captions and the numbers ask for their font under a name of their own: Segoe UI chosen for them (one file, the
+    // regular face) took the place of the regular and bold Segoe UI of the cutting plan.
     private const string CaptionPrefix = "PageCompose caption: ";
 
-    /// <summary>A font of the PC for the captions, by its TrueType file; returns the family name to ask PDFsharp for.</summary>
+    /// <summary>A font of the PC (captions, numbers), by its TrueType file; returns the family name to ask PDFsharp for.</summary>
     public static string Register(string family, string file)
     {
         string name = CaptionPrefix + family;

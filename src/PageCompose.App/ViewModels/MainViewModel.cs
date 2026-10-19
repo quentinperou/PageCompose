@@ -38,6 +38,34 @@ public sealed class CaptionColorOption(CaptionColor value)
     }
 }
 
+/// <summary>A colour of the numbers or of their background (null: no background), with its name and swatch.</summary>
+public sealed class NumberColorOption(NumberColor? value)
+{
+    public NumberColor? Value { get; } = value;
+    public string Name => Value is { } color ? Strings.Get("NumberColor_" + color) : Strings.Get("NumberBackgroundNone");
+    public Brush Swatch { get; } = Freeze(value);
+
+    public override string ToString() => Name;
+
+    private static Brush Freeze(NumberColor? value)
+    {
+        if (value is not { } color) return Brushes.Transparent;
+        var (r, g, b) = color.Rgb();
+        var brush = new SolidColorBrush(Color.FromRgb(r, g, b)); // the colour printed, not a theme colour
+        brush.Freeze();
+        return brush;
+    }
+}
+
+/// <summary>A way a number reads, with its name.</summary>
+public sealed class NumberDirectionOption(NumberDirection value)
+{
+    public NumberDirection Value { get; } = value;
+    public string Name => Strings.Get("NumberDirection_" + Value);
+
+    public override string ToString() => Name;
+}
+
 /// <summary>A colour of the cut lines, with its name and its swatch in the list.</summary>
 public sealed class CutLineColorOption(CutLineColor value)
 {
@@ -193,6 +221,10 @@ public sealed class MainViewModel : ObservableObject
         _captionFont = FontOf(settings.CaptionFont);
         _captionColor = settings.CaptionColor;
         CaptionColors = [.. Enum.GetValues<CaptionColor>().Select(c => new CaptionColorOption(c))];
+        _numbering = settings.Numbering?.Copy() ?? new();
+        NumberColors = [.. Enum.GetValues<NumberColor>().Select(c => new NumberColorOption(c))];
+        NumberBackgrounds = [new NumberColorOption(null), .. NumberColors];
+        NumberDirections = [.. Enum.GetValues<NumberDirection>().Select(d => new NumberDirectionOption(d))];
         _bleedMm = settings.BleedMm;
         _spacingEnabled = settings.SpacingEnabled;
         _spacingMm = settings.SpacingMm;
@@ -370,6 +402,7 @@ public sealed class MainViewModel : ObservableObject
         SheetMark = SheetMark,
         SaveProject = SaveProject,
         CutLineColor = _cutLineColor,
+        Numbering = _numbering.Copy(),
     };
 
     private bool _applyingPreset;
@@ -432,6 +465,7 @@ public sealed class MainViewModel : ObservableObject
         SheetMark = p.SheetMark;
         SaveProject = p.SaveProject;
         SelectedCutLineColor = CutLineColors.First(c => c.Value == p.CutLineColor);
+        SetNumberingSettings(p.Numbering ?? new());
     }
 
     // ---- Mode ----
@@ -727,6 +761,151 @@ public sealed class MainViewModel : ObservableObject
     }
 
     public bool EnlargeForBleed { get => !_mirrorBleed; set { if (value) MirrorBleed = false; } }
+
+    // ---- Numbering (asked by the author: raffle tickets, numbered cards…) ----
+    // Each visual laid gets its own number, written on the front at one or two places of the visual. By sheet (the
+    // default, the author's choice), or in a pile: down the sheets in each cell, so that the sheets stacked and cut give
+    // piles already in order.
+
+    private NumberingSettings _numbering;
+
+    private void SetNumbering<T>(T value, Func<NumberingSettings, T> get, Action<NumberingSettings, T> set,
+        [System.Runtime.CompilerServices.CallerMemberName] string? name = null)
+    {
+        if (EqualityComparer<T>.Default.Equals(get(_numbering), value)) return;
+        set(_numbering, value);
+        OnPropertyChanged(name);
+        Changed();
+    }
+
+    // A preset, an undo step, a project: every setting of the numbering at once.
+    private void SetNumberingSettings(NumberingSettings numbering)
+    {
+        _numbering = numbering.Copy();
+        foreach (var name in new[]
+                 {
+                     nameof(NumberingEnabled), nameof(NumberingFirst), nameof(NumberingDigits), nameof(NumberingPrefix),
+                     nameof(NumberingSuffix), nameof(NumberingInPile), nameof(NumberingBySheet), nameof(NumberX1), nameof(NumberY1),
+                     nameof(NumberDirection1), nameof(NumberingSecond), nameof(NumberX2), nameof(NumberY2), nameof(NumberDirection2),
+                     nameof(SelectedNumberFont), nameof(NumberSizeMm), nameof(SelectedNumberColor), nameof(SelectedNumberBackground),
+                     nameof(NumberingSummary),
+                 })
+            OnPropertyChanged(name);
+        Changed();
+    }
+
+    public bool ShowNumbering => _mode != LayoutMode.Mixed;
+
+    public bool NumberingEnabled { get => _numbering.Enabled; set => SetNumbering(value, n => n.Enabled, (n, v) => n.Enabled = v); }
+    public int NumberingFirst { get => _numbering.First; set => SetNumbering(Math.Clamp(value, 0, 999_999_999), n => n.First, (n, v) => n.First = v); }
+    public int NumberingDigits { get => _numbering.Digits; set => SetNumbering(Math.Clamp(value, 0, 9), n => n.Digits, (n, v) => n.Digits = v); }
+    public string NumberingPrefix { get => _numbering.Prefix; set => SetNumbering(value ?? "", n => n.Prefix, (n, v) => n.Prefix = v); }
+    public string NumberingSuffix { get => _numbering.Suffix; set => SetNumbering(value ?? "", n => n.Suffix, (n, v) => n.Suffix = v); }
+
+    public bool NumberingInPile
+    {
+        get => _numbering.Order == NumberingOrder.Pile;
+        set
+        {
+            if (!value) return; // the other button of the pair is chosen
+            SetNumbering(NumberingOrder.Pile, n => n.Order, (n, v) => n.Order = v);
+            OnPropertyChanged(nameof(NumberingBySheet));
+        }
+    }
+
+    public bool NumberingBySheet
+    {
+        get => _numbering.Order == NumberingOrder.BySheet;
+        set
+        {
+            if (!value) return;
+            SetNumbering(NumberingOrder.BySheet, n => n.Order, (n, v) => n.Order = v);
+            OnPropertyChanged(nameof(NumberingInPile));
+        }
+    }
+
+    public double NumberX1 { get => _numbering.X1; set => SetNumbering(Math.Clamp(value, 0, 3000), n => n.X1, (n, v) => n.X1 = v); }
+    public double NumberY1 { get => _numbering.Y1; set => SetNumbering(Math.Clamp(value, 0, 3000), n => n.Y1, (n, v) => n.Y1 = v); }
+    public bool NumberingSecond { get => _numbering.Second; set => SetNumbering(value, n => n.Second, (n, v) => n.Second = v); }
+    public double NumberX2 { get => _numbering.X2; set => SetNumbering(Math.Clamp(value, 0, 3000), n => n.X2, (n, v) => n.X2 = v); }
+    public double NumberY2 { get => _numbering.Y2; set => SetNumbering(Math.Clamp(value, 0, 3000), n => n.Y2, (n, v) => n.Y2 = v); }
+    public double NumberSizeMm { get => _numbering.SizeMm; set => SetNumbering(Math.Clamp(value, 0.5, 200), n => n.SizeMm, (n, v) => n.SizeMm = v); }
+
+    /// <summary>Across, up, upside down, down.</summary>
+    public IReadOnlyList<NumberDirectionOption> NumberDirections { get; }
+
+    public NumberDirectionOption NumberDirection1
+    {
+        get => NumberDirections.First(d => d.Value == _numbering.Direction1);
+        set { if (value is not null) SetNumbering(value.Value, n => n.Direction1, (n, v) => n.Direction1 = v); }
+    }
+
+    public NumberDirectionOption NumberDirection2
+    {
+        get => NumberDirections.First(d => d.Value == _numbering.Direction2);
+        set { if (value is not null) SetNumbering(value.Value, n => n.Direction2, (n, v) => n.Direction2 = v); }
+    }
+
+    /// <summary>The font of the numbers, among the TrueType fonts of the PC (those of the captions); Segoe UI by default.</summary>
+    public FontChoice? SelectedNumberFont
+    {
+        get => CaptionFonts.FirstOrDefault(f => string.Equals(f.Name, _numbering.Font, StringComparison.OrdinalIgnoreCase))
+               ?? CaptionFonts.FirstOrDefault(f => f.Name == NumberingSettings.DefaultFont) ?? CaptionFonts.FirstOrDefault();
+        set { if (value is not null) SetNumbering(value.Name, n => n.Font, (n, v) => n.Font = v); }
+    }
+
+    public IReadOnlyList<NumberColorOption> NumberColors { get; }
+
+    public NumberColorOption SelectedNumberColor
+    {
+        get => NumberColors.First(c => c.Value == _numbering.Color);
+        set { if (value?.Value is { } color) SetNumbering(color, n => n.Color, (n, v) => n.Color = v); }
+    }
+
+    /// <summary>None, then the colours.</summary>
+    public IReadOnlyList<NumberColorOption> NumberBackgrounds { get; }
+
+    public NumberColorOption SelectedNumberBackground
+    {
+        get => _numbering.HasBackground ? NumberBackgrounds.First(c => c.Value == _numbering.Background) : NumberBackgrounds[0];
+        set
+        {
+            if (value is null) return;
+            bool has = value.Value is not null;
+            var color = value.Value ?? _numbering.Background;
+            if (has == _numbering.HasBackground && color == _numbering.Background) return;
+            (_numbering.HasBackground, _numbering.Background) = (has, color);
+            OnPropertyChanged();
+            Changed();
+        }
+    }
+
+    // How the numbers are written now.
+    private NumberingStyle? NumberingStyleNow()
+    {
+        if (!_numbering.Enabled || _mode == LayoutMode.Mixed || SelectedNumberFont is not { } font) return null;
+        List<NumberPlace> places = [new(_numbering.X1, _numbering.Y1, _numbering.Direction1)];
+        if (_numbering.Second) places.Add(new(_numbering.X2, _numbering.Y2, _numbering.Direction2));
+        return new NumberingStyle(_numbering.Prefix, _numbering.Digits, _numbering.Suffix, places, font.Name, font.File,
+            _numbering.SizeMm, _numbering.Color, _numbering.HasBackground ? _numbering.Background : null);
+    }
+
+    // The numbers of every sheet laid: in a pile those of a sheet depend on all the others (a sheet shown alone, too).
+    private (NumberingStyle Style, int?[][] Numbers)? NumbersOfPlan() =>
+        NumberingStyleNow() is { } style ? (style, Numbering.Assign(Plan.Sheets, _numbering.Order, _numbering.First)) : null;
+
+    /// <summary>"From N° 001 to N° 480 · piles of 30 sheets".</summary>
+    public string? NumberingSummary
+    {
+        get
+        {
+            if (NumberingStyleNow() is not { } style) return null;
+            int count = Plan.Sheets.Sum(s => s.Count(v => v is not null));
+            if (count == 0) return null;
+            string range = Strings.Format("NumberingRange", style.Text(_numbering.First), style.Text(_numbering.First + count - 1));
+            return _numbering.Order == NumberingOrder.Pile && Plan.SheetCount > 1 ? range + Strings.Format("NumberingPiles", Plan.SheetCount) : range;
+        }
+    }
 
     // ---- The text in the band of framed sizes (a Polaroid, an Instax), asked by the author ----
 
@@ -1879,6 +2058,7 @@ public sealed class MainViewModel : ObservableObject
         _settings.MirrorBleed = MirrorBleed;
         _settings.CaptionFont = SelectedCaptionFont?.Name ?? FontList.DefaultFont;
         _settings.CaptionColor = _captionColor;
+        _settings.Numbering = _numbering.Copy();
         _settings.BleedMm = BleedMm;
         _settings.SpacingEnabled = SpacingEnabled;
         _settings.SpacingMm = SpacingMm;
@@ -2191,7 +2371,7 @@ public sealed class MainViewModel : ObservableObject
                      nameof(PreviewSheetIndex), nameof(PreviewSheetLabel), nameof(HasSeveralSheets), nameof(CutNumbers),
                      nameof(HasAnyVisual), nameof(CanSaveProject), nameof(ShowCutLineColor), nameof(ShowCopiesForAll), nameof(CopiesForAll), nameof(ShowFoldMarks),
                      nameof(ShowFormatForAll), nameof(FormatForAll), nameof(CanApplyFormatForAll),
-                     nameof(ShowCaption),
+                     nameof(ShowCaption), nameof(NumberingSummary), nameof(ShowNumbering),
                  })
             OnPropertyChanged(name);
     }
@@ -2633,6 +2813,7 @@ public sealed class MainViewModel : ObservableObject
     /// <param name="jobName">Name of the exported file, in the marks of the sheets; the one offered for the preview.</param>
     private ImpositionJob BuildJob(IReadOnlyList<int> sheets, string? jobName = null)
     {
+        var numbering = NumbersOfPlan();
         // Mixed sheets each have their own layout, and their own cut lines setting (on by default).
         var job = _mode == LayoutMode.Mixed
             ? ImpositionJob.Mixed(_mixed, sheets) with { Title = Strings.Get("PdfTitleMixed"), CutLines = MixedCutLines }
@@ -2650,6 +2831,8 @@ public sealed class MainViewModel : ObservableObject
             CutLineColor = _cutLineColor,
             MirrorBleed = BleedEnabled && MirrorBleed,
             Caption = SelectedCaptionFont is { } font ? new CaptionStyle(font.Name, font.File, _captionColor) : null,
+            Numbering = numbering?.Style,
+            Numbers = numbering is { } n ? [.. sheets.Select(i => n.Numbers[i])] : null,
             Fit = _fit,
             Flip = _flip,
             RotateVerso180 = RotateVerso180,
