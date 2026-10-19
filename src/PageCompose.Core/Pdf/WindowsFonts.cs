@@ -11,8 +11,17 @@ internal sealed class WindowsFonts : IFontResolver
 {
     private static readonly ConcurrentDictionary<string, string> Files = new(StringComparer.OrdinalIgnoreCase);
 
-    /// <summary>A font of the PC, asked for by its family name: the TrueType file that holds it.</summary>
-    public static void Register(string family, string file) => Files[family] = file;
+    // The captions ask for their font under a name of their own: Segoe UI chosen for them (one file, the regular face)
+    // took the place of the regular and bold Segoe UI of the cutting plan.
+    private const string CaptionPrefix = "PageCompose caption: ";
+
+    /// <summary>A font of the PC for the captions, by its TrueType file; returns the family name to ask PDFsharp for.</summary>
+    public static string Register(string family, string file)
+    {
+        string name = CaptionPrefix + family;
+        Files[name] = file;
+        return name;
+    }
 
     public FontResolverInfo? ResolveTypeface(string familyName, bool bold, bool italic) =>
         Files.TryGetValue(familyName, out var file) ? new(file) : new(bold ? "segoeuib" : "segoeui");

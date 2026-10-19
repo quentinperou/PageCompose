@@ -33,6 +33,8 @@ public partial class MainWindow : Window
         };
 
         viewModel.ConfirmReplace = AskReplace;
+        viewModel.ConfirmDropMissing = count => MessageBox.Show(this, Strings.Count("ProjectDropsMissing", count), Strings.Get("AppTitle"),
+            MessageBoxButton.YesNo, MessageBoxImage.Warning, MessageBoxResult.No) == MessageBoxResult.Yes;
 
         Updater.Checked += Updater_Checked;
         ShowUpdateBar();
@@ -939,8 +941,7 @@ public partial class MainWindow : Window
 
         try
         {
-            await ViewModel.SaveProjectAsync(path);
-            return true;
+            return await ViewModel.SaveProjectAsync(path);
         }
         catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
         {

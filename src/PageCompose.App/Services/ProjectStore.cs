@@ -57,6 +57,14 @@ public sealed class ProjectLine
     /// <summary>The photo enlarged in its cell, 1 to 3 (projects of 0.11.0 and before: 1).</summary>
     public double Zoom { get; set; } = 1;
 
+    /// <summary>
+    /// The turn and mirror of the picture that <see cref="CropX"/> and <see cref="CropY"/> are given in: a photo may be
+    /// converted when the project is opened again (Windows stores it upright), or no longer be. Null in older projects.
+    /// </summary>
+    public int? CropTurn { get; set; }
+
+    public bool CropMirror { get; set; }
+
     public IEnumerable<ProjectLine> WithBack() => Back is null ? [this] : [this, Back];
 }
 
@@ -155,7 +163,12 @@ public static class ProjectStore
                 {
                     var file = zip.GetEntry(line.File) ?? throw new InvalidDataException($"Missing entry {line.File}.");
                     Directory.CreateDirectory(Path.GetDirectoryName(target)!);
-                    file.ExtractToFile(target, overwrite: true);
+                    // Under a name of its own, then given its name: a file cut short by a run stopped meanwhile is never
+                    // taken for whole when the project is opened again.
+                    string part = $"{target}.{Guid.NewGuid():N}.part";
+                    file.ExtractToFile(part);
+                    try { File.Move(part, target); }
+                    catch (IOException) when (File.Exists(target)) { File.Delete(part); } // another window took it out meanwhile
                 }
                 line.File = target;
             }

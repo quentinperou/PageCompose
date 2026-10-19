@@ -49,6 +49,9 @@ public static class Caption
         return (new RectMm(t.Right - m.Right, t.Y, m.Right, t.Height), Side.Right);
     }
 
-    /// <summary>How far the text turns (clockwise) to read along its band, as the frame stands.</summary>
-    internal static double AngleOf(Side side) => side switch { Side.Left => 90, Side.Top => 180, Side.Right => -90, _ => 0 };
+    /// <summary>
+    /// How far the text turns (clockwise): as its frame, upright in it whichever side its band is on (a thick band put at
+    /// the top by hand was written upside down, its angle guessed from the side of the band).
+    /// </summary>
+    internal static double AngleOf(LayoutCell cell) => cell.Rotated ? 90 : 0;
 }

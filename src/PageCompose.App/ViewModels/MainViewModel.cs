@@ -770,7 +770,9 @@ public sealed class MainViewModel : ObservableObject
     private string? CaptionOf(VisualItem line, bool band)
     {
         if (!band) return null;
-        string text = string.IsNullOrWhiteSpace(line.Caption) ? CaptionText : line.Caption;
+        // The text of a line, else the common one. In the Repeat mode only the common one: a line carried over from a
+        // list keeps its own text for when it goes back, but the Repeat mode has no field to show or change it.
+        string text = _mode == LayoutMode.Repeat || string.IsNullOrWhiteSpace(line.Caption) ? CaptionText : line.Caption;
         return string.IsNullOrWhiteSpace(text) ? null : text.Trim();
     }
 
@@ -1028,8 +1030,10 @@ public sealed class MainViewModel : ObservableObject
 
     private static async Task LoadDragImageAsync(VisualItem line, PreviewSide view)
     {
+        // The copies of this drag: another photo dragged before the picture is read has copies of its own.
+        var overlays = view.Overlays.ToList();
         line.DragImage = await ThumbnailLoader.LoadRawAsync(line.SourceInfo, 1400);
-        foreach (var overlay in view.Overlays)
+        foreach (var overlay in overlays.Where(view.Overlays.Contains))
             overlay.Image ??= line.DragImage;
     }
 
@@ -1197,7 +1201,16 @@ public sealed class MainViewModel : ObservableObject
     {
         public string? Path;
         public JobState? Saved;
+
+        /// <summary>Files of the project that could not be opened (a HEIC without its codec, a damaged file): still in it.</summary>
+        public int Missing;
     }
+
+    /// <summary>
+    /// Asked before the job is saved into the file of its project while files of it could not be opened (their number):
+    /// it would be written without them. False: not saved.
+    /// </summary>
+    public Func<int, bool>? ConfirmDropMissing { get; set; }
 
     private ProjectDocument _document = new();
 
@@ -1251,6 +1264,8 @@ public sealed class MainViewModel : ObservableObject
             Fit = s.Fit?.ToString(),
             Caption = s.Caption,
             Zoom = s.Zoom,
+            CropTurn = s.Info.BaseRotation,
+            CropMirror = s.Info.BaseMirror,
         };
 
         return new ProjectFile
@@ -1274,17 +1289,26 @@ public sealed class MainViewModel : ObservableObject
     {
         var job = await Task.Run(() => ProjectStore.Open(path));
         var errors = new List<string>();
+        int missing = 0;
 
         async Task<LineState?> Line(ProjectLine l, Func<VisualInfo, VisualItem> create)
         {
             var (info, _, error) = await LoadAsync(l.File, l.Page);
             if (error is not null) errors.Add(error);
-            if (info is null) return null;
+            if (info is null)
+            {
+                missing++;
+                return null;
+            }
             var item = create(info);
             var back = l.Back is { } b ? await Line(b, i => CreateBackItem(item, i)) : null;
             var format = l.FormatId is null ? null : MixedFormats.FirstOrDefault(f => (f.Format?.Id ?? AppSettings.CustomFormatId) == l.FormatId);
+            // The part kept, in the axes of the picture as it is now stored (converted or no longer, since it was saved).
+            var (cropX, cropY) = l.CropTurn is { } turn && (turn != info.BaseRotation || l.CropMirror != info.BaseMirror)
+                ? Placement.CropInOtherAxes(l.CropX, l.CropY, turn, l.CropMirror, info.BaseRotation, info.BaseMirror)
+                : (l.CropX, l.CropY);
             return new LineState(item, info, Math.Clamp(l.Copies, 1, 100_000), (l.Rotation % 360 + 360) % 360 / 90 * 90, format,
-                l.CustomWidth, l.CustomHeight, Math.Clamp(l.CropX, 0, 1), Math.Clamp(l.CropY, 0, 1), back, back is not null && l.BackAuto,
+                l.CustomWidth, l.CustomHeight, Math.Clamp(cropX, 0, 1), Math.Clamp(cropY, 0, 1), back, back is not null && l.BackAuto,
                 Enum.TryParse<FitMode>(l.Fit, out var fit) ? fit : null, l.Caption ?? "", Math.Clamp(l.Zoom, 1, VisualInfo.MaxZoom));
         }
 
@@ -1295,7 +1319,7 @@ public sealed class MainViewModel : ObservableObject
         var shared = job.SharedBack is { } sb ? await Line(sb, i => CreateItem(i, _ => Verso = null)) : null;
 
         if (_historyDebounce.IsEnabled) Remember();
-        var document = new ProjectDocument { Path = Path.GetFullPath(path) };
+        var document = new ProjectDocument { Path = Path.GetFullPath(path), Missing = missing };
         RestoreState(new JobState("", job.Settings, Math.Clamp(job.Quantity, 0, 100_000), repeat, shared, lines, job.CaptionText ?? "", document));
         Remember(); // one step: Ctrl+Z gives the job before it back
         document.Saved = _current;
@@ -1629,13 +1653,17 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>There is something to save as a project: a visual, in the list or in the Repeat mode.</summary>
     public bool HasAnyVisual => ActiveVisuals().Any();
 
-    /// <summary>"Save", "Save as" (File menu): the project to <paramref name="path"/>, which becomes the file of the job.</summary>
-    public async Task SaveProjectAsync(string path)
+    /// <summary>
+    /// "Save", "Save as" (File menu): the project to <paramref name="path"/>, which becomes the file of the job. False:
+    /// not saved (files of the project that could not be opened, kept at the user's request).
+    /// </summary>
+    public async Task<bool> SaveProjectAsync(string path)
     {
-        var project = ProjectWriterFor(path);
+        if (ProjectWriterFor(path) is not { } project) return false;
         Toast.ShowProgress(Strings.Get("SavingProject"), Path.GetFileName(path));
         await project.Write();
         Toast.ShowDone(Strings.Get("ToastProjectSaved"), Path.GetFileName(path), [path]);
+        return true;
     }
 
     // The project written next to an export when asked: "name.PageComposeProject".
@@ -1644,11 +1672,16 @@ public sealed class MainViewModel : ObservableObject
 
     // The job as it is now, to be written into a project, which then becomes its file. The state and its document are
     // taken at once: a save that ends after New or after another project was opened marks the project it wrote, never
-    // the one open by then. A change made while it is written is a change still to save.
-    private PendingFile ProjectWriterFor(string path)
+    // the one open by then. A change made while it is written is a change still to save. Null: the project has files
+    // that could not be opened, and the user keeps its file as it is rather than write it without them.
+    private PendingFile? ProjectWriterFor(string path)
     {
         if (_historyDebounce.IsEnabled) Remember();
         var state = _current;
+        var doc = state.Doc;
+        if (doc.Missing > 0 && doc.Path is { } own && string.Equals(Path.GetFullPath(path), own, StringComparison.OrdinalIgnoreCase)
+            && ConfirmDropMissing?.Invoke(doc.Missing) == false)
+            return null;
         var file = ToProjectFile(state);
         ImpositionJob? first = null;
         try { if (CanExport) first = BuildJob([0]); }
@@ -1659,6 +1692,7 @@ public sealed class MainViewModel : ObservableObject
             await Task.Run(() => ProjectStore.Save(path, file, preview));
             state.Doc.Path = Path.GetFullPath(path);
             state.Doc.Saved = state;
+            state.Doc.Missing = 0; // its file is now the job as it is
             DocumentChanged();
             RecentProjects.Add(path);
         });
@@ -1720,6 +1754,17 @@ public sealed class MainViewModel : ObservableObject
             _ = item.LoadPreviewAsync();
         }
         OnPropertyChanged(nameof(HasRecentProjects));
+        _ = DropMissingRecentProjectsAsync([.. RecentProjectList]);
+    }
+
+    // A project no longer there drops out of the list. Looked for away from the window: a share that is off makes
+    // Windows wait for its time-out, and the File menu used to wait with it.
+    private async Task DropMissingRecentProjectsAsync(List<RecentProjectItem> items)
+    {
+        var missing = await Task.Run(() => items.Where(i => !File.Exists(i.Path)).ToList());
+        foreach (var item in missing)
+            RecentProjectList.Remove(item);
+        if (missing.Count > 0) OnPropertyChanged(nameof(HasRecentProjects));
     }
 
     public void ForgetRecentProject(string path)
@@ -2463,6 +2508,10 @@ public sealed class MainViewModel : ObservableObject
 
     private bool _previewRunning, _previewAgain;
 
+    // A change was made while a render ran: its picture (or its error) is not shown, the next render comes at once. It
+    // used to clear the copies drawn over a photo being dragged, which jumped back to its old part for a moment.
+    private bool PreviewOutdated => _previewAgain || _previewDebounce.IsEnabled;
+
     // One render at a time (renders side by side slowed each other down): the changes made meanwhile are drawn once it
     // is over, in their last state only.
     private async Task RefreshPreviewAsync()
@@ -2515,7 +2564,7 @@ public sealed class MainViewModel : ObservableObject
             var document = await PdfPreviewRenderer.LoadAsync(pdf); // once for both sides
             var recto = await PdfPreviewRenderer.RenderPageAsync(document, 0, width, forScreen: true);
             var verso = job.HasBack ? await PdfPreviewRenderer.RenderPageAsync(document, 1, width, forScreen: true) : null;
-            if (version == _previewVersion)
+            if (version == _previewVersion && !PreviewOutdated)
             {
                 RectoSide.Image = recto;
                 VersoSide.Image = verso;
@@ -2524,7 +2573,7 @@ public sealed class MainViewModel : ObservableObject
         }
         catch (Exception ex)
         {
-            if (version == _previewVersion)
+            if (version == _previewVersion && !PreviewOutdated)
             {
                 RectoSide.Image = VersoSide.Image = null;
                 ClearOverlays();
@@ -2533,7 +2582,7 @@ public sealed class MainViewModel : ObservableObject
         }
         finally
         {
-            if (version == _previewVersion) IsPreviewBusy = false;
+            if (version == _previewVersion && !PreviewOutdated) IsPreviewBusy = false;
         }
     }
 

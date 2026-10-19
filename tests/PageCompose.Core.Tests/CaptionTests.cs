@@ -38,6 +38,32 @@ public sealed class CaptionTests : IDisposable
     }
 
     [Fact]
+    public void The_text_stands_as_its_frame_whatever_side_its_band_is_on()
+    {
+        var thickTop = new MarginsMm(22, 4.5, 6, 4.5);
+        var upright = new LayoutCell(0, 0, new RectMm(0, 0, 88, 107), new RectMm(0, 0, 88, 107), thickTop);
+        var turned = new LayoutCell(0, 0, new RectMm(0, 0, 107, 88), new RectMm(0, 0, 107, 88), thickTop.RotatedClockwise, true);
+
+        Assert.Equal(Caption.Side.Top, Caption.BandOf(upright)?.Side);
+        Assert.Equal(0, Caption.AngleOf(upright));
+        Assert.Equal(Caption.Side.Right, Caption.BandOf(turned)?.Side);
+        Assert.Equal(90, Caption.AngleOf(turned));
+    }
+
+    [Fact]
+    public void Segoe_ui_chosen_for_the_captions_keeps_the_bold_of_the_app()
+    {
+        string file = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), "segoeui.ttf");
+        string family = WindowsFonts.Register("Segoe UI", file);
+        var fonts = new WindowsFonts();
+
+        Assert.NotEqual("Segoe UI", family);
+        Assert.Equal(file, fonts.ResolveTypeface(family, false, false)?.FaceName);
+        Assert.Equal("segoeuib", fonts.ResolveTypeface("Segoe UI", true, false)?.FaceName);
+        Assert.Equal("segoeui", fonts.ResolveTypeface("Segoe UI", false, false)?.FaceName);
+    }
+
+    [Fact]
     public void A_thin_border_holds_no_text()
     {
         var layout = LayoutEngine.Compute(new LayoutOptions(SheetFormats.Sra3, ItemFormats.Square10Border.Size, Margins: ItemFormats.Square10Border.Margins));

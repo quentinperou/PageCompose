@@ -39,7 +39,7 @@ internal static class PdfRasterizer
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)))[..12];
         string output = Path.Combine(Folder, $"{Path.GetFileNameWithoutExtension(pdfPath)}-p{pageNumber}-{hash}.png");
         if (File.Exists(output))
-            return (output, count);
+            return (Reused(output), count);
 
         using var page = document.GetPage((uint)(pageNumber - 1));
         // Size is in DIPs (1/96 in), the page turned as it is displayed. Only the width is given: the engine keeps
@@ -61,6 +61,16 @@ internal static class PdfRasterizer
             await image.AsStreamForRead().CopyToAsync(fs);
         File.Move(temp, output, overwrite: true);
         return (output, count);
+    }
+
+    /// <summary>
+    /// A converted image used again: kept a day more, since another window starting deletes those older than a day.
+    /// </summary>
+    internal static string Reused(string path)
+    {
+        try { File.SetLastWriteTimeUtc(path, DateTime.UtcNow); }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException) { }
+        return path;
     }
 
     /// <summary>

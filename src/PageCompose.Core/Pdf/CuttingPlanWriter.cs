@@ -34,6 +34,15 @@ public static class CuttingPlanWriter
     /// <summary>Width of the column of measurements, in millimetres.</summary>
     private const double TableWidth = 58;
 
+    /// <summary>
+    /// Height of a measurement line, in millimetres: 5.4 when there is room, never under 4.2 (the 8 pt text). Lines
+    /// that do not fit beside the sheet go on to pages of their own (a crash above about 575 cuts until 0.12.1, lines
+    /// on top of each other from about 80).
+    /// </summary>
+    private const double Row = 5.4, MinRow = 4.2, HintHeight = 14;
+
+    private const double ContentTop = Margin + 20, ContentBottom = PageHeight - Margin - 9;
+
     private static readonly XColor Red = XColor.FromArgb(0xC4, 0x2B, 0x1C);
     private static readonly XColor Ink = XColor.FromArgb(0x20, 0x20, 0x20);
     private static readonly XColor Grey = XColor.FromArgb(0x6B, 0x6B, 0x6B);
@@ -70,12 +79,22 @@ public static class CuttingPlanWriter
 
             for (int s = 0; s < plan.SheetCount; s++)
             {
-                var page = doc.AddPage();
-                page.Width = XUnit.FromMillimeter(PageWidth);
-                page.Height = XUnit.FromMillimeter(PageHeight);
-                using var gfx = XGraphics.FromPdfPage(page);
-                DrawPage(gfx, plan, s, itemLabels, sheetName, jobName, texts, ImageOf, fit);
-                DrawBrand(gfx, page, logo);
+                // The sheet and the measurements that fit beside it, then the others on pages of their own.
+                int cuts = plan.Sheets[s].Layout.CutSegments.Count, next = 0;
+                bool first = true;
+                do
+                {
+                    var page = doc.AddPage();
+                    page.Width = XUnit.FromMillimeter(PageWidth);
+                    page.Height = XUnit.FromMillimeter(PageHeight);
+                    using var gfx = XGraphics.FromPdfPage(page);
+                    next = first
+                        ? DrawPage(gfx, plan, s, itemLabels, sheetName, jobName, texts, ImageOf, fit)
+                        : DrawMoreMeasurements(gfx, plan, s, sheetName, jobName, texts, next);
+                    DrawBrand(gfx, page, logo);
+                    first = false;
+                }
+                while (next < cuts);
             }
 
             doc.Save(output, false);
@@ -113,14 +132,9 @@ public static class CuttingPlanWriter
         page.AddWebLink(new PdfRectangle(new XPoint(Pt(left), Pt(PageHeight - y - height)), new XPoint(Pt(right), Pt(PageHeight - y))), url);
     }
 
-    private static void DrawPage(XGraphics gfx, MixedPlan plan, int index, IReadOnlyList<string> itemLabels, string sheetName,
-        string? jobName, CuttingPlanTexts texts, Func<VisualInfo, XImage> imageOf, FitMode fit)
+    // Title, sheet, job.
+    private static void DrawHeader(XGraphics gfx, MixedPlan plan, int index, string sheetName, string? jobName, CuttingPlanTexts texts)
     {
-        var sheet = plan.Sheets[index];
-        var layout = sheet.Layout;
-        var cuts = layout.CutSegments;
-
-        // Title, sheet, job.
         var titleFont = new XFont("Segoe UI", 16, XFontStyleEx.Bold);
         var lineFont = new XFont("Segoe UI", 9.5);
         var smallFont = new XFont("Segoe UI", 8);
@@ -130,9 +144,20 @@ public static class CuttingPlanWriter
         if (jobName is not null)
             gfx.DrawString(jobName, smallFont, new XSolidBrush(Grey), Box(Margin + 66, Margin + 1.5, 120, 5), XStringFormats.TopRight);
         gfx.DrawLine(new XPen(XColor.FromArgb(0xD0, 0xD0, 0xD0), 0.5), Pt(Margin), Pt(Margin + 16.5), Pt(PageWidth - Margin), Pt(Margin + 16.5));
+    }
+
+    /// <summary>The page of a sheet; returns the first cut whose measurement did not fit beside it.</summary>
+    private static int DrawPage(XGraphics gfx, MixedPlan plan, int index, IReadOnlyList<string> itemLabels, string sheetName,
+        string? jobName, CuttingPlanTexts texts, Func<VisualInfo, XImage> imageOf, FitMode fit)
+    {
+        var sheet = plan.Sheets[index];
+        var layout = sheet.Layout;
+        var cuts = layout.CutSegments;
+        var smallFont = new XFont("Segoe UI", 8);
+        DrawHeader(gfx, plan, index, sheetName, jobName, texts);
 
         // The sheet, as large as the page allows beside the measurements.
-        double top = Margin + 20, bottom = PageHeight - Margin - 9;
+        double top = ContentTop, bottom = ContentBottom;
         double areaWidth = PageWidth - 2 * Margin - TableWidth - 6, areaHeight = bottom - top;
         double scale = Math.Min(areaWidth / layout.Sheet.Width, areaHeight / layout.Sheet.Height);
         double ox = Margin, oy = top;
@@ -174,24 +199,44 @@ public static class CuttingPlanWriter
         for (int i = 0; i < cuts.Count; i++)
             DrawNumber(gfx, i + 1, X(at[i].X), Y(at[i].Y), Disc);
 
-        DrawMeasurements(gfx, layout, texts, ox + areaWidth + 6, top, areaHeight);
+        int next = DrawMeasurements(gfx, layout, texts, ox + areaWidth + 6, top, areaHeight, 0, hint: true);
 
         gfx.DrawString(texts.Hint, smallFont, new XSolidBrush(Grey), Box(Margin, PageHeight - Margin - 5, 120, 5), XStringFormats.CenterLeft);
+        return next;
     }
 
-    // One line per cut: its number, then where it falls in its piece.
-    private static void DrawMeasurements(XGraphics gfx, SheetLayout layout, CuttingPlanTexts texts, double left, double top, double height)
+    /// <summary>
+    /// The measurements of a sheet that did not fit beside it, from cut <paramref name="first"/>, in columns across
+    /// the page; returns the first one left for the next page.
+    /// </summary>
+    private static int DrawMoreMeasurements(XGraphics gfx, MixedPlan plan, int index, string sheetName, string? jobName,
+        CuttingPlanTexts texts, int first)
+    {
+        var layout = plan.Sheets[index].Layout;
+        DrawHeader(gfx, plan, index, sheetName, jobName, texts);
+        int next = first;
+        for (double left = Margin; left + TableWidth <= PageWidth - Margin + 1e-9 && next < layout.CutSegments.Count; left += TableWidth + 6)
+            next = DrawMeasurements(gfx, layout, texts, left, ContentTop, ContentBottom - ContentTop, next, hint: false);
+        return next;
+    }
+
+    // One line per cut, from cut first: its number, then where it falls in its piece; as many as fit in the height
+    // (with the hint under them on the page of the sheet). Returns the first cut left.
+    private static int DrawMeasurements(XGraphics gfx, SheetLayout layout, CuttingPlanTexts texts, double left, double top, double height,
+        int first, bool hint)
     {
         var font = new XFont("Segoe UI", 8);
         var hintFont = new XFont("Segoe UI", 7);
-        const double hintHeight = 14;
-        int count = layout.CutSegments.Count;
-        double row = count == 0 ? 0 : Math.Min(5.4, (height - hintHeight) / count);
+        int remaining = layout.CutSegments.Count - first;
+        double usable = height - (hint ? HintHeight : 0);
+        double row = remaining <= 0 ? 0 : Math.Max(MinRow, Math.Min(Row, usable / remaining));
+        int count = row == 0 ? 0 : Math.Min(remaining, (int)Math.Floor(usable / row + 1e-9));
         double disc = Math.Min(Disc, row - 0.4);
 
-        for (int i = 0; i < count; i++)
+        for (int k = 0; k < count; k++)
         {
-            double y = top + i * row;
+            int i = first + k;
+            double y = top + k * row;
             var (mm, edge) = layout.CutMeasurement(i);
             DrawNumber(gfx, i + 1, left + Disc / 2, y + row / 2, disc);
             string format = edge switch
@@ -205,9 +250,13 @@ public static class CuttingPlanWriter
             gfx.DrawString(text, font, new XSolidBrush(Ink), Box(left + Disc + 2.5, y, TableWidth - Disc - 2.5, row), XStringFormats.CenterLeft);
         }
 
-        var formatter = new XTextFormatter(gfx);
-        formatter.DrawString(texts.MeasureHint, hintFont, new XSolidBrush(Grey),
-            Box(left, top + count * row + 2, TableWidth, hintHeight), XStringFormats.TopLeft);
+        if (hint)
+        {
+            var formatter = new XTextFormatter(gfx);
+            formatter.DrawString(texts.MeasureHint, hintFont, new XSolidBrush(Grey),
+                Box(left, top + count * row + 2, TableWidth, HintHeight), XStringFormats.TopLeft);
+        }
+        return first + count;
     }
 
     // A white disc ringed in red, with the number in red, as on the preview of the app.

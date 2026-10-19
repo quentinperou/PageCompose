@@ -170,6 +170,30 @@ public static class Placement
         return (x, y);
     }
 
+    /// <summary>
+    /// The part kept (<see cref="VisualInfo.CropX"/>, <see cref="VisualInfo.CropY"/>), given in the axes of a picture
+    /// stored with one turn and mirror, in the axes of the same picture stored with others: a photo converted by Windows
+    /// is stored upright (its EXIF turn applied), so that a project saved before it was converted kept another part.
+    /// </summary>
+    public static (double X, double Y) CropInOtherAxes(double x, double y, int fromRotation, bool fromMirror, int toRotation, bool toMirror)
+    {
+        // To the picture upright, as it is drawn: the mirror, then the turn; then back: the other turn undone, its mirror.
+        if (fromMirror) x = 1 - x;
+        (x, y) = Turned(x, y, fromRotation);
+        (x, y) = Turned(x, y, 360 - toRotation);
+        if (toMirror) x = 1 - x;
+        return (x, y);
+    }
+
+    // A point given in shares of the picture (0 to 1, y down), where it goes when the picture turns clockwise.
+    private static (double X, double Y) Turned(double x, double y, int degrees) => Normalize(degrees) switch
+    {
+        90 => (1 - y, x),
+        180 => (1 - x, 1 - y),
+        270 => (y, 1 - x),
+        _ => (x, y),
+    };
+
     // The area the visual is fitted to: its trim (a PDF with its own bleed, or edges mirrored into the bleed), else what
     // it fills (bleed or image area).
     private static RectMm Target(VisualInfo visual, LayoutCell cell, SideOptions side, FitMode fit)

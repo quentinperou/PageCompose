@@ -89,7 +89,8 @@ internal static class PreviewImages
             image.BeginInit();
             image.UriSource = new Uri(visual.Path);
             image.CacheOption = BitmapCacheOption.OnLoad;
-            image.CreateOptions = BitmapCreateOptions.IgnoreColorProfile;
+            // IgnoreImageCache: a photo retouched and saved over itself under the same name is read again.
+            image.CreateOptions = BitmapCreateOptions.IgnoreColorProfile | BitmapCreateOptions.IgnoreImageCache;
             if (visual.FullWidth >= visual.FullHeight) image.DecodePixelWidth = size;
             else image.DecodePixelHeight = size;
             image.EndInit();

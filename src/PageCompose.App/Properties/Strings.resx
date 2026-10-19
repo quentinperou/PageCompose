@@ -1265,4 +1265,10 @@ The file may be open in another program.</value>
   <data name="ExportReplaceMany" xml:space="preserve">
     <value>{0} files of this export are already in this folder, such as “{1}”. Replace them?</value>
   </data>
+  <data name="ProjectDropsMissingOne" xml:space="preserve">
+    <value>A file of this project could not be opened: saving it will remove that file from the project. Save anyway?</value>
+  </data>
+  <data name="ProjectDropsMissingMany" xml:space="preserve">
+    <value>{0} files of this project could not be opened: saving it will remove them from the project. Save anyway?</value>
+  </data>
 </root>

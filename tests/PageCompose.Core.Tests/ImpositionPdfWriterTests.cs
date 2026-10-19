@@ -385,6 +385,28 @@ public sealed class ImpositionPdfWriterTests : IDisposable
     }
 
     [Fact]
+    public void Cutting_plan_of_a_sheet_with_hundreds_of_cuts_goes_on_to_more_pages()
+    {
+        // Small squares 3 mm apart: two cuts per gap, several hundred on the sheet. The measurements used to be
+        // squeezed beside the sheet until their discs had no size left (a crash above about 575 cuts).
+        var photo = VisualLoader.Load(_files.Jpeg(400, 400, name: "square.jpg"));
+        var plan = MixedPacker.Pack(SheetFormats.Sra3, [new MixedItem(photo, new SizeMm(15, 15), 400)], 0, 3);
+        Assert.Equal(1, plan.SheetCount);
+        Assert.True(plan.Sheets[0].Layout.CutSegments.Count > 575, $"{plan.Sheets[0].Layout.CutSegments.Count} cuts");
+        var texts = new CuttingPlanTexts("Cutting plan", "Sheet {0} / {1} · {2}", "Cut in the order of the numbers.",
+            "{0} mm from the top", "{0} mm from the bottom", "{0} mm from the left", "{0} mm from the right", "From the edge named.");
+        var path = _files.Path("plan.pdf");
+
+        using (var fs = File.Create(path))
+            CuttingPlanWriter.Write(plan, ["Square 15"], "SRA3", "job", texts, fs);
+        using var doc = PdfReader.Open(path, PdfDocumentOpenMode.Import);
+
+        // About 50 lines beside the sheet, then three columns of about 55 a page.
+        int cuts = plan.Sheets[0].Layout.CutSegments.Count;
+        Assert.InRange(doc.PageCount, 2, 1 + (cuts + 164) / 165);
+    }
+
+    [Fact]
     public void Sheets_must_match_the_layout()
     {
         var jpg = VisualLoader.Load(_files.Jpeg(100, 100));

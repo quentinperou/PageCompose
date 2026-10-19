@@ -25,7 +25,7 @@ internal static class PhotoConverter
         string hash = Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(key)))[..12];
         string output = Path.Combine(PdfRasterizer.Folder, $"{Path.GetFileNameWithoutExtension(path)}-{hash}.jpg");
         if (File.Exists(output))
-            return output;
+            return PdfRasterizer.Reused(output);
 
         var file = await StorageFile.GetFileFromPathAsync(source.FullName);
         using var input = await file.OpenReadAsync();

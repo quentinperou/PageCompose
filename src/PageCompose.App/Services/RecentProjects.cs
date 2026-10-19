@@ -14,8 +14,11 @@ public static class RecentProjects
 
     private static readonly JsonSerializerOptions Json = new() { WriteIndented = true };
 
-    /// <summary>The recent projects still on the disk, the last one first.</summary>
-    public static List<RecentFile> Load() => [.. Read().Where(r => File.Exists(r.Path))];
+    /// <summary>
+    /// The recent projects, the last one first. Whether each is still on the disk is the caller's to look for, away from
+    /// the window: a project on a share that is off would hold it.
+    /// </summary>
+    public static List<RecentFile> Load() => Read();
 
     public static void Add(string path) => Write(RecentFiles.Add(Read(), Path.GetFullPath(path), DateTime.Now));
 

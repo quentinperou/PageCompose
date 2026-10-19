@@ -1265,4 +1265,10 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
   <data name="ExportReplaceMany" xml:space="preserve">
     <value>{0} fichiers de cet export sont déjà dans ce dossier, dont « {1} ». Les remplacer ?</value>
   </data>
+  <data name="ProjectDropsMissingOne" xml:space="preserve">
+    <value>Un fichier de ce projet n'a pas pu être ouvert : l'enregistrer le retirera du projet. Enregistrer quand même ?</value>
+  </data>
+  <data name="ProjectDropsMissingMany" xml:space="preserve">
+    <value>{0} fichiers de ce projet n'ont pas pu être ouverts : l'enregistrer les retirera du projet. Enregistrer quand même ?</value>
+  </data>
 </root>

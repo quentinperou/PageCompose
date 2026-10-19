@@ -16,7 +16,17 @@ QuentinPerou, with Claude Code (Anthropic)".
 
 ## Project status (October 19, 2026)
 
-Version **0.12.1** (October 19, 2026, home PC: commit "PageCompose 0.12.1", not pushed yet) fixes what an audit of the code found (four reviews
+Version **0.12.2** (October 19, 2026, home PC: commit "PageCompose 0.12.2", not pushed yet) fixes the smaller findings of the same audit: a
+per-line caption carried into the Repeat mode (no field there: the common text only now), a converted photo used again
+then deleted by another window starting (its date refreshed), a render made old by a newer change still shown (the
+framing jumped back while dragging), a drag showing another line's photo, the cutting plan above about 575 cuts on a
+sheet (crash; unreadable from about 80: the measurements now go on to pages of their own), the File menu waiting for a
+share that is off, a project file cut short by an interrupted extraction taken for whole, the part kept of a photo
+saved before it was converted (or no longer), the band text upside down when the thick band is put at the top, and
+Segoe UI chosen for the captions taking the bold away from the cutting plan; and a project opened with files that
+cannot be read (a HEIC without its codec) is no longer saved over its file without them unasked.
+Version **0.12.1** (October 19, 2026, home PC: commit "PageCompose 0.12.1", tag `v0.12.1`, GitHub release with its
+patch note) fixes what an audit of the code found (four reviews
 in parallel, each finding checked in the code, the PDF one reproduced): a PDF page with a /Rotate came out turned twice;
 a project save that ended after New or another project was opened marked the wrong job, and an export read the job
 again after its long waits; an update installed from Settings and the end of the Windows session did not ask "Save the
@@ -86,7 +96,7 @@ the photo sizes moved to exact inches.
 - Updates from GitHub Releases, as in CropPdf: check at startup (can be turned off), Stable/Beta channel, bar in the
   main window, download checked with SHA-256, silent install and relaunch. The Settings window has CropPdf's cards
   (language, theme, presets, updates, about), on pages chosen from a menu on the left (see below).
-- 1351 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.12.1.exe` locally (Inno Setup 6).
+- 1360 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.12.2.exe` locally (Inno Setup 6).
 - The installer is not signed: the UAC prompt shows "Unknown publisher" (QuentinPerou appears in the file details
   and in Installed apps). Left as is for now (October 10, 2026). A paid certificate would show the author's legal
   name, SignPath Foundation its own name; only a self-signed certificate trusted by hand on each PC shows "QuentinPerou".
@@ -129,8 +139,11 @@ the photo sizes moved to exact inches.
     (`SheetLayout.CutMeasurement`: from the top or left edge of the piece cut, `CutPieces`; a part narrower than
     `MinHeldMm` = 30 mm, which the clamp cannot hold, from the bottom or right). At the foot of each page, on the
     right, the icon of the app (its 256 px PNG, passed by the app), "PageCompose" and its GitHub address, a link
-    (asked by the author). The only text PDFsharp draws in the app: Segoe UI read from the Windows fonts folder
-    (`WindowsFonts`, the core build of PDFsharp finds no font).
+    (asked by the author). The measurements beside the sheet take 5.4 mm a line, never under 4.2 mm; those that do
+    not fit go on to pages of their own, in columns, under the same title (a crash above about 575 cuts until 0.12.2).
+    The text PDFsharp draws in the app: Segoe UI read from the Windows fonts folder (`WindowsFonts`, the core build of
+    PDFsharp finds no font), and the captions, in a font registered under a name of its own (Segoe UI chosen for
+    them used to take the place of the bold Segoe UI of the plan).
   - `UpdateFeed` + `SemanticVersion`: GitHub "list releases" API of `quentinperou/PageCompose`, asset
     `PageCompose-Setup-*.exe` and its `digest` (SHA-256), SemVer 2.0 ordering, never offers a downgrade
     (ported from CropPdf).
@@ -291,7 +304,10 @@ the photo sizes moved to exact inches.
     window of its own; dropped on a window that holds work, `OpenProjectWindow` asks (asked by the author): "In a new
     window" (the default: another process of the app with the file, as a double click) or "Replace". `Window_Drop`
     answers the drop before any question (`Dispatcher.Yield`): a dialog shown inside the drop held Explorer until it
-    was answered.
+    was answered. Files of a project that cannot be read when it opens (a HEIC without its codec, a damaged file) are
+    left out of the job, and said so; the document counts them (`ProjectDocument.Missing`), and saving into its own
+    file asks first (`ConfirmDropMissing`, "… could not be opened: saving will remove … Save anyway?", No by default):
+    Ctrl+S used to write the project without them (0.12.2). No: nothing written, the project stays modified.
   - **Title bar and File menu** (0.11.0, asked by the author, variant A + C (1) of his mock-ups,
     `.local\maquettes\recents-*.png`): the window draws its own title bar (`WindowChrome`, `CaptionHeight` 32,
     `GlassFrameThickness` -1, `UseAeroCaptionButtons`: Windows keeps drawing its buttons, snap layouts included, and
@@ -304,7 +320,7 @@ the photo sizes moved to exact inches.
     Export as JPG, Settings Ctrl+,, Quit Alt+F4; Alt+F opens it), the recent projects on the right with the first sheet
     of each (`RecentProjectItem`; the 10 last opened or saved, `Core/RecentFiles`, stored in
     `%LOCALAPPDATA%\PageCompose\recent.json` by `Services/RecentProjects`, read again each time the panel opens, a file
-    no longer there dropped; "Clear the list").
+    no longer there dropped, looked for away from the window: a share that is off held the menu; "Clear the list").
   - **The project as a document** (0.11.0, the author's decisions): a job is "Untitled" until it is saved or opened,
     then its `.PageComposeProject` file (`MainViewModel.ProjectDocument`: its path and its `JobState` when saved; each
     undo step keeps its document, so Ctrl+Z after "New" or after opening gives the job back with its file). The window
@@ -423,7 +439,10 @@ the photo sizes moved to exact inches.
   visual as stored (before any turn), so that every copy keeps the same part however it is laid; `Placement` shifts
   the draw rectangle by that share of the overflow, and `Placement.Dragged` turns a drag on the sheet into it (the
   turn and mirror undone, kept between the edges). Chosen by dragging the photo on the preview (the author's choice
-  among three mock-ups); it belongs to the line (`VisualItem.Crop`), not to the presets.
+  among three mock-ups); it belongs to the line (`VisualItem.Crop`), not to the presets. A project keeps the turn and
+  mirror of the picture it is given in (`ProjectLine.CropTurn` / `CropMirror`, 0.12.2): a photo converted when the
+  project is opened again (stored upright by Windows), or no longer, gets it in its new axes
+  (`Placement.CropInOtherAxes`).
 - **Zoom into a photo** (0.12.0, `VisualInfo.Zoom`, 1 to `MaxZoom` = 3; asked by the author, variant C of three: in the
   right click menu of the line, with a slider, the value beside it, a double click on the slider giving 100 % back,
   the menu staying open while it moves; mock-up `.local\maquettes\zoom-photo-menu.png`): `Placement.Scale` multiplies
@@ -442,9 +461,10 @@ the photo sizes moved to exact inches.
   (0.8 / 0.6 mm), in the room kept for marks. Not in the Mixed mode (packed as their open size).
 - **Text in the band** (`VisualInfo.Caption`, `ImpositionJob.Caption` = `CaptionStyle`, `Core/Pdf/Caption`; asked by the
   author, mock-up accepted): in the thickest white margin of a frame when 8 mm or more (Polaroid 22, Instax 18), centred,
-  em = 36 % of the band, shrunk to 88 % of its length, turned with the frame (a frame laid a quarter turn has its band
-  on the left). A common text (card "Texte dans la bande", belongs to the job: undo and projects, not the presets) and a
-  text per line (`VisualItem.Caption`, empty: the common one). The font: a TrueType font of the PC (`FontList`: the
+  em = 36 % of the band, shrunk to 88 % of its length, upright as its frame (`Caption.AngleOf`: a frame laid a quarter
+  turn has its band on the left, its text turned with it; a thick band put at the top by hand reads upright too). A
+  common text (card "Texte dans la bande", belongs to the job: undo and projects, not the presets) and a text per line
+  (`VisualItem.Caption`, empty: the common one; in the Repeat mode, which has no field for it, the common one only). The font: a TrueType font of the PC (`FontList`: the
   registry, .ttf only, bold / italic faces and symbols left out, Segoe Print, Segoe Script, Ink Free, Gabriola, Comic
   Sans first), registered by its file in `WindowsFonts` and embedded by PDFsharp (the text stays vector; a picture only
   when flattened or in JPG); a dark colour (`CaptionColor`, **black by default**: the author's choice). Font and colour are in the settings and the presets.

@@ -275,20 +275,20 @@ public static class ImpositionPdfWriter
     {
         if (Caption.BandOf(cell) is not { } at) return;
         GlobalFontSettings.FontResolver ??= new WindowsFonts();
-        WindowsFonts.Register(style.Family, style.FontFile);
+        string family = WindowsFonts.Register(style.Family, style.FontFile);
 
         var band = at.Band;
         bool across = at.Side is Caption.Side.Bottom or Caption.Side.Top;
         double thick = across ? band.Height : band.Width, length = across ? band.Width : band.Height;
         double size = Units.MmToPt(thick * Caption.HeightShare);
-        var font = new XFont(style.Family, size);
+        var font = new XFont(family, size);
         double width = gfx.MeasureString(text, font).Width, room = Units.MmToPt(length * Caption.LengthShare);
-        if (width > room) font = new XFont(style.Family, size * room / width);
+        if (width > room) font = new XFont(family, size * room / width);
 
         var (r, g, b) = style.Color.Rgb();
         double cx = Units.MmToPt(band.CenterX), cy = Units.MmToPt(band.CenterY), w = Units.MmToPt(length), h = Units.MmToPt(thick);
         var state = gfx.Save();
-        if (Caption.AngleOf(at.Side) is var angle and not 0) gfx.RotateAtTransform(angle, new XPoint(cx, cy));
+        if (Caption.AngleOf(cell) is var angle and not 0) gfx.RotateAtTransform(angle, new XPoint(cx, cy));
         gfx.DrawString(text, font, new XSolidBrush(XColor.FromArgb(r, g, b)), new XRect(cx - w / 2, cy - h / 2, w, h), XStringFormats.Center);
         gfx.Restore(state);
     }

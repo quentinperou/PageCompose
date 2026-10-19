@@ -3,6 +3,41 @@ using PageCompose.Core.Visuals;
 
 namespace PageCompose.Core.Tests;
 
+public sealed class PlacementCropAxesTests
+{
+    [Fact]
+    public void The_top_of_a_photo_taken_sideways_is_its_left_side_as_stored()
+    {
+        // EXIF 6: stored lying, turned a quarter clockwise to stand. Its top, upright (0.5, 0), is its left side as
+        // stored (0, 0.5); the copy converted by Windows is stored upright.
+        Assert.Equal((0.5, 0.0), Placement.CropInOtherAxes(0, 0.5, 90, false, 0, false));
+        Assert.Equal((0.0, 0.5), Placement.CropInOtherAxes(0.5, 0, 0, false, 90, false));
+    }
+
+    [Theory]
+    [InlineData(90, false, 0, false)]
+    [InlineData(270, true, 0, false)]
+    [InlineData(180, false, 90, true)]
+    [InlineData(0, true, 270, false)]
+    public void A_crop_comes_back_the_same_through_other_axes(int fromRotation, bool fromMirror, int toRotation, bool toMirror)
+    {
+        var (x, y) = Placement.CropInOtherAxes(0.2, 0.9, fromRotation, fromMirror, toRotation, toMirror);
+        var (bx, by) = Placement.CropInOtherAxes(x, y, toRotation, toMirror, fromRotation, fromMirror);
+
+        Assert.Equal(0.2, bx, 9);
+        Assert.Equal(0.9, by, 9);
+    }
+
+    [Fact]
+    public void The_same_axes_keep_the_crop()
+    {
+        var (x, y) = Placement.CropInOtherAxes(0.3, 0.7, 90, true, 90, true);
+
+        Assert.Equal(0.3, x, 9);
+        Assert.Equal(0.7, y, 9);
+    }
+}
+
 public class PlacementTests
 {
     private static readonly LayoutCell LandscapeCard = new(0, 0, new RectMm(10, 10, 85, 55), new RectMm(10, 10, 85, 55));
