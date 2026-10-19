@@ -86,7 +86,7 @@ Examples on an SRA3 sheet:
 | A6 postcard | 8 | 6 |
 
 <p align="center">
-  <img src=".github/screenshot-polaroid.png" width="900" alt="Twelve classic Polaroid frames on an SRA3 sheet, with the white margins of the frame">
+  <img src=".github/screenshot-polaroid.png" width="900" alt="Twelve classic Polaroid frames on an SRA3 sheet, with the white margins of the frame and a text in their band">
 </p>
 
 In Mixed sizes mode, an order of four 10 × 15, two 13 × 18 and one 20 × 30 takes 2 SRA3 sheets, where one sheet per size
@@ -94,6 +94,12 @@ takes 3:
 
 <p align="center">
   <img src=".github/screenshot-mixed.png" width="900" alt="Mixed sizes mode: 10 x 15 and 20 x 30 prints packed on an SRA3 sheet, the cuts numbered in cutting order">
+</p>
+
+Raffle tickets numbered on the ticket and on its stub:
+
+<p align="center">
+  <img src=".github/screenshot-numbering.png" width="900" alt="Sixteen raffle tickets on an SRA3 sheet, each numbered on the ticket and on its stub, the numbering settings shown">
 </p>
 
 ### Printing the PDF

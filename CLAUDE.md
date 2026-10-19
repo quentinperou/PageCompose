@@ -577,9 +577,13 @@ the photo sizes moved to exact inches.
 - README screenshots, in English and French (`.fr.png`), the main window at its default size (1360 × 900), light
   theme: `.github/screenshot.png` (Compose mode, three photos 10 × 15 on SRA3, the back shown),
   `.github/screenshot-polaroid.png` (Repeat mode, classic Polaroid on SRA3, margin fields shown) and
-  `.github/screenshot-mixed.png` (Mixed mode, 10 × 15, 13 × 18 and 20 × 30 on SRA3, cut numbers shown). Synthetic
-  photos only (gradient, sun and hill, in the proportions of their sizes: the author liked them). The script that
-  takes them is in `.local\` (see below), from the default settings; `-Preview` saves window pictures to check first.
+  `.github/screenshot-mixed.png` (Mixed mode, 10 × 15, 13 × 18 and 20 × 30 on SRA3, cut numbers shown) and
+  `.github/screenshot-numbering.png` (raffle tickets numbered on the ticket and its stub, the numbering card shown; a
+  demo ticket drawn by `.local\cs\ticket.cs`). Synthetic photos only (gradient, sun and hill, in the proportions of
+  their sizes: the author liked them), named in the language of the picture. The script that takes them is in
+  `.local\` (see below), from the default settings; `-Preview` saves window pictures to check first. It sends no key:
+  the first picture opens a demo project (three photos and their shared back, named "holidays" / "vacances"), the
+  text in the Polaroid band is set through UI Automation. Retaken on October 19, 2026 (0.13.0).
 
 ## Working on several PCs
 

@@ -90,7 +90,7 @@ Exemples sur une feuille SRA3 :
 | Carte postale A6 | 8 | 6 |
 
 <p align="center">
-  <img src=".github/screenshot-polaroid.fr.png" width="900" alt="Douze cadres Polaroid classiques sur une feuille SRA3, avec les marges blanches du cadre">
+  <img src=".github/screenshot-polaroid.fr.png" width="900" alt="Douze cadres Polaroid classiques sur une feuille SRA3, avec les marges blanches du cadre et un texte dans leur bande">
 </p>
 
 En mode Multi-formats, une commande de quatre 10 × 15, deux 13 × 18 et un 20 × 30 tient sur 2 feuilles SRA3, là où une
@@ -98,6 +98,12 @@ planche par format en prend 3 :
 
 <p align="center">
   <img src=".github/screenshot-mixed.fr.png" width="900" alt="Mode Multi-formats : tirages 10 x 15 et 20 x 30 sur une feuille SRA3, les coupes numérotées dans l'ordre">
+</p>
+
+Des tickets de tombola numérotés sur le ticket et sur sa souche :
+
+<p align="center">
+  <img src=".github/screenshot-numbering.fr.png" width="900" alt="Seize tickets de tombola sur une feuille SRA3, chacun numéroté sur le ticket et sur sa souche, les réglages de la numérotation affichés">
 </p>
 
 ### Imprimer le PDF
