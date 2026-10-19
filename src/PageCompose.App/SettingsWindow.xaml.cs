@@ -145,6 +145,10 @@ public partial class SettingsWindow : Window
 
     private async Task InstallUpdateAsync(ReleaseInfo release)
     {
+        // The installer closes the app: the changes of the project first, if wanted (as from the bar of the window).
+        var main = Owner as MainWindow;
+        if (main is not null && !await main.BeginUpdateAsync()) return;
+
         _updating = true;
         ShowUpdateState(Strings.Get("UpdateDownloading"));
         UpdateProgress.Value = 0;
@@ -172,6 +176,7 @@ public partial class SettingsWindow : Window
             status = Strings.Format("ErrorUpdate", Updater.Describe(ex));
         }
         _updating = false;
+        main?.EndUpdate();
         UpdateProgress.Visibility = Visibility.Collapsed;
         ShowUpdateState(status);
     }

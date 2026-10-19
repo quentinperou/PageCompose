@@ -3,6 +3,7 @@ using PageCompose.Core.Visuals;
 using PdfSharp.Drawing;
 using PdfSharp.Fonts;
 using PdfSharp.Pdf;
+using PdfSharp.Pdf.IO;
 
 namespace PageCompose.Core.Pdf;
 
@@ -101,11 +102,8 @@ public static class ImpositionPdfWriter
     /// <summary>How far the mirrored copies reach under the visual, so that renderers leave no hairline between them.</summary>
     private const double MirrorOverlapMm = 0.05;
 
-    public static void Write(ImpositionJob job, string path)
-    {
-        using var fs = File.Create(path);
-        Write(job, fs);
-    }
+    /// <summary>Written whole or not at all: a failed export leaves the file that was there as it was.</summary>
+    public static void Write(ImpositionJob job, string path) => SafeFile.Write(path, stream => Write(job, stream));
 
     public static void Write(ImpositionJob job, Stream output)
     {
@@ -168,12 +166,30 @@ public static class ImpositionPdfWriter
     {
         if (visual.Kind == VisualKind.Pdf)
         {
+            // PDFsharp draws a page that has a /Rotate already turned, in a box the size of the page before the turn:
+            // turned again by the placement (BaseRotation), it came out the wrong way, and off its cell at a quarter
+            // turn. The placement turns the page as it is stored: such a page is drawn from a copy without its /Rotate.
+            if (visual.BaseRotation != 0)
+                return XPdfForm.FromStream(Unrotated(visual.Path, visual.PageNumber));
             var form = XPdfForm.FromFile(visual.Path);
             form.PageNumber = visual.PageNumber;
             return form;
         }
 
         return XImage.FromFile(visual.Path);
+    }
+
+    // The page alone, in a PDF of its own, with no /Rotate.
+    private static MemoryStream Unrotated(string path, int pageNumber)
+    {
+        using var source = PdfReader.Open(path, PdfDocumentOpenMode.Import);
+        using var copy = new PdfDocument();
+        var page = copy.AddPage(source.Pages[pageNumber - 1]);
+        page.Rotate = 0;
+        var stream = new MemoryStream();
+        copy.Save(stream, false);
+        stream.Position = 0;
+        return stream;
     }
 
     private static void DrawSide(PdfDocument doc, SheetLayout layout, List<(LayoutCell cell, VisualInfo? visual)> cells,

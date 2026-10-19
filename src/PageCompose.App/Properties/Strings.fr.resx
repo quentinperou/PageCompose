@@ -1259,4 +1259,10 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
   <data name="CaptionColor_Burgundy" xml:space="preserve">
     <value>Bordeaux</value>
   </data>
+  <data name="ExportReplaceOne" xml:space="preserve">
+    <value>« {0} » est déjà dans ce dossier. Le remplacer ?</value>
+  </data>
+  <data name="ExportReplaceMany" xml:space="preserve">
+    <value>{0} fichiers de cet export sont déjà dans ce dossier, dont « {1} ». Les remplacer ?</value>
+  </data>
 </root>

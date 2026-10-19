@@ -75,6 +75,30 @@ public sealed class ImpositionPdfWriterTests : IDisposable
         Assert.Equal(XObjects(fromPdf1, "/Form").Count, XObjects(fromPdf5, "/Form").Count);
     }
 
+    [Theory]
+    [InlineData(90)]
+    [InlineData(180)]
+    [InlineData(270)]
+    public void A_pdf_page_with_a_rotate_is_turned_once(int rotate)
+    {
+        // PDFsharp turns a page with /Rotate inside the form it makes of it; the placement turns it too
+        // (BaseRotation): the form must be the page as stored, not turned.
+        var pdf = VisualLoader.Load(_files.Pdf(55, 85, rotate: rotate));
+        Assert.Equal(rotate, pdf.BaseRotation);
+
+        using var doc = WriteAndOpen(ImpositionJob.Repeat(CardsOnSra3(false), pdf, 1));
+
+        var forms = XObjects(doc, "/Form");
+        Assert.NotEmpty(forms);
+        foreach (var form in forms)
+        {
+            var matrix = form.Elements.GetArray("/Matrix");
+            if (matrix is null) continue;
+            // Identity, or a move only: [1 0 0 1 x y].
+            Assert.Equal([1.0, 0.0, 0.0, 1.0], Enumerable.Range(0, 4).Select(i => matrix.Elements.GetReal(i)));
+        }
+    }
+
     [Fact]
     public void Two_page_pdf_gives_the_front_and_the_back()
     {

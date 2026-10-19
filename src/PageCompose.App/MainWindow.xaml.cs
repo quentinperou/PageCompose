@@ -32,9 +32,25 @@ public partial class MainWindow : Window
             return dialog.ShowDialog() == true ? dialog.Choice : null;
         };
 
+        viewModel.ConfirmReplace = AskReplace;
+
         Updater.Checked += Updater_Checked;
         ShowUpdateBar();
-        ViewModel.Notices.CollectionChanged += (_, _) => MeasureSingleNotice();
+        ViewModel.Notices.CollectionChanged += Notices_CollectionChanged;
+    }
+
+    // The view model outlives the window (a language change builds another on it): unsubscribed in OnClosed.
+    private void Notices_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e) =>
+        MeasureSingleNotice();
+
+    // Files of an export already in its folder, besides the one chosen in the dialog: replaced only if the user agrees.
+    private bool AskReplace(IReadOnlyList<string> files)
+    {
+        string text = files.Count == 1
+            ? Strings.Format("ExportReplaceOne", Path.GetFileName(files[0]))
+            : Strings.Format("ExportReplaceMany", files.Count, Path.GetFileName(files[0]));
+        return MessageBox.Show(this, text, Strings.Get("AppTitle"), MessageBoxButton.YesNo, MessageBoxImage.Warning,
+            MessageBoxResult.No) == MessageBoxResult.Yes;
     }
 
     public MainViewModel ViewModel { get; }
@@ -192,7 +208,11 @@ public partial class MainWindow : Window
         if (ExpandPaths(paths) is [var first, ..])
             await ViewModel.SetVersoAsync(first);
         else
-            await AddPathsAsync(paths); // a preset file
+        {
+            // A preset or a project: answered first, as in Window_Drop (a question would hold Explorer).
+            await Dispatcher.Yield(DispatcherPriority.Background);
+            await AddPathsAsync(paths);
+        }
     }
 
     // The "Back" slot of a line of the list: its own back, dropped or chosen (a file dropped on its back replaces it).
@@ -677,6 +697,24 @@ public partial class MainWindow : Window
         UpdateText.Text = message;
     }
 
+    /// <summary>
+    /// An update installed from Settings: the changes of the project first, if wanted, as from the bar; then the window
+    /// closes with the app without asking again. False: no update.
+    /// </summary>
+    public async Task<bool> BeginUpdateAsync()
+    {
+        if (!await ConfirmLeaveProjectAsync()) return false;
+        _installingUpdate = true;
+        return true;
+    }
+
+    /// <summary>The update from Settings did not happen: the window asks again on closing.</summary>
+    public void EndUpdate()
+    {
+        _installingUpdate = false;
+        ShowUpdateBar();
+    }
+
     private void UpdateNotes_Click(object sender, RoutedEventArgs e)
     {
         if (Updater.Available is { } release)
@@ -976,6 +1014,7 @@ public partial class MainWindow : Window
     protected override void OnClosed(EventArgs e)
     {
         Updater.Checked -= Updater_Checked;
+        ViewModel.Notices.CollectionChanged -= Notices_CollectionChanged;
         base.OnClosed(e);
     }
 }

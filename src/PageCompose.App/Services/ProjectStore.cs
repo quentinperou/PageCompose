@@ -2,6 +2,7 @@ using System.IO.Compression;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
+using PageCompose.Core;
 
 namespace PageCompose.App.Services;
 
@@ -101,9 +102,11 @@ public static class ProjectStore
         foreach (var line in new[] { saved.Repeat, saved.SharedBack }.OfType<ProjectLine>().Concat(saved.Visuals).SelectMany(l => l.WithBack()))
             line.File = entries[line.File];
 
-        string temp = path + ".tmp";
-        using (var zip = ZipFile.Open(temp, ZipArchiveMode.Create))
+        // Never a half-written project, and a save that failed (a photo no longer there) leaves nothing that would stop
+        // the next one.
+        SafeFile.Write(path, output =>
         {
+            using var zip = new ZipArchive(output, ZipArchiveMode.Create);
             using (var writer = new StreamWriter(zip.CreateEntry(ProjectEntry).Open(), new UTF8Encoding(false)))
                 writer.Write(JsonSerializer.Serialize(saved, Json));
             if (preview is not null)
@@ -116,8 +119,7 @@ public static class ProjectStore
                 var level = Compressed.Contains(Path.GetExtension(file).ToLowerInvariant()) ? CompressionLevel.NoCompression : CompressionLevel.Optimal;
                 zip.CreateEntryFromFile(file, entry, level);
             }
-        }
-        File.Move(temp, path, overwrite: true); // never a half-written project
+        });
     }
 
     /// <summary>

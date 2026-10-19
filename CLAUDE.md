@@ -14,20 +14,28 @@ QuentinPerou, with Claude Code (Anthropic)".
 
 **Talk to the author in French.** Code, comments, commit messages and these docs are in English.
 
-## Project status (October 15, 2026)
+## Project status (October 19, 2026)
 
-Version **0.12.0** (October 15, 2026, made on the shop PC, committed there as QuentinPerou with the tag `v0.12.0`,
-**not pushed**) makes the preview about ten times faster
+Version **0.12.1** (October 19, 2026, home PC: commit "PageCompose 0.12.1", not pushed yet) fixes what an audit of the code found (four reviews
+in parallel, each finding checked in the code, the PDF one reproduced): a PDF page with a /Rotate came out turned twice;
+a project save that ended after New or another project was opened marked the wrong job, and an export read the job
+again after its long waits; an update installed from Settings and the end of the Windows session did not ask "Save the
+changes?" (and the session end did not save the settings); a failed save of a project left a `.tmp` that stopped every
+later one, and a failed PDF export emptied the PDF already there; files written beside an export (the pictures of a JPG
+export of several sheets, the cutting plan, the project) were replaced without asking; the white border of a frame
+stayed after a preset, an undo, New or a project, then another size; plus a zoomed photo soft in the fast preview, a
+project dropped on the back zone holding Explorer, and the old window kept in memory after a language change.
+Version **0.12.0** (October 15, 2026, made on the shop PC; pushed from the home PC on October 19 with 0.10.0 and
+0.11.0, a GitHub release and its patch note each) makes the preview about ten times faster
 with photos from a camera: lighter copies of the photos on screen ("Fast preview", an option, on by default; the
 exports always take the originals), one render at a time, shorter waits; and the zoom into a photo, with a slider in
 the right click menu of its line.
-Version **0.11.0** (October 15, 2026, made on the shop PC, committed there as QuentinPerou with the tag `v0.11.0`,
-**not pushed**: to push from the home PC, after 0.10.0) makes the project a document, as in Word
+Version **0.11.0** (October 15, 2026, made on the shop PC, published on October 19) makes the project a document, as in Word
 or Paint: a title bar drawn by the app with a "File" button (New, New window, Open, Save, Save as, the exports,
 Settings, Quit, with their shortcuts) and the recent projects with their first sheet, the name of the project in the
 title bar with a dot while changes are not saved, and "Save the changes?" on closing a project saved or opened.
-Version **0.10.0** (October 15, 2026, made on the shop PC, committed there as QuentinPerou with the tag `v0.10.0`,
-**not pushed**: to push from the home PC) converts the photos whose colour profile is not sRGB (Adobe RGB, Display P3…) to sRGB when they are
+Version **0.10.0** (October 15, 2026, made on the shop PC, published on October 19; its commit closed issue #1)
+converts the photos whose colour profile is not sRGB (Adobe RGB, Display P3…) to sRGB when they are
 added (an option of Settings → General, on by default), adds a size for every line at once in Mixed sizes, with an
 "Apply" button, in an "Apply to all" box with the copies (issue #1), and pins
 a fixed `System.Security.Cryptography.Pkcs` (the 8.0.1 brought by PDFsharp has known vulnerabilities).
@@ -78,7 +86,7 @@ the photo sizes moved to exact inches.
 - Updates from GitHub Releases, as in CropPdf: check at startup (can be turned off), Stable/Beta channel, bar in the
   main window, download checked with SHA-256, silent install and relaunch. The Settings window has CropPdf's cards
   (language, theme, presets, updates, about), on pages chosen from a menu on the left (see below).
-- 1344 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.12.0.exe` locally (Inno Setup 6).
+- 1351 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.12.1.exe` locally (Inno Setup 6).
 - The installer is not signed: the UAC prompt shows "Unknown publisher" (QuentinPerou appears in the file details
   and in Installed apps). Left as is for now (October 10, 2026). A paid certificate would show the author's legal
   name, SignPath Foundation its own name; only a self-signed certificate trusted by hand on each PC shows "QuentinPerou".
@@ -129,7 +137,9 @@ the photo sizes moved to exact inches.
   - Preset sizes (`ItemFormats`, `SheetFormats`) have a stable `Id`; their labels live in the UI strings
     (`Format_<Id>`, `Sheet_<Id>`). `PaperFormat.Margins` is where nothing is printed: the white border of a framed
     size, the unprintable edges of a sheet. Choosing a framed size in the app fills the margin fields, leaving it
-    gives the user's own margins back.
+    gives the user's own margins back; margins read back (settings, a preset, an undo step, New, a project) equal to
+    those of the framed size chosen are the frame's (`MainViewModel.TakeMarginsOfSize`), so that leaving the size
+    gives no margins.
 - `src/PageCompose.App` (WPF, net10.0-windows10.0.19041.0), a thin layer:
   - **Windows 11 theme, light and dark**: `Fluent.xaml` merged in `App.xaml`, then `App.ApplyTheme` sets
     `Application.ThemeMode` (System / Light / Dark; experimental API, `WPF0001` is suppressed in the csproj).
@@ -237,6 +247,14 @@ the photo sizes moved to exact inches.
     `name-f1.jpg`, `name-f1-verso.jpg`… The result shows in a toast over the preview (`ViewModels/ExportToast`,
     open the first file / show in folder, hidden after 8 s), never as a long status text (the author found it ugly).
     There is no "open after export" option: the toast offers it (removed at the author's request).
+    **An export takes everything when it starts** (`ExportAsync`, `ExportJpegAsync`: the job, the sheet size, the
+    cutting plan and the project as `PendingFile`s): a flattened export can take half a minute, and a change made
+    meanwhile belongs to the next one. The files it writes besides the one chosen in the dialog (the pictures of a JPG
+    export of several sheets, the cutting plan, the project) are replaced only after a question
+    (`MainViewModel.ConfirmReplace`, "… already in this folder. Replace?", No by default), unless the file chosen was
+    there (Windows asked, the export is made again). The PDF, the flattened PDF, the cutting plan and the projects are
+    written through `Core/SafeFile` (a temporary file of its own beside it, then moved over): a failed write (a photo
+    no longer there) leaves the file that was there as it was, and nothing that would stop the next one.
   - **Presets** (`Services/LayoutPreset` + `PresetStore`): the settings of a job under a name, never the files nor
     the number of copies (decided with the author); the unit of the quantity, visuals or sheets, is kept
     (`LayoutPreset.Unit`, asked by the author; older presets read as visuals). The unit is also kept in the settings,
@@ -338,6 +356,11 @@ the photo sizes moved to exact inches.
   - **Several windows of the app may run at once** (decided with the author: two jobs in parallel). Each saves its
     settings when it closes (the last one wins); nothing shared may be deleted at startup if another window can be
     using it.
+  - **Closing paths that ask "Save the changes?"**: the window (`Window_Closing`), New, opening another project, the
+    update bar, and an update installed from Settings (`MainWindow.BeginUpdateAsync` / `EndUpdate`). The end of the
+    Windows session closes windows without their Closing event: `App.OnSessionEnding` saves the settings and, for a
+    project with changes, stops the session end and closes the window, which asks (as Notepad does). A project save
+    marks the document of the state it wrote (`JobState.Doc`), never the one open when it ends.
 - `tests/PageCompose.Core.Tests` (xUnit, net10.0-windows so WPF can create test JPEG files): reference table of
   layouts, geometry, EXIF, placement, distribution, PDF content (image stored once, JPEG not recompressed),
   localization (`LocalizationTests`).
@@ -369,6 +392,10 @@ the photo sizes moved to exact inches.
   below 200 dpi, error below 150 dpi. **All the colours that leave the app are sRGB** (designer PDFs aside: kept as
   they are, their own colour spaces left to the RIP).
 - A PDF with a TrimBox is placed at 100 % on the trim and clipped to the layout bleed.
+- A PDF page with a `/Rotate` (turned in Acrobat, a scan): the placement turns it by `BaseRotation` from the page as
+  stored, so it is drawn from a copy of the page without its `/Rotate` (`ImpositionPdfWriter.Open`): PDFsharp turned it
+  itself, in a box of its unturned size, so it came out turned twice (180°: the other way up; 90°: turned wrong and
+  off its cell). The thumbnails and the reframing pictures already turned the Windows render back.
 - Back: cells mirrored according to the flip (long edge: vertical axis; short edge: horizontal axis). Crop marks
   and continuous cut lines (`ImpositionJob.CutLines`: every cut, across the block of trims) on the front only.
 - **A back per visual** (lists only, `VisualItem.Back`, chosen by the author from a combined mock-up): with

@@ -65,6 +65,21 @@ public partial class App : Application
         _ = Updater.CheckAtStartupAsync();
     }
 
+    /// <summary>
+    /// Windows logs off or shuts down: it closes the windows without their Closing event, so that nothing would be saved
+    /// nor asked. The settings are saved; a project with changes not saved stops the shutdown (Windows shows the app as
+    /// preventing it) and its window asks "Save the changes?", as Notepad does.
+    /// </summary>
+    protected override void OnSessionEnding(SessionEndingCancelEventArgs e)
+    {
+        base.OnSessionEnding(e);
+        if (MainWindow is not global::PageCompose.App.MainWindow window) return;
+        window.ViewModel.SaveSettings();
+        if (!window.ViewModel.HasUnsavedChanges()) return;
+        e.Cancel = true;
+        window.Dispatcher.BeginInvoke(window.Close);
+    }
+
     private static void ComboBox_PreviewMouseWheel(object sender, MouseWheelEventArgs e)
     {
         if (sender is not ComboBox { IsDropDownOpen: false } combo) return;

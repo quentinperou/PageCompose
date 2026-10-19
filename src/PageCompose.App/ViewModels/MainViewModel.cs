@@ -200,9 +200,7 @@ public sealed class MainViewModel : ObservableObject
         _versoMargins = settings.VersoMargins;
         (_marginTop, _marginRight, _marginBottom, _marginLeft) =
             (settings.MarginTop, settings.MarginRight, settings.MarginBottom, settings.MarginLeft);
-        // Saved on a framed size with its own margins: leaving that size gives no margins.
-        if (_selectedFormat.Format is { Margins: { IsEmpty: false } preset } && _marginsEnabled && TypedMargins() == preset)
-            _userMargins = (false, MarginsMm.None);
+        TakeMarginsOfSize();
         _fit = settings.Fit;
         _completeLastSheet = settings.CompleteLastSheet;
         _unit = settings.Unit;
@@ -406,7 +404,7 @@ public sealed class MainViewModel : ObservableObject
         CustomHeight = p.CustomHeight;
         // The margins of the preset, as the user's own (choosing the size above may have set those of a frame).
         SetMargins(p.MarginsEnabled, new MarginsMm(p.MarginTop, p.MarginRight, p.MarginBottom, p.MarginLeft));
-        _userMargins = null;
+        TakeMarginsOfSize();
         VersoMargins = p.VersoMargins;
         SelectedSheet = Sheets.FirstOrDefault(s => (s.Sheet?.Id ?? AppSettings.CustomFormatId) == p.SheetId) ?? SelectedSheet;
         CustomSheetWidth = p.CustomSheetWidth;
@@ -1559,10 +1557,41 @@ public sealed class MainViewModel : ObservableObject
         return name + ".pdf";
     }
 
-    public async Task ExportAsync(string path)
+    /// <summary>
+    /// Asked before an export replaces files that are already there besides the one chosen in the dialog (which Windows
+    /// asked about): the pictures of a JPG export of several sheets, the cutting plan, the project. Given their paths;
+    /// false: nothing is exported.
+    /// </summary>
+    public Func<IReadOnlyList<string>, bool>? ConfirmReplace { get; set; }
+
+    // A file an export writes after its sheets, prepared when the export starts.
+    private sealed record PendingFile(string Path, Func<Task> Write);
+
+    private bool MayReplace(IEnumerable<string?> files, string chosen)
     {
-        if (!CanExport) return;
+        // The file chosen was there and Windows asked: replacing it replaces what goes with it (an export made again).
+        if (File.Exists(chosen)) return true;
+        var existing = files.OfType<string>()
+            .Where(f => !string.Equals(Path.GetFullPath(f), Path.GetFullPath(chosen), StringComparison.OrdinalIgnoreCase) && File.Exists(f))
+            .ToList();
+        return existing.Count == 0 || ConfirmReplace?.Invoke(existing) != false;
+    }
+
+    /// <summary>
+    /// The PDF of every sheet. Everything it writes is taken when it starts: a flattened export can take half a minute,
+    /// and a change made meanwhile (a setting, New, another project opened) belongs to the next one. False: not done
+    /// (files the user did not want replaced).
+    /// </summary>
+    public async Task<bool> ExportAsync(string path)
+    {
+        if (!CanExport) return false;
         var job = BuildJob(AllSheets(), Path.GetFileNameWithoutExtension(path));
+        var sheetSize = Sheet.Size;
+        int sheets = Plan.SheetCount;
+        var plan = CuttingPlanFor(path);
+        var project = SaveProject ? ProjectWriterFor(ProjectPathNextTo(path)) : null;
+        if (!MayReplace([plan?.Path, project?.Path], path)) return false;
+
         Toast.ShowProgress(Strings.Get("Exporting"), Path.GetFileName(path));
         if (FlattenPdf)
         {
@@ -1572,12 +1601,8 @@ public sealed class MainViewModel : ObservableObject
             try
             {
                 var pages = Enumerable.Range(1, PageCount(job)).Select(i => Path.Combine(folder, $"{i}.jpg")).ToList();
-                await RenderPagesAsync(job, pages);
-                await Task.Run(() =>
-                {
-                    using var fs = File.Create(path);
-                    FlatPdfWriter.Write(pages, Sheet.Size, fs, job.Title);
-                });
+                await RenderPagesAsync(job, sheetSize, pages);
+                await Task.Run(() => SafeFile.Write(path, fs => FlatPdfWriter.Write(pages, sheetSize, fs, job.Title)));
             }
             finally
             {
@@ -1590,14 +1615,15 @@ public sealed class MainViewModel : ObservableObject
             await Task.Run(() => ImpositionPdfWriter.Write(job, path));
         }
 
-        var cuttingPlan = await WriteCuttingPlanAsync(path);
-        var projectFile = await WriteProjectAsync(path);
+        if (plan is not null) await plan.Write();
+        if (project is not null) await project.Write();
         Toast.ShowDone(Strings.Get("ToastPdfSaved"),
-            Strings.Format("ToastPdfDetail", Path.GetFileName(path), Strings.Count("Sheets", Plan.SheetCount)) +
-            (cuttingPlan is null ? "" : Strings.Get("ToastWithPlan")) + (projectFile is null ? "" : Strings.Get("ToastWithProject")),
-            cuttingPlan is null ? [path] : [path, cuttingPlan]);
+            Strings.Format("ToastPdfDetail", Path.GetFileName(path), Strings.Count("Sheets", sheets)) +
+            (plan is null ? "" : Strings.Get("ToastWithPlan")) + (project is null ? "" : Strings.Get("ToastWithProject")),
+            plan is null ? [path] : [path, plan.Path]);
         _settings.LastExportFolder = Path.GetDirectoryName(path);
         SaveSettings();
+        return true;
     }
 
     /// <summary>There is something to save as a project: a visual, in the list or in the Repeat mode.</summary>
@@ -1606,41 +1632,45 @@ public sealed class MainViewModel : ObservableObject
     /// <summary>"Save", "Save as" (File menu): the project to <paramref name="path"/>, which becomes the file of the job.</summary>
     public async Task SaveProjectAsync(string path)
     {
+        var project = ProjectWriterFor(path);
         Toast.ShowProgress(Strings.Get("SavingProject"), Path.GetFileName(path));
-        await WriteProjectFileAsync(path);
+        await project.Write();
         Toast.ShowDone(Strings.Get("ToastProjectSaved"), Path.GetFileName(path), [path]);
     }
 
-    /// <summary>When asked: the project next to the export ("name.PageComposeProject"), then the file of the job. Returns its path, or null.</summary>
-    private async Task<string?> WriteProjectAsync(string exportPath)
-    {
-        if (!SaveProject) return null;
-        string path = Path.Combine(Path.GetDirectoryName(exportPath) ?? "", Path.GetFileNameWithoutExtension(exportPath) + ProjectStore.FileExtension);
-        await WriteProjectFileAsync(path);
-        return path;
-    }
+    // The project written next to an export when asked: "name.PageComposeProject".
+    private static string ProjectPathNextTo(string exportPath) =>
+        Path.Combine(Path.GetDirectoryName(exportPath) ?? "", Path.GetFileNameWithoutExtension(exportPath) + ProjectStore.FileExtension);
 
-    // The job as it is now; a change made while it is written is a change still to save.
-    private async Task WriteProjectFileAsync(string path)
+    // The job as it is now, to be written into a project, which then becomes its file. The state and its document are
+    // taken at once: a save that ends after New or after another project was opened marks the project it wrote, never
+    // the one open by then. A change made while it is written is a change still to save.
+    private PendingFile ProjectWriterFor(string path)
     {
         if (_historyDebounce.IsEnabled) Remember();
         var state = _current;
-        var job = ToProjectFile(state);
-        var preview = await FirstSheetPngAsync();
-        await Task.Run(() => ProjectStore.Save(path, job, preview));
-        _document.Path = Path.GetFullPath(path);
-        _document.Saved = state;
-        DocumentChanged();
-        RecentProjects.Add(path);
+        var file = ToProjectFile(state);
+        ImpositionJob? first = null;
+        try { if (CanExport) first = BuildJob([0]); }
+        catch (Exception ex) when (ex is not OutOfMemoryException) { } // no picture of the first sheet, the project all the same
+        return new PendingFile(path, async () =>
+        {
+            var preview = await FirstSheetPngAsync(first);
+            await Task.Run(() => ProjectStore.Save(path, file, preview));
+            state.Doc.Path = Path.GetFullPath(path);
+            state.Doc.Saved = state;
+            DocumentChanged();
+            RecentProjects.Add(path);
+        });
     }
 
     // The first sheet in small (its front), for the recent projects; none when nothing is laid or it cannot be drawn.
-    private async Task<byte[]?> FirstSheetPngAsync()
+    private async Task<byte[]?> FirstSheetPngAsync(ImpositionJob? first)
     {
-        if (!CanExport) return null;
+        if (first is null) return null;
         try
         {
-            var job = await LightenAsync(BuildJob([0]), PreviewWidthPx); // the copies of the preview, already made
+            var job = await LightenAsync(first, PreviewWidthPx); // the copies of the preview, already made
             var pdf = await Task.Run(() =>
             {
                 using var ms = new MemoryStream();
@@ -1706,9 +1736,9 @@ public sealed class MainViewModel : ObservableObject
 
     /// <summary>
     /// In the Mixed mode, when asked: the cutting plan next to the export ("name-cutting-plan.pdf"), to print on
-    /// office paper and keep by the guillotine. Returns its path, or null when there is none.
+    /// office paper and keep by the guillotine; null when there is none. Taken when the export starts, as its sheets.
     /// </summary>
-    private async Task<string?> WriteCuttingPlanAsync(string exportPath)
+    private PendingFile? CuttingPlanFor(string exportPath)
     {
         if (_mode != LayoutMode.Mixed || !CuttingPlan || _mixed.SheetCount == 0) return null;
         string stem = Path.GetFileNameWithoutExtension(exportPath);
@@ -1719,12 +1749,8 @@ public sealed class MainViewModel : ObservableObject
         // The size of each line laid, by index as packed.
         var labels = _mixedLines.Select(MixedSizeName).ToList();
         var (plan, sheet, fit, logo) = (_mixed, SheetLabel, _fit, AppIconPng());
-        await Task.Run(() =>
-        {
-            using var fs = File.Create(path);
-            CuttingPlanWriter.Write(plan, labels, sheet, stem, texts, fs, fit, logo);
-        });
-        return path;
+        return new PendingFile(path, () => Task.Run(() =>
+            SafeFile.Write(path, fs => CuttingPlanWriter.Write(plan, labels, sheet, stem, texts, fs, fit, logo))));
     }
 
     // The icon of the app in high definition, for the foot of the cutting plan (never the .ico: its first frame is 16 px).
@@ -1745,6 +1771,7 @@ public sealed class MainViewModel : ObservableObject
     {
         if (!CanExport) return [];
         var job = BuildJob(AllSheets(), Path.GetFileNameWithoutExtension(path));
+        var sheetSize = Sheet.Size;
         int count = PageCount(job);
         string folder = Path.GetDirectoryName(path) ?? "", stem = Path.GetFileNameWithoutExtension(path);
         List<string> files = count == 1
@@ -1756,14 +1783,19 @@ public sealed class MainViewModel : ObservableObject
                 return Path.Combine(folder, Strings.Format(back ? "JpegPageBack" : "JpegPageFront", stem, sheet) + ".jpg");
             }).ToList();
 
+        // As for the PDF, everything taken now (see ExportAsync).
+        var plan = CuttingPlanFor(path);
+        var project = SaveProject ? ProjectWriterFor(ProjectPathNextTo(path)) : null;
+        if (!MayReplace([.. files, plan?.Path, project?.Path], path)) return [];
+
         Toast.ShowProgress(Strings.Get("Exporting"), Path.GetFileName(path));
-        await RenderPagesAsync(job, files);
-        var cuttingPlan = await WriteCuttingPlanAsync(path);
-        var projectFile = await WriteProjectAsync(path);
+        await RenderPagesAsync(job, sheetSize, files);
+        if (plan is not null) await plan.Write();
+        if (project is not null) await project.Write();
         Toast.ShowDone(Strings.Count("JpegSaved", files.Count),
             (files.Count == 1 ? Path.GetFileName(path) : Strings.Format("ToastInFolder", Path.GetFileName(folder))) +
-            (cuttingPlan is null ? "" : Strings.Get("ToastWithPlan")) + (projectFile is null ? "" : Strings.Get("ToastWithProject")),
-            cuttingPlan is null ? files : [.. files, cuttingPlan]);
+            (plan is null ? "" : Strings.Get("ToastWithPlan")) + (project is null ? "" : Strings.Get("ToastWithProject")),
+            plan is null ? files : [.. files, plan.Path]);
         _settings.LastExportFolder = folder;
         SaveSettings();
         return files;
@@ -1772,7 +1804,7 @@ public sealed class MainViewModel : ObservableObject
     // Front, then back when there is one, for every sheet: as in the PDF.
     private static int PageCount(ImpositionJob job) => job.Sheets.Count * (job.HasBack ? 2 : 1);
 
-    private async Task RenderPagesAsync(ImpositionJob job, IReadOnlyList<string> files)
+    private async Task RenderPagesAsync(ImpositionJob job, SizeMm sheetSize, IReadOnlyList<string> files)
     {
         var pdf = await Task.Run(() =>
         {
@@ -1782,7 +1814,7 @@ public sealed class MainViewModel : ObservableObject
         });
         var progress = new Progress<int>(done => Toast.Detail = Strings.Format("ExportingPage", Math.Min(done + 1, files.Count), files.Count));
         Toast.Detail = Strings.Format("ExportingPage", 1, files.Count);
-        await SheetExporter.RenderPagesAsync(pdf, Sheet.Size, files, progress);
+        await SheetExporter.RenderPagesAsync(pdf, sheetSize, files, progress);
     }
 
     public void SaveSettings()
@@ -2005,6 +2037,13 @@ public sealed class MainViewModel : ObservableObject
     private MarginsMm CurrentMargins() => MarginsEnabled
         ? new MarginsMm(Math.Max(0, MarginTop), Math.Max(0, MarginRight), Math.Max(0, MarginBottom), Math.Max(0, MarginLeft))
         : MarginsMm.None;
+
+    // Margins read back (settings, a preset, an undo step, a project): those of the framed size chosen are its own, and
+    // leaving that size gives no margins; any others are the user's, and stay when the size changes.
+    private void TakeMarginsOfSize() =>
+        _userMargins = _selectedFormat.Format is { Margins: { IsEmpty: false } preset } && _marginsEnabled && TypedMargins() == preset
+            ? (false, MarginsMm.None)
+            : null;
 
     private void MarginsEdited()
     {
@@ -2515,7 +2554,7 @@ public sealed class MainViewModel : ObservableObject
         void Need(VisualInfo? visual, LayoutCell cell)
         {
             if (visual is null) return;
-            double px = Math.Max(cell.Bleed.Width, cell.Bleed.Height) * pxPerMm * 1.5;
+            double px = Math.Max(cell.Bleed.Width, cell.Bleed.Height) * pxPerMm * 1.5 * Math.Clamp(visual.Zoom, 1, VisualInfo.MaxZoom);
             needed[visual] = Math.Max(needed.GetValueOrDefault(visual), px);
         }
         for (int s = 0; s < job.Sheets.Count; s++)
