@@ -133,6 +133,12 @@ public sealed class AppSettings
     /// <summary>The numbering of the visuals (off by default).</summary>
     public NumberingSettings Numbering { get; set; } = new();
 
+    /// <summary>
+    /// At start, the last job comes back, as the session of Notepad (off by default: at the shop, the next customer's job
+    /// starts empty; the last job never saved stays at the top of the recent projects anyway).
+    /// </summary>
+    public bool ResumeLastJob { get; set; }
+
     // A missing or damaged file just means default settings: preferences are never worth an error message.
     public static AppSettings Load()
     {

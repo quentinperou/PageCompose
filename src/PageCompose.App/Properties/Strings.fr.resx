@@ -1355,4 +1355,28 @@ Le fichier est peut-être ouvert dans un autre logiciel.</value>
   <data name="NumberingPiles" xml:space="preserve">
     <value> · piles de {0} feuilles</value>
   </data>
+  <data name="SettingsStartup" xml:space="preserve">
+    <value>Au démarrage</value>
+  </data>
+  <data name="SettingsStartupDescription" xml:space="preserve">
+    <value>Le dernier travail non enregistré reste dans les projets récents du menu Fichier.</value>
+  </data>
+  <data name="StartupNewJob" xml:space="preserve">
+    <value>Démarrer un nouveau travail</value>
+  </data>
+  <data name="StartupLastJob" xml:space="preserve">
+    <value>Reprendre le dernier travail</value>
+  </data>
+  <data name="LastJobName" xml:space="preserve">
+    <value>Dernier travail non enregistré</value>
+  </data>
+  <data name="LastJobDetail" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="LastJobResumed" xml:space="preserve">
+    <value>Dernier travail repris</value>
+  </data>
+  <data name="LastJobMissing" xml:space="preserve">
+    <value>Il n'y a pas de dernier travail à reprendre.</value>
+  </data>
 </root>

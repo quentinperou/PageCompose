@@ -212,6 +212,20 @@
             </DockPanel>
           </Border>
 
+          <!-- At start: a new job (the default) or the last one, as the session of Notepad (asked by the author) -->
+          <Border Style="{StaticResource Card}">
+            <DockPanel>
+              <TextBlock DockPanel.Dock="Left" Style="{StaticResource CardIcon}" Text="&#xE81C;" />
+              <ComboBox x:Name="StartupBox" DockPanel.Dock="Right" MinWidth="220" VerticalAlignment="Center"
+                        Margin="16,0,0,0" SelectionChanged="StartupBox_SelectionChanged"
+                        AutomationProperties.Name="{local:Tr SettingsStartup}" />
+              <StackPanel VerticalAlignment="Center">
+                <TextBlock Text="{local:Tr SettingsStartup}" />
+                <TextBlock Style="{StaticResource CardDescription}" Text="{local:Tr SettingsStartupDescription}" />
+              </StackPanel>
+            </DockPanel>
+          </Border>
+
           <!-- Colour profiles: photos that are not sRGB converted when added (on by default) -->
           <Border Style="{StaticResource Card}">
             <DockPanel>

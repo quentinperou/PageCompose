@@ -864,11 +864,32 @@ public partial class MainWindow : Window
     }
 
     /// <summary>Another window of the app (a process of its own), empty or with a project.</summary>
+    /// <summary>Given to a window started by "New window": it starts empty, even when the last job is resumed at start.</summary>
+    public const string NewWindowArgument = "--new-window";
+
     private static void StartWindow(string? project = null)
     {
         var start = new ProcessStartInfo(Environment.ProcessPath!) { UseShellExecute = false };
-        if (project is not null) start.ArgumentList.Add(project);
+        start.ArgumentList.Add(project ?? NewWindowArgument);
         Process.Start(start);
+    }
+
+    /// <summary>
+    /// The last job in place of the one in progress (the recent projects, or at start when Settings asks for it): the
+    /// changes of a project first, if wanted; Ctrl+Z gives the job back.
+    /// </summary>
+    public async Task ResumeLastJobAsync()
+    {
+        if (!await ConfirmLeaveProjectAsync()) return;
+        try
+        {
+            if (!await ViewModel.RestoreLastJobAsync())
+                MessageBox.Show(this, Strings.Get("LastJobMissing"), Strings.Get("AppTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException or InvalidDataException)
+        {
+            MessageBox.Show(this, Strings.Format("ProjectOpenFailed", ex.Message), Strings.Get("AppTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
     }
 
     private async void FileOpen_Click(object sender, RoutedEventArgs e)
@@ -892,6 +913,11 @@ public partial class MainWindow : Window
     {
         FilePanel.IsOpen = false;
         if ((sender as FrameworkElement)?.DataContext is not RecentProjectItem recent) return;
+        if (recent.IsLastJob)
+        {
+            await ResumeLastJobAsync();
+            return;
+        }
         if (!File.Exists(recent.Path))
         {
             ViewModel.ForgetRecentProject(recent.Path);
@@ -1009,6 +1035,8 @@ public partial class MainWindow : Window
             _ = Dispatcher.BeginInvoke(Close);
             return;
         }
+        // The last job: as it is, unless the user did not want its changes ("Don't save": the project as saved).
+        ViewModel.WriteLastJob(changesKept: !ViewModel.IsModified);
         ViewModel.SaveSettings();
     }
 

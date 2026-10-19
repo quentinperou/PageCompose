@@ -34,8 +34,8 @@ A4), il convient à toute imprimante qui imprime en taille réelle.
 
 ### Formats et feuilles
 
-- Cartes de visite, photos d'identité, tickets de tombola, tirages photo (du 9 × 13 au 20 × 30), cadres Polaroid et Instax, cartes
-  pliées, cartes postales, flyers, ou une taille libre.
+- Cartes de visite, photos d'identité, tickets de tombola, tirages photo (du 9 × 13 au 20 × 30), cadres Polaroid et
+  Instax, cartes pliées, cartes postales, flyers, ou une taille libre.
 - SRA3, A3 et A4, tirages labo (10 × 15, 20 × 30, 30 × 45, sans marge) ou une feuille personnalisée.
 - Un texte dans la bande blanche des cadres Polaroid et Instax : un prénom, une date.
 
@@ -46,29 +46,34 @@ A4), il convient à toute imprimante qui imprime en taille réelle.
 - Recto verso : un verso commun, ou un par visuel, chacun retombe derrière son recto.
 - Faites glisser une photo dans l'aperçu pour choisir la partie gardée ; un clic droit la fait pivoter, tenir
   entière ou zoomer dedans.
+- **Numérotation** : un numéro sur chaque visuel (tickets de tombola, cartes numérotées), à un ou deux emplacements,
+  chacun dans son sens, avec un fond si besoin ; par feuille, ou en pile pour que les piles coupées sortent dans l'ordre.
 - Résolution et recadrage contrôlés pour chaque photo.
 
 ### Fichiers
 
 - JPG, PNG, PDF, et photos d'iPhone (HEIC), WebP et TIFF.
 - Glisser-déposer de fichiers ou d'un dossier entier.
-- Photos intégrées telles quelles (sans recompression), PDF de graphiste calés sur leur zone de coupe.
-- Photos en Adobe RGB, Display P3… converties en sRGB à l'import, pour des couleurs justes (une option des paramètres).
+- Photos intégrées telles quelles, sans recompression (sauf converties, ci-dessous) ; PDF de graphiste calés sur leur
+  zone de coupe.
+- Converties en sRGB à l'import : les HEIC, WebP et TIFF, et les photos en Adobe RGB, Display P3… pour des couleurs
+  justes (une option des paramètres).
 
 ### Export
 
 - PDF, PDF aplati ou JPG en 300 dpi, avec un aperçu fidèle : ce que vous voyez est le PDF (dessiné avec des copies
   allégées des photos, pour la vitesse ; les exports prennent toujours les originaux).
 - Un repère sur chaque feuille (nom, date, feuille 2/5) pour les trier au massicot.
-- **Numérotation** : un numéro sur chaque visuel (tickets de tombola, cartes numérotées), à un ou deux emplacements, par
-  feuille ou en pile pour que les piles coupées sortent dans l'ordre.
 - **Projets** : les fichiers et réglages d'une commande dans un seul fichier, enregistré comme un document (menu
-  Fichier, Ctrl+S), pour la réimprimer plus tard ; les récents dans le menu Fichier, avec leur première feuille.
+  Fichier, Ctrl+S), pour la réimprimer plus tard ; les récents dans le menu Fichier, avec leur première feuille. Le
+  dernier travail, même jamais enregistré, y est gardé aussi, et peut revenir au démarrage (un réglage, désactivé par
+  défaut).
 - **Préréglages** : vos réglages habituels en un clic.
 
 ### Et aussi
 
-Annuler et rétablir (Ctrl+Z, Ctrl+Y), anglais et français, thème clair ou sombre, mises à jour en un clic.
+Annuler et rétablir (Ctrl+Z, Ctrl+Y), un nombre changé en glissant son étiquette sur le côté, anglais et français,
+thème clair ou sombre, mises à jour en un clic.
 
 Exemples sur une feuille SRA3 :
 
@@ -76,6 +81,7 @@ Exemples sur une feuille SRA3 :
 |--------|:---:|:---:|
 | Carte de visite 85 × 55 | 25 | 21 |
 | Photo d'identité 35 × 45 | 72 | 66 |
+| Ticket de tombola 150 × 50 | 16 | 10 |
 | Photo 10 × 15 | 8 | 4 |
 | Photo 9 × 13 | 9 | 9 |
 | Photo 13 × 18 | 4 | 4 |

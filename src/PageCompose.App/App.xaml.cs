@@ -58,8 +58,13 @@ public partial class App : Application
         window.Show();
 
         // Files or folders given on the command line (dropped on the app icon) become visuals; a preset file
-        // (double click on a .PageComposePreset file) is imported.
-        _ = window.AddPathsAsync(e.Args);
+        // (double click on a .PageComposePreset file) is imported. Without any (and not a new window), the last job comes
+        // back when Settings asks for it.
+        var paths = e.Args.Where(a => a != global::PageCompose.App.MainWindow.NewWindowArgument).ToList();
+        if (paths.Count > 0)
+            _ = window.AddPathsAsync(paths);
+        else if (e.Args.Length == 0 && Settings.ResumeLastJob)
+            _ = window.ResumeLastJobAsync();
 
         // Once per run (not when the window is rebuilt for a language change); the window shows the offer.
         _ = Updater.CheckAtStartupAsync();
@@ -75,6 +80,7 @@ public partial class App : Application
         base.OnSessionEnding(e);
         if (MainWindow is not global::PageCompose.App.MainWindow window) return;
         window.ViewModel.SaveSettings();
+        window.ViewModel.WriteLastJob(); // with its changes: Windows may close the app before it asks
         if (!window.ViewModel.HasUnsavedChanges()) return;
         e.Cancel = true;
         window.Dispatcher.BeginInvoke(window.Close);

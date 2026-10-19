@@ -35,6 +35,10 @@ public partial class SettingsWindow : Window
         ThemeBox.Items.Add(new ThemeOption(AppTheme.Dark, Strings.Get("ThemeDark")));
         ThemeBox.SelectedItem = ThemeBox.Items.Cast<ThemeOption>().First(o => o.Theme == _settings.Theme);
 
+        StartupBox.Items.Add(Strings.Get("StartupNewJob"));
+        StartupBox.Items.Add(Strings.Get("StartupLastJob"));
+        StartupBox.SelectedIndex = _settings.ResumeLastJob ? 1 : 0;
+
         ChannelBox.Items.Add(new ChannelOption(UpdateChannel.Stable, Strings.Get("UpdateChannelStable")));
         ChannelBox.Items.Add(new ChannelOption(UpdateChannel.Beta, Strings.Get("UpdateChannelBeta")));
         ChannelBox.SelectedItem = ChannelBox.Items.Cast<ChannelOption>().First(o => o.Channel == _settings.UpdateChannel);
@@ -89,6 +93,13 @@ public partial class SettingsWindow : Window
         _settings.Theme = option.Theme;
         _settings.Save();
         App.ApplyTheme(option.Theme);
+    }
+
+    private void StartupBox_SelectionChanged(object sender, SelectionChangedEventArgs e)
+    {
+        if (!_initialized) return;
+        _settings.ResumeLastJob = StartupBox.SelectedIndex == 1;
+        _settings.Save();
     }
 
     // ---------------------------------------------------------------- Updates

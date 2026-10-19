@@ -4,15 +4,37 @@ using PageCompose.Core;
 
 namespace PageCompose.App.ViewModels;
 
-/// <summary>A recent project of the "File" menu: its first sheet in small, its name, when and where it was saved.</summary>
-public sealed class RecentProjectItem(RecentFile file) : ObservableObject
+/// <summary>
+/// A recent project of the "File" menu: its first sheet in small, its name, when and where it was saved. Or, at the
+/// top, the last job never saved (<see cref="IsLastJob"/>).
+/// </summary>
+public sealed class RecentProjectItem : ObservableObject
 {
-    public string Path => file.Path;
+    private readonly RecentFile _file;
+    private readonly string? _name, _detail;
 
-    public string Name => System.IO.Path.GetFileNameWithoutExtension(file.Path);
+    public RecentProjectItem(RecentFile file) => _file = file;
+
+    private RecentProjectItem(RecentFile file, string name, string detail)
+    {
+        _file = file;
+        (_name, _detail) = (name, detail);
+        IsLastJob = true;
+    }
+
+    /// <summary>"Last job not saved", "Today 17:42 · 8 visuals".</summary>
+    public static RecentProjectItem ForLastJob(DateTime time, int visuals) =>
+        new(new RecentFile("", time), Strings.Get("LastJobName"), Strings.Format("LastJobDetail", When(time), Strings.Count("Visuals", visuals)));
+
+    /// <summary>The last job never saved (Services/LastJob), not a project file.</summary>
+    public bool IsLastJob { get; }
+
+    public string Path => _file.Path;
+
+    public string Name => _name ?? System.IO.Path.GetFileNameWithoutExtension(_file.Path);
 
     /// <summary>"Today 11:42 · Orders\Martin": the time, and the last two folders of its place.</summary>
-    public string Detail => Strings.Format("RecentProjectDetail", When(file.Time), Folder(file.Path));
+    public string Detail => _detail ?? Strings.Format("RecentProjectDetail", When(_file.Time), Folder(_file.Path));
 
     private BitmapSource? _preview;
 
@@ -21,7 +43,8 @@ public sealed class RecentProjectItem(RecentFile file) : ObservableObject
 
     public async Task LoadPreviewAsync()
     {
-        if (await Task.Run(() => ProjectStore.ReadPreview(file.Path)) is not { } png) return;
+        var png = await Task.Run(() => IsLastJob ? LastJob.ReadPreview() : ProjectStore.ReadPreview(_file.Path));
+        if (png is null) return;
         try
         {
             var picture = new BitmapImage();

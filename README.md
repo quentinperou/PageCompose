@@ -33,8 +33,8 @@ printer that prints at actual size.
 
 ### Sizes and sheets
 
-- Business cards, ID photos, raffle tickets, photo prints (9 × 13 to 20 × 30), Polaroid and Instax frames, folded cards, postcards,
-  flyers, or any size you type.
+- Business cards, ID photos, raffle tickets, photo prints (9 × 13 to 20 × 30), Polaroid and Instax frames, folded
+  cards, postcards, flyers, or any size you type.
 - SRA3, A3 and A4, lab prints (10 × 15, 20 × 30, 30 × 45, borderless) or a custom sheet.
 - A text in the white band of the Polaroid and Instax frames: a name, a date.
 
@@ -44,29 +44,32 @@ printer that prints at actual size.
 - Bleed, crop marks, cut lines, space between visuals, white margins.
 - Double-sided: one back for all, or one per visual, each landing behind its front.
 - Drag a photo on the preview to choose the part kept; a right click turns it, fits it whole or zooms into it.
+- **Numbering**: a number on each visual (raffle tickets, numbered cards), at one or two places, each its own way, with
+  a background if needed; by sheet, or in a pile so that the cut piles come out in order.
 - Resolution and cropping checked for each photo.
 
 ### Files
 
 - JPG, PNG, PDF, and iPhone photos (HEIC), WebP and TIFF.
 - Drag and drop files or a whole folder.
-- Photos embedded as they are (no recompression), designer PDFs placed on their trim box.
-- Photos in Adobe RGB, Display P3… converted to sRGB when added, for true colours (an option of the settings).
+- Photos embedded as they are, without recompression (unless converted, below); designer PDFs placed on their trim box.
+- Converted to sRGB when added: HEIC, WebP and TIFF, and photos in Adobe RGB, Display P3… for true colours (an option
+  of the settings).
 
 ### Export
 
 - PDF, flattened PDF or JPG at 300 dpi, with a true preview: what you see is the PDF (drawn with lighter copies of
   the photos, for speed; the exports always take the originals).
 - A mark on each sheet (name, date, sheet 2/5) to sort them at the guillotine.
-- **Numbering**: a number on each visual (raffle tickets, numbered cards), at one or two places, by sheet or in a pile
-  so that the cut piles come out in order.
 - **Projects**: the files and settings of an order in one file, saved like a document (File menu, Ctrl+S), to print it
-  again later; the recent ones in the File menu, with their first sheet.
+  again later; the recent ones in the File menu, with their first sheet. The last job, even never saved, is kept there
+  too, and can come back at start (a setting, off by default).
 - **Presets**: your usual settings in one click.
 
 ### And also
 
-Undo and redo (Ctrl+Z, Ctrl+Y), English and French, light or dark theme, updates in one click.
+Undo and redo (Ctrl+Z, Ctrl+Y), a number changed by dragging its label sideways, English and French, light or dark
+theme, updates in one click.
 
 Examples on an SRA3 sheet:
 
@@ -74,6 +77,7 @@ Examples on an SRA3 sheet:
 |------|:---:|:---:|
 | Business card 85 × 55 | 25 | 21 |
 | ID photo 35 × 45 | 72 | 66 |
+| Raffle ticket 150 × 50 | 16 | 10 |
 | Photo 10 × 15 | 8 | 4 |
 | Photo 9 × 13 | 9 | 9 |
 | Photo 13 × 18 | 4 | 4 |

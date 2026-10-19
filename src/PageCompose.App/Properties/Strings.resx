@@ -1355,4 +1355,28 @@ The file may be open in another program.</value>
   <data name="NumberingPiles" xml:space="preserve">
     <value> · piles of {0} sheets</value>
   </data>
+  <data name="SettingsStartup" xml:space="preserve">
+    <value>At start</value>
+  </data>
+  <data name="SettingsStartupDescription" xml:space="preserve">
+    <value>The last job not saved stays in the recent projects of the File menu.</value>
+  </data>
+  <data name="StartupNewJob" xml:space="preserve">
+    <value>Start a new job</value>
+  </data>
+  <data name="StartupLastJob" xml:space="preserve">
+    <value>Resume the last job</value>
+  </data>
+  <data name="LastJobName" xml:space="preserve">
+    <value>Last job not saved</value>
+  </data>
+  <data name="LastJobDetail" xml:space="preserve">
+    <value>{0} · {1}</value>
+  </data>
+  <data name="LastJobResumed" xml:space="preserve">
+    <value>Last job resumed</value>
+  </data>
+  <data name="LastJobMissing" xml:space="preserve">
+    <value>There is no last job to resume.</value>
+  </data>
 </root>

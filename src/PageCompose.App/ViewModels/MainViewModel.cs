@@ -273,6 +273,12 @@ public sealed class MainViewModel : ObservableObject
         };
         _historyDebounce = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(HistoryDelayMs) };
         _historyDebounce.Tick += (_, _) => Remember();
+        _lastJobDebounce = new DispatcherTimer { Interval = TimeSpan.FromSeconds(LastJobDelaySeconds) };
+        _lastJobDebounce.Tick += async (_, _) =>
+        {
+            _lastJobDebounce.Stop();
+            await WriteLastJobAsync();
+        };
 
         Recompute();
         _current = CaptureState();
@@ -1383,6 +1389,9 @@ public sealed class MainViewModel : ObservableObject
 
         /// <summary>Files of the project that could not be opened (a HEIC without its codec, a damaged file): still in it.</summary>
         public int Missing;
+
+        /// <summary>Read back from the last job with changes not saved in its project (its saved state is not known then).</summary>
+        public bool Dirty;
     }
 
     /// <summary>
@@ -1402,7 +1411,7 @@ public sealed class MainViewModel : ObservableObject
     /// A project saved or opened has changed since: the dot in the title bar, and the question on closing. A job never
     /// saved has no file to save into: it closes as it always did (the author's choice).
     /// </summary>
-    public bool IsModified => _document.Saved is { } saved && !_current.SameAs(saved);
+    public bool IsModified => _document.Path is not null && (_document.Saved is { } saved ? !_current.SameAs(saved) : _document.Dirty);
 
     /// <summary>In the title bar of the window (drawn by the app) and the taskbar.</summary>
     public string ProjectCaption => ProjectTitle + (IsModified ? " ●" : "");
@@ -1416,6 +1425,9 @@ public sealed class MainViewModel : ObservableObject
     {
         foreach (var name in new[] { nameof(ProjectPath), nameof(ProjectTitle), nameof(IsModified), nameof(ProjectCaption), nameof(WindowTitle), nameof(CanSaveProject) })
             OnPropertyChanged(name);
+        // The job, or its document, has changed: the last job is written a moment later.
+        _lastJobDebounce?.Stop();
+        _lastJobDebounce?.Start();
     }
 
     /// <summary>The changes of the last moment counted (they are taken a moment after the last one): before closing, opening, saving.</summary>
@@ -1467,6 +1479,16 @@ public sealed class MainViewModel : ObservableObject
     public async Task OpenProjectAsync(string path)
     {
         var job = await Task.Run(() => ProjectStore.Open(path));
+        int visuals = await LoadJobAsync(job, new ProjectDocument { Path = Path.GetFullPath(path) }, saved: true);
+        RecentProjects.Add(path);
+        Toast.ShowMessage(Strings.Get("ProjectOpened"), Strings.Format("ProjectOpenedDetail", Path.GetFileName(path), Strings.Count("Visuals", visuals)));
+    }
+
+    // A job read back (a project, the last job): its lines loaded (those that cannot be read left out, and said so),
+    // then in place of the job in progress, which Ctrl+Z gives back. Saved: its document holds it as saved. Returns
+    // its visuals.
+    private async Task<int> LoadJobAsync(ProjectFile job, ProjectDocument document, bool saved)
+    {
         var errors = new List<string>();
         int missing = 0;
 
@@ -1498,15 +1520,96 @@ public sealed class MainViewModel : ObservableObject
         var shared = job.SharedBack is { } sb ? await Line(sb, i => CreateItem(i, _ => Verso = null)) : null;
 
         if (_historyDebounce.IsEnabled) Remember();
-        var document = new ProjectDocument { Path = Path.GetFullPath(path), Missing = missing };
+        document.Missing = missing;
         RestoreState(new JobState("", job.Settings, Math.Clamp(job.Quantity, 0, 100_000), repeat, shared, lines, job.CaptionText ?? "", document));
         Remember(); // one step: Ctrl+Z gives the job before it back
-        document.Saved = _current;
+        if (saved) document.Saved = _current;
         DocumentChanged();
-        RecentProjects.Add(path);
         FilesMessage = errors.Count > 0 ? string.Join(" ", errors.Take(3)) : null;
-        Toast.ShowMessage(Strings.Get("ProjectOpened"),
-            Strings.Format("ProjectOpenedDetail", Path.GetFileName(path), Strings.Count("Visuals", lines.Count + (repeat is null ? 0 : 1))));
+        return lines.Count + (repeat is null ? 0 : 1);
+    }
+
+    // ---- The last job (asked by the author, as the session of Notepad) ----
+    // Written a few seconds after each change and on closing (Services/LastJob). Reopened at start when Settings ->
+    // General asks for it; a job never saved also shows at the top of the recent projects. An empty job never saved
+    // writes nothing: a new window, or New, does not wipe the last job.
+
+    private const int LastJobDelaySeconds = 3;
+    private readonly DispatcherTimer _lastJobDebounce;
+    private bool _writingLastJob;
+
+    private LastJob.Saved? LastJobNow()
+    {
+        if (_historyDebounce.IsEnabled) Remember();
+        if (!HasAnyVisual && _document.Path is null) return null;
+        return new LastJob.Saved { Time = DateTime.Now, ProjectPath = _document.Path, Modified = IsModified, Job = ToProjectFile(_current) };
+    }
+
+    /// <summary>
+    /// On closing (and at the end of the Windows session): the job as it is, at once. Changes not kept (the user answered
+    /// "Don't save"): its project as saved.
+    /// </summary>
+    public void WriteLastJob(bool changesKept = true)
+    {
+        _lastJobDebounce.Stop();
+        if (LastJobNow() is not { } job) return;
+        if (!changesKept && job.ProjectPath is not null) job.Modified = false;
+        LastJob.Write(job);
+    }
+
+    // A moment after a change: the job, and the picture of its first sheet for the recent projects (a job never saved).
+    private async Task WriteLastJobAsync()
+    {
+        if (_writingLastJob)
+        {
+            _lastJobDebounce.Start(); // once this one is written
+            return;
+        }
+        if (LastJobNow() is not { } job) return;
+        _writingLastJob = true;
+        try
+        {
+            ImpositionJob? first = null;
+            if (job.ProjectPath is null && CanExport)
+            {
+                try { first = BuildJob([0]); }
+                catch (Exception ex) when (ex is not OutOfMemoryException) { }
+            }
+            var preview = first is null ? null : await FirstSheetPngAsync(first);
+            await Task.Run(() =>
+            {
+                LastJob.Write(job);
+                if (job.ProjectPath is null) LastJob.WritePreview(preview);
+            });
+        }
+        finally
+        {
+            _writingLastJob = false;
+        }
+    }
+
+    /// <summary>
+    /// The last job in place of the one in progress (Ctrl+Z gives it back): its project as saved, or the job with its
+    /// changes, the project file left as it is until saved. False: there is none.
+    /// </summary>
+    public async Task<bool> RestoreLastJobAsync()
+    {
+        if (await Task.Run(LastJob.Read) is not { } last) return false;
+        string? project = last.ProjectPath is { } path && File.Exists(path) ? path : null;
+        if (project is not null && !last.Modified)
+        {
+            await OpenProjectAsync(project);
+            return true;
+        }
+        if (project is not null)
+        {
+            // Its files taken out again where the job names them (they are kept a day).
+            try { await Task.Run(() => ProjectStore.Open(project)); }
+            catch (Exception ex) when (ex is InvalidDataException or IOException or UnauthorizedAccessException) { }
+        }
+        int visuals = await LoadJobAsync(last.Job, new ProjectDocument { Path = project, Dirty = project is not null }, saved: false);
+        Toast.ShowMessage(Strings.Get("LastJobResumed"), Strings.Count("Visuals", visuals));
+        return true;
     }
 
     // ---- Files ----
@@ -1872,6 +1975,7 @@ public sealed class MainViewModel : ObservableObject
             state.Doc.Path = Path.GetFullPath(path);
             state.Doc.Saved = state;
             state.Doc.Missing = 0; // its file is now the job as it is
+            state.Doc.Dirty = false;
             DocumentChanged();
             RecentProjects.Add(path);
         });
@@ -1926,6 +2030,13 @@ public sealed class MainViewModel : ObservableObject
     public void ReloadRecentProjects()
     {
         RecentProjectList.Clear();
+        // The last job never saved, unless it is the one in this window (a job never saved holding visuals).
+        if (LastJob.Read() is { ProjectPath: null, Visuals: > 0 } last && !(_document.Path is null && HasAnyVisual))
+        {
+            var item = RecentProjectItem.ForLastJob(last.Time, last.Visuals);
+            RecentProjectList.Add(item);
+            _ = item.LoadPreviewAsync();
+        }
         foreach (var file in RecentProjects.Load())
         {
             var item = new RecentProjectItem(file);
@@ -1933,7 +2044,7 @@ public sealed class MainViewModel : ObservableObject
             _ = item.LoadPreviewAsync();
         }
         OnPropertyChanged(nameof(HasRecentProjects));
-        _ = DropMissingRecentProjectsAsync([.. RecentProjectList]);
+        _ = DropMissingRecentProjectsAsync([.. RecentProjectList.Where(i => !i.IsLastJob)]);
     }
 
     // A project no longer there drops out of the list. Looked for away from the window: a share that is off makes
@@ -1955,6 +2066,7 @@ public sealed class MainViewModel : ObservableObject
     public void ClearRecentProjects()
     {
         RecentProjects.Clear();
+        LastJob.Clear();
         ReloadRecentProjects();
     }
 

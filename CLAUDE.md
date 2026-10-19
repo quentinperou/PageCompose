@@ -16,7 +16,11 @@ QuentinPerou, with Claude Code (Anthropic)".
 
 ## Project status (October 19, 2026)
 
-Version **0.12.2** (October 19, 2026, home PC: commit "PageCompose 0.12.2", not pushed yet) fixes the smaller findings of the same audit: a
+Version **0.13.0** (October 19, 2026, home PC: commit "PageCompose 0.13.0", tag `v0.13.0`, GitHub release with its
+patch note) adds the numbering of the visuals (one or two places, each its own way, by sheet or in a pile, a font, a
+colour, a background), the raffle ticket size 150 × 50, the change of a number by dragging its label sideways, and the
+last job (kept and offered in the recent projects; resumed at start when Settings → General asks for it).
+Version **0.12.2** (October 19, 2026, home PC: commit "PageCompose 0.12.2", tag `v0.12.2`, GitHub release) fixes the smaller findings of the same audit: a
 per-line caption carried into the Repeat mode (no field there: the common text only now), a converted photo used again
 then deleted by another window starting (its date refreshed), a render made old by a newer change still shown (the
 framing jumped back while dragging), a drag showing another line's photo, the cutting plan above about 575 cuts on a
@@ -96,7 +100,7 @@ the photo sizes moved to exact inches.
 - Updates from GitHub Releases, as in CropPdf: check at startup (can be turned off), Stable/Beta channel, bar in the
   main window, download checked with SHA-256, silent install and relaunch. The Settings window has CropPdf's cards
   (language, theme, presets, updates, about), on pages chosen from a menu on the left (see below).
-- 1360 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.12.2.exe` locally (Inno Setup 6).
+- 1419 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.13.0.exe` locally (Inno Setup 6).
 - The installer is not signed: the UAC prompt shows "Unknown publisher" (QuentinPerou appears in the file details
   and in Installed apps). Left as is for now (October 10, 2026). A paid certificate would show the author's legal
   name, SignPath Foundation its own name; only a self-signed certificate trusted by hand on each PC shows "QuentinPerou".
@@ -333,6 +337,18 @@ the photo sizes moved to exact inches.
     asking (`CloseForReload`). "New" empties the window and keeps the settings (offered when the author hesitated, a job
     often looks like the one before; confirmed by him after trying it); "New window" starts another process. A number being typed is taken before saving
     (`CommitTyping`). "Remove all" keeps the project (the lines only).
+  - **The last job** (asked by the author, as the session of Notepad; `Services/LastJob`, `MainViewModel` "The last
+    job"): the job is written 3 s after each change (`DocumentChanged` starts the timer) and on closing, in
+    `%LOCALAPPDATA%\PageCompose\last-job.json` (never in %TEMP%, emptied), its photos by their full paths (no copy), with
+    its project path and whether it was changed since saved; `last-job.png`, its first sheet, for a job never saved. An
+    empty job never saved writes nothing (a new window or New does not wipe it); several windows: the last written wins.
+    Settings → General, "Au démarrage": "Démarrer un nouveau travail" (the default: at the shop the next customer's job
+    starts empty) or "Reprendre le dernier travail" (`AppSettings.ResumeLastJob`; not in a window started by "New window",
+    `MainWindow.NewWindowArgument`, nor when files are given). A job never saved shows at the top of the recent projects,
+    "Dernier travail non enregistré" (unless it is the one of the window), opened by a click (`ResumeLastJobAsync`);
+    "Clear the list" removes it. A project resumed with changes comes back with its dot (`ProjectDocument.Dirty`, its
+    file untouched until saved; its files taken out of it again); closed with "Don't save", the last job is the project
+    as saved. Files no longer there: the usual error. The end of the Windows session writes it too.
   - **Undo, redo** (Ctrl+Z, Ctrl+Y or Ctrl+Shift+Z; shortcuts only, the author's choice): `MainViewModel` keeps the
     whole job (`JobState`: the settings through `CapturePreset`, the quantity, `VisualItem.Capture()` of each line,
     the same objects) 600 ms after the last change, up to 100 steps; `RestoreState` puts the same lines back
