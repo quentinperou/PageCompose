@@ -58,9 +58,9 @@ public sealed class NumberingTests : IDisposable
     [InlineData(2, "A-", "", 123, "A-123")]
     public void The_text_of_a_number(int digits, string prefix, string suffix, int number, string expected)
     {
-        var style = new NumberingStyle(prefix, digits, suffix, [new NumberPlace(5, 5)], "Segoe UI", "segoeui.ttf", 4, NumberColor.Black);
+        var style = new NumberingStyle(prefix, suffix, [new NumberPlace(5, 5)], "Segoe UI", "segoeui.ttf", 4, NumberColor.Black);
 
-        Assert.Equal(expected, style.Text(number));
+        Assert.Equal(expected, style.Text(Numbering.Number(number, digits)));
     }
 
     [Theory]
@@ -75,9 +75,9 @@ public sealed class NumberingTests : IDisposable
         var layout = LayoutEngine.Compute(new LayoutOptions(SheetFormats.Sra3, new SizeMm(150, 50), CropMarks: true));
         var job = ImpositionJob.Repeat(layout, visual, 2, verso);
         string font = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), "segoeui.ttf");
-        var style = new NumberingStyle("N° ", 3, "", [new NumberPlace(117, 6, direction), new NumberPlace(6, 6, direction)],
+        var style = new NumberingStyle("N° ", "", [new NumberPlace(117, 6, direction), new NumberPlace(6, 6, direction)],
             "Segoe UI", font, 4.4, NumberColor.Red, background);
-        var numbered = job with { Numbering = style, Numbers = Numbering.Assign(job.Sheets, NumberingOrder.Pile, 1) };
+        var numbered = job with { Numbering = style, Numbers = NumbersOf(job, NumberingOrder.Pile) };
 
         using var plain = WriteAndOpen(job);
         using var withNumbers = WriteAndOpen(numbered);
@@ -96,12 +96,108 @@ public sealed class NumberingTests : IDisposable
         Assert.Contains(layout.Cells, c => c.Rotated);
         var job = ImpositionJob.Repeat(layout, visual, 1);
         string font = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), "segoeui.ttf");
-        var style = new NumberingStyle("", 3, "", [new NumberPlace(20, 38)], "Segoe UI", font, 4, NumberColor.Black);
+        var style = new NumberingStyle("", "", [new NumberPlace(20, 38)], "Segoe UI", font, 4, NumberColor.Black,
+            Qr: new QrStyle(2, 2, 15));
 
-        using var doc = WriteAndOpen(job with { Numbering = style, Numbers = Numbering.Assign(job.Sheets, NumberingOrder.BySheet, 1) });
+        using var doc = WriteAndOpen(job with { Numbering = style, Numbers = NumbersOf(job, NumberingOrder.BySheet) });
 
         Assert.Equal(1, doc.PageCount);
     }
+
+    [Fact]
+    public void A_qr_code_is_drawn_with_its_number()
+    {
+        var visual = VisualLoader.Load(_files.Png(850, 550, name: "voucher.png"));
+        var layout = LayoutEngine.Compute(new LayoutOptions(SheetFormats.A4, ItemFormats.BusinessCard.Size));
+        var job = ImpositionJob.Repeat(layout, visual, 1);
+        string font = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.Fonts), "segoeui.ttf");
+        var plain = new NumberingStyle("Code : ", "", [new NumberPlace(5, 45)], "Segoe UI", font, 3.6, NumberColor.Black);
+        var withQr = plain with { Qr = new QrStyle(60, 4, 20, "https://example.org/promo?code=" + QrStyle.CodeField) };
+        var numbers = NumbersOf(job, NumberingOrder.BySheet);
+
+        using var text = WriteAndOpen(job with { Numbering = plain, Numbers = numbers });
+        using var qr = WriteAndOpen(job with { Numbering = withQr, Numbers = numbers });
+
+        Assert.True(ContentLength(qr.Pages[0]) > ContentLength(text.Pages[0]) + 1000);
+        Assert.Empty(ImageXObjects(qr)[1..]); // vector squares, no picture added
+    }
+
+    [Theory]
+    [InlineData(null, "7F3K-9QXA", "7F3K-9QXA")]
+    [InlineData("https://example.org/promo?code={code}", "7F3K-9QXA", "https://example.org/promo?code=7F3K-9QXA")]
+    [InlineData("", "042", "042")]
+    public void A_qr_code_holds_the_code_or_an_address_with_it(string? address, string value, string expected)
+    {
+        Assert.Equal(expected, new QrStyle(0, 0, 20, address).Content(value));
+    }
+
+    [Theory]
+    [InlineData(CodeAlphabet.LettersAndDigits, 8, 4)]
+    [InlineData(CodeAlphabet.Digits, 6, 0)]
+    [InlineData(CodeAlphabet.Letters, 10, 5)]
+    public void Codes_made_by_the_app_are_unique_and_read_clearly(CodeAlphabet alphabet, int length, int group)
+    {
+        var codes = Numbering.NewCodes(500, length, group, alphabet);
+
+        Assert.Equal(500, codes.Distinct().Count());
+        Assert.All(codes, code =>
+        {
+            Assert.Equal(length + (group > 0 ? (length - 1) / group : 0), code.Length);
+            Assert.DoesNotContain(code, ch => "01OIL".Contains(ch));
+            Assert.All(code.Replace("-", ""), ch => Assert.Contains(ch, alphabet.Characters()));
+        });
+        if (group > 0) Assert.All(codes, code => Assert.Equal('-', code[group]));
+    }
+
+    [Fact]
+    public void More_codes_avoid_those_already_given()
+    {
+        var first = Numbering.NewCodes(100, 4, 0, CodeAlphabet.LettersAndDigits);
+        var more = Numbering.NewCodes(100, 4, 0, CodeAlphabet.LettersAndDigits, first);
+
+        Assert.Empty(first.Intersect(more));
+        Assert.Throws<InvalidOperationException>(() => Numbering.NewCodes(10, 1, 0, CodeAlphabet.Digits));
+    }
+
+    [Fact]
+    public void A_list_of_codes_reads_its_first_column_once_each()
+    {
+        var read = Numbering.ReadCodes("Code;Montant\r\nA7K2-PQ9X;10\r\n\r\n\"B3M8-XT4D\",10\nA7K2-PQ9X;10\n  C9R4-WL2N\t5\n");
+
+        Assert.Equal(["A7K2-PQ9X", "B3M8-XT4D", "C9R4-WL2N"], read.Codes);
+        Assert.Equal(1, read.Duplicates);
+    }
+
+    [Fact]
+    public void Each_rank_gets_its_value()
+    {
+        var ranks = Numbering.Assign(Sheets(2, 3, 2), NumberingOrder.BySheet, 0);
+        string[] codes = ["AAA", "BBB", "CCC", "DDD", "EEE"];
+
+        var values = Numbering.Values(ranks, r => r < codes.Length ? codes[r] : null);
+
+        Assert.Equal("AAA BBB CCC", string.Join(" ", values[0]));
+        Assert.Equal("DDD EEE ", string.Join(" ", values[1])); // the empty cell: none
+    }
+
+    [Fact]
+    public void The_list_of_codes_follows_the_ranks()
+    {
+        // Two sheets of three cells in a pile, the last cell empty: ranks 0 2 4 / 1 3 -.
+        var ranks = Numbering.Assign(Sheets(2, 3, 2), NumberingOrder.Pile, 0);
+        string[] codes = ["AAA", "B;B", "C\"C", "DDD", "EEE"];
+        var values = Numbering.Values(ranks, r => codes[r]);
+
+        string csv = Numbering.CodesCsv(ranks, values, ["Feuille", "Case", "Code"], ";");
+
+        Assert.Equal("Feuille;Case;Code\r\n1;1;AAA\r\n2;1;\"B;B\"\r\n1;2;\"C\"\"C\"\r\n2;2;DDD\r\n1;3;EEE\r\n", csv);
+    }
+
+    private static IReadOnlyList<string?[]> NumbersOf(ImpositionJob job, NumberingOrder order) =>
+        Numbering.Values(Numbering.Assign(job.Sheets, order, 1), n => Numbering.Number(n, 3));
+
+    private static List<PdfDictionary> ImageXObjects(PdfDocument doc) =>
+        doc.Internals.GetAllObjects().OfType<PdfDictionary>().Where(d => d.Elements.GetName("/Subtype") == "/Image").ToList();
 
     private static int ContentLength(PdfPage page) =>
         page.Contents.Elements.Items.Sum(item => (item as PdfReference)?.Value is PdfDictionary d ? d.Stream?.Value.Length ?? 0 : 0);

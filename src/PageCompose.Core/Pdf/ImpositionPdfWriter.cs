@@ -45,7 +45,10 @@ public static class CutLineColors
 /// <param name="MirrorBleed">The bleed takes the edges of the visuals, mirrored, instead of enlarging them (see <see cref="SideOptions.MirrorBleed"/>).</param>
 /// <param name="Caption">How the captions of the visuals (<see cref="VisualInfo.Caption"/>) are written in the band of their frame; null: none.</param>
 /// <param name="Numbering">How the numbers of the visuals are written, on the front; null: none.</param>
-/// <param name="Numbers">The number of each visual, sheet by sheet as <paramref name="Sheets"/> (see <see cref="Pdf.Numbering.Assign"/>).</param>
+/// <param name="Numbers">
+/// The number or code of each visual, sheet by sheet as <paramref name="Sheets"/> (see <see cref="Pdf.Numbering.Assign"/>
+/// and <see cref="Pdf.Numbering.Values"/>); null in a cell: none.
+/// </param>
 public sealed record ImpositionJob(
     SheetLayout Layout,
     IReadOnlyList<VisualInfo?[]> Sheets,
@@ -63,7 +66,7 @@ public sealed record ImpositionJob(
     bool MirrorBleed = false,
     CaptionStyle? Caption = null,
     NumberingStyle? Numbering = null,
-    IReadOnlyList<int?[]>? Numbers = null)
+    IReadOnlyList<string?[]>? Numbers = null)
 {
     /// <summary>Layout of sheet <paramref name="index"/> (from 0).</summary>
     public SheetLayout LayoutOf(int index) => SheetLayouts?[index] ?? Layout;
@@ -199,7 +202,7 @@ public static class ImpositionPdfWriter
 
     private static void DrawSide(PdfDocument doc, SheetLayout layout, List<(LayoutCell cell, VisualInfo? visual)> cells,
         Func<VisualInfo, XImage> imageOf, FitMode fit, SideOptions side, CutLineColor? cutLines, string? mark = null,
-        CaptionStyle? caption = null, int?[]? numbers = null, NumberingStyle? numbering = null)
+        CaptionStyle? caption = null, string?[]? numbers = null, NumberingStyle? numbering = null)
     {
         var page = doc.AddPage();
         page.Width = XUnit.FromMillimeter(layout.Sheet.Width);
@@ -216,12 +219,12 @@ public static class ImpositionPdfWriter
                     DrawCaption(gfx, cell, text.Trim(), caption);
         }
 
-        // The number of each visual, on the front.
+        // The number or code of each visual, and its QR code, on the front.
         if (!side.IsVerso && numbering is not null && numbers is not null)
         {
             for (int i = 0; i < cells.Count && i < numbers.Length; i++)
-                if (cells[i].visual is not null && numbers[i] is { } number)
-                    DrawNumber(gfx, cells[i].cell, numbering.Text(number), numbering);
+                if (cells[i].visual is not null && numbers[i] is { } value)
+                    DrawNumber(gfx, cells[i].cell, value, numbering);
         }
 
         // A space wider than the bleed leaves a white band between two visuals. Painting it white changes nothing on
@@ -306,11 +309,12 @@ public static class ImpositionPdfWriter
         gfx.Restore(state);
     }
 
-    // The number of a visual at each of its places, from the top left corner of the visual as it stands (a size laid a
-    // quarter turn is turned clockwise, as its margins), clipped to its trim. The corner given is that of the number as
-    // it lies: turned about it, then moved back into that corner.
-    private static void DrawNumber(XGraphics gfx, LayoutCell cell, string text, NumberingStyle style)
+    // The number (or code) of a visual at each of its places, from the top left corner of the visual as it stands (a
+    // size laid a quarter turn is turned clockwise, as its margins), clipped to its trim. The corner given is that of
+    // the number as it lies: turned about it, then moved back into that corner. Then its QR code, if asked.
+    private static void DrawNumber(XGraphics gfx, LayoutCell cell, string value, NumberingStyle style)
     {
+        string text = style.Text(value);
         GlobalFontSettings.FontResolver ??= new WindowsFonts();
         var font = new XFont(WindowsFonts.Register(style.Family, style.FontFile), Units.MmToPt(Math.Max(0.5, style.SizeMm)));
         var (r, g, b) = style.Color.Rgb();
@@ -342,7 +346,32 @@ public static class ImpositionPdfWriter
             gfx.DrawString(text, font, brush, new XRect(pad, pad, size.Width, size.Height), XStringFormats.TopLeft);
             gfx.Restore(at);
         }
+        if (style.Qr is { } qr)
+            DrawQr(gfx, qr.Content(value), Units.MmToPt(qr.X), Units.MmToPt(qr.Y), Units.MmToPt(Math.Max(5, qr.SizeMm)));
         gfx.Restore(state);
+    }
+
+    // A QR code drawn as squares (vector: sharp at any size), on white with its margin of four modules, so that it reads
+    // on a dark visual too. QRCoder (MIT) makes the modules, offline. Each row is drawn as runs of black modules.
+    private static void DrawQr(XGraphics gfx, string content, double x, double y, double size)
+    {
+        using var generator = new QRCoder.QRCodeGenerator();
+        using var data = generator.CreateQrCode(content, QRCoder.QRCodeGenerator.ECCLevel.M);
+        var modules = data.ModuleMatrix;
+        int n = modules.Count;
+        double cell = size / n;
+        gfx.DrawRectangle(XBrushes.White, new XRect(x, y, size, size));
+        for (int row = 0; row < n; row++)
+        {
+            for (int col = 0; col < n;)
+            {
+                if (!modules[row][col]) { col++; continue; }
+                int start = col;
+                while (col < n && modules[row][col]) col++;
+                // A hair larger, so that no line shows between neighbouring modules.
+                gfx.DrawRectangle(XBrushes.Black, new XRect(x + start * cell, y + row * cell, (col - start) * cell + 0.02, cell + 0.02));
+            }
+        }
     }
 
     // Small grey text, centred along its band; shrunk down to SheetMark.MinFontSizePt when longer than the band.

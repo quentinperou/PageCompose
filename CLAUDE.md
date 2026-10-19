@@ -16,6 +16,9 @@ QuentinPerou, with Claude Code (Anthropic)".
 
 ## Project status (October 19, 2026)
 
+Version **0.14.0** (October 19, 2026, home PC: commit "PageCompose 0.14.0", tag `v0.14.0`, GitHub release with its
+patch note) adds the unique codes of the numbering (promo vouchers: codes made by the app or read from a list, a QR
+code of the code or of an address holding it, their list written next to each export as a CSV); see "Numbering" below.
 Version **0.13.0** (October 19, 2026, home PC: commit "PageCompose 0.13.0", tag `v0.13.0`, GitHub release with its
 patch note) adds the numbering of the visuals (one or two places, each its own way, by sheet or in a pile, a font, a
 colour, a background), the raffle ticket size 150 × 50, the change of a number by dragging its label sideways, and the
@@ -100,7 +103,7 @@ the photo sizes moved to exact inches.
 - Updates from GitHub Releases, as in CropPdf: check at startup (can be turned off), Stable/Beta channel, bar in the
   main window, download checked with SHA-256, silent install and relaunch. The Settings window has CropPdf's cards
   (language, theme, presets, updates, about), on pages chosen from a menu on the left (see below).
-- 1419 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.13.0.exe` locally (Inno Setup 6).
+- 1430 unit tests pass. `scripts\build.ps1` builds `dist\PageCompose-Setup-0.14.0.exe` locally (Inno Setup 6).
 - The installer is not signed: the UAC prompt shows "Unknown publisher" (QuentinPerou appears in the file details
   and in Installed apps). Left as is for now (October 10, 2026). A paid certificate would show the author's legal
   name, SignPath Foundation its own name; only a self-signed certificate trusted by hand on each PC shows "QuentinPerou".
@@ -494,6 +497,23 @@ the photo sizes moved to exact inches.
   downwards: asked by the author); a TrueType font of the PC (the caption list, Segoe UI by default), its height in mm,
   a colour (black, white, grey, red, blue), and an optional background behind it (asked by the author, "to secure a
   text"; 0.8 mm around). Written on the front only, clipped to the trim, turned with a size laid a quarter turn.
+  **Unique codes** (0.14.0, the author's idea for promo vouchers; mock-ups `.local\promo-codes-mockups.cs`,
+  `.local\maquettes\codes-*.png`): what each visual gets is chosen at the top of the card, a segmented control as the
+  modes (`NumberingSettings.Content`, `NumberingContent`): "Numéros" (as before), "Codes générés" (`Numbering.NewCodes`:
+  the random generator of cryptography, 8 characters in groups of 4 by default, capitals and digits without 0 O 1 I L,
+  or digits, or capitals; "Tirer de nouveaux codes" makes them all again, none of the old ones), "Liste de codes"
+  (`Numbering.ReadCodes`: a CSV or text file, the first column, a "code" header and duplicates left out; in the Repeat
+  mode the quantity follows the list, in visuals). The codes belong to the job, never to the settings nor the presets
+  (`MainViewModel.JobCodes` in `JobState`: undo, `ProjectFile.Codes` / `CodesFormat` / `CodeList` / `CodeListName`,
+  the last job): made once for the visuals laid (`EnsureCodes`, more when visuals are added, all again when their length
+  or characters change), so that the preview, the export and its list agree. Each visual takes the code of its rank
+  (`Numbering.Assign` from 0, `Numbering.Values`); past the end of a list, none (a notice "3 visuels sans code"). The
+  text before switches between "N° " and "Code : " while it is the default. **A QR code** (`QrStyle`, drawn by
+  `ImpositionPdfWriter.DrawQr` as vector squares on white, QRCoder 1.6.0, MIT, offline): the code alone or an address
+  with `{code}` in it, its top left corner and size in mm from the visual (as the places), turned with the visual;
+  checked read back by ZXing at 300 dpi, upright and turned. **The list next to each export** (PDF or JPG):
+  `<name>-codes.csv` (`Numbering.CodesCsv`: Feuille / Case / Code in the order of the ranks, the list separator of the
+  PC, UTF-8 with BOM for Excel), "+ liste des codes" in the toast; only for codes, not for numbers.
 - **Text in the band** (`VisualInfo.Caption`, `ImpositionJob.Caption` = `CaptionStyle`, `Core/Pdf/Caption`; asked by the
   author, mock-up accepted): in the thickest white margin of a frame when 8 mm or more (Polaroid 22, Instax 18), centred,
   em = 36 % of the band, shrunk to 88 % of its length, upright as its frame (`Caption.AngleOf`: a frame laid a quarter

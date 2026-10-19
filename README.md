@@ -46,6 +46,8 @@ printer that prints at actual size.
 - Drag a photo on the preview to choose the part kept; a right click turns it, fits it whole or zooms into it.
 - **Numbering**: a number on each visual (raffle tickets, numbered cards), at one or two places, each its own way, with
   a background if needed; by sheet, or in a pile so that the cut piles come out in order.
+- **Unique codes** instead of numbers (promo vouchers): made by the app, or read from a list (CSV, text), with a QR code
+  of the code or of an address holding it; their list is written next to the export (CSV).
 - Resolution and cropping checked for each photo.
 
 ### Files
@@ -177,7 +179,8 @@ language without changing any setting, and `PAGECOMPOSE_THEME` to `Light` or `Da
 src/
   PageCompose.Core/   Logic without UI: layout computation, packing of mixed sizes (guillotine cuts),
                       placement, distribution over the sheets, reading the visuals (size, EXIF, PDF
-                      TrimBox), writing the PDF (PDFsharp), list of the GitHub releases (updates)
+                      TrimBox), writing the PDF (PDFsharp), numbering and codes (QR codes: QRCoder),
+                      list of the GitHub releases (updates)
   PageCompose.App/    WPF app: settings panel, preview (Windows.Data.Pdf), drag and drop, HEIC / WebP / TIFF
                       conversion, projects, undo, settings, updates, UI strings
 installer/            Inno Setup script of the installer
@@ -234,7 +237,7 @@ click them.
 
 ## License
 
-[MIT](LICENSE.md). Uses [PDFsharp](https://github.com/empira/PDFsharp) (MIT).
+[MIT](LICENSE.md). Uses [PDFsharp](https://github.com/empira/PDFsharp) (MIT) and [QRCoder](https://github.com/codebude/QRCoder) (MIT).
 
 ## Credits
 

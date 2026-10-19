@@ -30,6 +30,17 @@ public sealed class ProjectFile
 
     /// <summary>The common text in the band of framed sizes.</summary>
     public string CaptionText { get; set; } = "";
+
+    /// <summary>
+    /// The codes made by the app for the numbering, in their order, and how they were made ("8/4/LettersAndDigits"): kept,
+    /// so that the project prints the same codes again.
+    /// </summary>
+    public List<string> Codes { get; set; } = [];
+    public string CodesFormat { get; set; } = "";
+
+    /// <summary>The codes of the list read for the numbering, in its order, and the name of its file.</summary>
+    public List<string> CodeList { get; set; } = [];
+    public string CodeListName { get; set; } = "";
 }
 
 public sealed class ProjectLine

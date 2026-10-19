@@ -48,6 +48,8 @@ A4), il convient à toute imprimante qui imprime en taille réelle.
   entière ou zoomer dedans.
 - **Numérotation** : un numéro sur chaque visuel (tickets de tombola, cartes numérotées), à un ou deux emplacements,
   chacun dans son sens, avec un fond si besoin ; par feuille, ou en pile pour que les piles coupées sortent dans l'ordre.
+- **Codes uniques** à la place des numéros (bons de réduction) : générés par l'app ou lus dans une liste (CSV, texte),
+  avec un QR code du code ou d'une adresse qui le contient ; leur liste est écrite à côté de l'export (CSV).
 - Résolution et recadrage contrôlés pour chaque photo.
 
 ### Fichiers
@@ -182,8 +184,8 @@ l'autre langue sans changer de réglage, et `PAGECOMPOSE_THEME` à `Light` ou `D
 src/
   PageCompose.Core/   Logique sans interface : calcul du montage, placement des formats mélangés (coupes
                       au massicot), placement, répartition sur les feuilles, lecture des visuels (taille,
-                      EXIF, TrimBox PDF), écriture du PDF (PDFsharp), liste des versions publiées sur
-                      GitHub (mises à jour)
+                      EXIF, TrimBox PDF), écriture du PDF (PDFsharp), numérotation et codes (QR codes :
+                      QRCoder), liste des versions publiées sur GitHub (mises à jour)
   PageCompose.App/    Application WPF : panneau de réglages, aperçu (Windows.Data.Pdf), glisser-déposer,
                       conversion HEIC / WebP / TIFF, projets, annulation, paramètres, mises à jour, textes
                       de l'interface
@@ -244,7 +246,7 @@ que si vous cliquez dessus.
 
 ## Licence
 
-[MIT](LICENSE.md). Utilise [PDFsharp](https://github.com/empira/PDFsharp) (MIT).
+[MIT](LICENSE.md). Utilise [PDFsharp](https://github.com/empira/PDFsharp) (MIT) et [QRCoder](https://github.com/codebude/QRCoder) (MIT).
 
 ## Crédits
 

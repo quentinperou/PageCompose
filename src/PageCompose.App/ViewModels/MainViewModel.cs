@@ -57,6 +57,15 @@ public sealed class NumberColorOption(NumberColor? value)
     }
 }
 
+/// <summary>The characters of the codes made by the app, with their name.</summary>
+public sealed class CodeAlphabetOption(CodeAlphabet value)
+{
+    public CodeAlphabet Value { get; } = value;
+    public string Name => Strings.Get("CodeAlphabet_" + Value);
+
+    public override string ToString() => Name;
+}
+
 /// <summary>A way a number reads, with its name.</summary>
 public sealed class NumberDirectionOption(NumberDirection value)
 {
@@ -225,6 +234,7 @@ public sealed class MainViewModel : ObservableObject
         NumberColors = [.. Enum.GetValues<NumberColor>().Select(c => new NumberColorOption(c))];
         NumberBackgrounds = [new NumberColorOption(null), .. NumberColors];
         NumberDirections = [.. Enum.GetValues<NumberDirection>().Select(d => new NumberDirectionOption(d))];
+        CodeAlphabets = [.. Enum.GetValues<CodeAlphabet>().Select(a => new CodeAlphabetOption(a))];
         _bleedMm = settings.BleedMm;
         _spacingEnabled = settings.SpacingEnabled;
         _spacingMm = settings.SpacingMm;
@@ -247,6 +257,7 @@ public sealed class MainViewModel : ObservableObject
         MoreForAllCommand = new RelayCommand(() => AllLines(line => line.Copies++));
         LessForAllCommand = new RelayCommand(() => AllLines(line => line.Copies--));
         ApplyFormatForAllCommand = new RelayCommand(ApplyFormatForAll);
+        DrawNewCodesCommand = new RelayCommand(DrawNewCodes);
         PreviousSheetCommand = new RelayCommand(() => PreviewSheetIndex--);
         NextSheetCommand = new RelayCommand(() => PreviewSheetIndex++);
         Notices.CollectionChanged += (_, _) =>
@@ -768,10 +779,11 @@ public sealed class MainViewModel : ObservableObject
 
     public bool EnlargeForBleed { get => !_mirrorBleed; set { if (value) MirrorBleed = false; } }
 
-    // ---- Numbering (asked by the author: raffle tickets, numbered cards…) ----
-    // Each visual laid gets its own number, written on the front at one or two places of the visual. By sheet (the
-    // default, the author's choice), or in a pile: down the sheets in each cell, so that the sheets stacked and cut give
-    // piles already in order.
+    // ---- Numbering (asked by the author: raffle tickets, numbered cards, unique promo codes…) ----
+    // Each visual laid gets its own number, or its own code, written on the front at one or two places of the visual,
+    // with a QR code if asked. By sheet (the default, the author's choice), or in a pile: down the sheets in each cell,
+    // so that the sheets stacked and cut give piles already in order. The codes are made by the app or read from a list,
+    // and written next to each export ("name-codes.csv").
 
     private NumberingSettings _numbering;
 
@@ -790,7 +802,10 @@ public sealed class MainViewModel : ObservableObject
         _numbering = numbering.Copy();
         foreach (var name in new[]
                  {
-                     nameof(NumberingEnabled), nameof(NumberingFirst), nameof(NumberingDigits), nameof(NumberingPrefix),
+                     nameof(NumberingEnabled), nameof(NumberingNumbers), nameof(NumberingGeneratedCodes), nameof(NumberingCodeList),
+                     nameof(CodeLength), nameof(CodeGroup), nameof(SelectedCodeAlphabet),
+                     nameof(NumberingQr), nameof(QrContentIndex), nameof(QrAddressMode), nameof(QrAddress), nameof(QrX), nameof(QrY), nameof(QrSizeMm),
+                     nameof(NumberingFirst), nameof(NumberingDigits), nameof(NumberingPrefix),
                      nameof(NumberingSuffix), nameof(NumberingInPile), nameof(NumberingBySheet), nameof(NumberX1), nameof(NumberY1),
                      nameof(NumberDirection1), nameof(NumberingSecond), nameof(NumberX2), nameof(NumberY2), nameof(NumberDirection2),
                      nameof(SelectedNumberFont), nameof(NumberSizeMm), nameof(SelectedNumberColor), nameof(SelectedNumberBackground),
@@ -803,6 +818,167 @@ public sealed class MainViewModel : ObservableObject
     public bool ShowNumbering => _mode != LayoutMode.Mixed;
 
     public bool NumberingEnabled { get => _numbering.Enabled; set => SetNumbering(value, n => n.Enabled, (n, v) => n.Enabled = v); }
+
+    // What each visual gets: chosen at the top of the card, as the modes (the author's mock-up).
+    public bool NumberingNumbers { get => _numbering.Content == NumberingContent.Numbers; set { if (value) SetContent(NumberingContent.Numbers); } }
+    public bool NumberingGeneratedCodes { get => _numbering.Content == NumberingContent.GeneratedCodes; set { if (value) SetContent(NumberingContent.GeneratedCodes); } }
+    public bool NumberingCodeList { get => _numbering.Content == NumberingContent.CodeList; set { if (value) SetContent(NumberingContent.CodeList); } }
+
+    private void SetContent(NumberingContent content)
+    {
+        if (_numbering.Content == content) return;
+        // The text before a number ("N° ") does not suit a code ("Code : "), and back: changed while it is the default.
+        string numberPrefix = new NumberingSettings().Prefix, codePrefix = Strings.Get("NumberingCodePrefix");
+        if (content == NumberingContent.Numbers && _numbering.Prefix == codePrefix) _numbering.Prefix = numberPrefix;
+        else if (content != NumberingContent.Numbers && _numbering.Prefix == numberPrefix) _numbering.Prefix = codePrefix;
+        _numbering.Content = content;
+        foreach (var name in new[] { nameof(NumberingNumbers), nameof(NumberingGeneratedCodes), nameof(NumberingCodeList), nameof(NumberingPrefix) })
+            OnPropertyChanged(name);
+        Changed();
+    }
+
+    /// <summary>Characters of the codes made by the app (3 to 32), and their groups (0: none).</summary>
+    public int CodeLength { get => _numbering.CodeLength; set => SetNumbering(Math.Clamp(value, 3, 32), n => n.CodeLength, (n, v) => n.CodeLength = v); }
+    public int CodeGroup { get => _numbering.CodeGroup; set => SetNumbering(Math.Clamp(value, 0, 32), n => n.CodeGroup, (n, v) => n.CodeGroup = v); }
+
+    public IReadOnlyList<CodeAlphabetOption> CodeAlphabets { get; }
+
+    public CodeAlphabetOption SelectedCodeAlphabet
+    {
+        get => CodeAlphabets.First(a => a.Value == _numbering.CodeAlphabet);
+        set { if (value is not null) SetNumbering(value.Value, n => n.CodeAlphabet, (n, v) => n.CodeAlphabet = v); }
+    }
+
+    // The codes of the job: made by the app (and how, "8/4/LettersAndDigits"), or read from a list (and the name of its
+    // file). They belong to the job as its visuals do (undo, projects, the last job), never to the settings: the same
+    // project prints the same codes again, and two jobs never share theirs.
+    private sealed record JobCodes(IReadOnlyList<string> Generated, string GeneratedFormat, IReadOnlyList<string> List, string ListName,
+        int ListDuplicates = 0)
+    {
+        public static readonly JobCodes None = new([], "", [], "");
+
+        public bool SameAs(JobCodes other) => GeneratedFormat == other.GeneratedFormat && ListName == other.ListName &&
+                                              (ReferenceEquals(Generated, other.Generated) || Generated.SequenceEqual(other.Generated)) &&
+                                              (ReferenceEquals(List, other.List) || List.SequenceEqual(other.List));
+    }
+
+    private JobCodes _codes = JobCodes.None;
+
+    // More visuals than codes of that length and those characters.
+    private bool _codesTooFew;
+
+    private string CodeFormat() => FormattableString.Invariant($"{_numbering.CodeLength}/{_numbering.CodeGroup}/{_numbering.CodeAlphabet}");
+
+    // The visuals laid, each taking a number or a code.
+    private int NumberedVisuals() => Plan.Sheets.Sum(s => s.Count(v => v is not null));
+
+    // The codes made by the app: as many as the visuals laid, made once and kept with the job, so that the preview, the
+    // export and its list of codes always agree. Visuals added get new codes, those given never change; codes of
+    // another length or other characters are made again.
+    private void EnsureCodes()
+    {
+        _codesTooFew = false;
+        if (!_numbering.Enabled || _mode == LayoutMode.Mixed || _numbering.Content != NumberingContent.GeneratedCodes) return;
+        string format = CodeFormat();
+        var codes = _codes.GeneratedFormat == format ? _codes.Generated : [];
+        int more = NumberedVisuals() - codes.Count;
+        if (more <= 0 && _codes.GeneratedFormat == format) return;
+        try
+        {
+            var added = more > 0 ? Numbering.NewCodes(more, _numbering.CodeLength, _numbering.CodeGroup, _numbering.CodeAlphabet, codes) : [];
+            _codes = _codes with { Generated = [.. codes, .. added], GeneratedFormat = format };
+        }
+        catch (InvalidOperationException)
+        {
+            _codesTooFew = true;
+        }
+    }
+
+    /// <summary>"Draw new codes": every code made again, none of those given before (a batch already printed).</summary>
+    public ICommand DrawNewCodesCommand { get; }
+
+    private void DrawNewCodes()
+    {
+        List<string> codes;
+        try
+        {
+            codes = Numbering.NewCodes(NumberedVisuals(), _numbering.CodeLength, _numbering.CodeGroup, _numbering.CodeAlphabet, _codes.Generated);
+        }
+        catch (InvalidOperationException)
+        {
+            codes = []; // made again without avoiding the old ones, or said too few
+        }
+        _codes = _codes with { Generated = codes, GeneratedFormat = codes.Count > 0 ? CodeFormat() : "" };
+        Changed();
+    }
+
+    /// <summary>"7F3K-9QXA": the first code made, or one of the same kind.</summary>
+    public string CodeExample
+    {
+        get
+        {
+            if (_codes.GeneratedFormat == CodeFormat() && _codes.Generated.Count > 0) return _codes.Generated[0];
+            if (_codeExample.Format != CodeFormat())
+            {
+                try { _codeExample = (CodeFormat(), Numbering.NewCodes(1, _numbering.CodeLength, _numbering.CodeGroup, _numbering.CodeAlphabet)[0]); }
+                catch (InvalidOperationException) { _codeExample = (CodeFormat(), ""); }
+            }
+            return _codeExample.Code;
+        }
+    }
+
+    private (string Format, string Code) _codeExample = ("", "");
+
+    /// <summary>The name of the file of the list of codes, or "No list chosen".</summary>
+    public string CodeListName => HasCodeList ? _codes.ListName : Strings.Get("CodeListNoFile");
+
+    public bool HasCodeList => _codes.ListName.Length > 0;
+
+    /// <summary>"480 codes · 2 duplicates left out".</summary>
+    public string? CodeListStatus => !HasCodeList ? null
+        : _codes.List.Count == 0 ? Strings.Get("CodeListEmpty")
+        : Strings.Count("CodesInList", _codes.List.Count) + (_codes.ListDuplicates > 0 ? " · " + Strings.Count("CodeDuplicates", _codes.ListDuplicates) : "");
+
+    /// <summary>
+    /// "Choose…": the codes of a text or CSV file, in its order (the first column). In the Repeat mode the quantity
+    /// follows the list, in visuals.
+    /// </summary>
+    /// <exception cref="IOException">The file cannot be read.</exception>
+    public async Task LoadCodeListAsync(string path)
+    {
+        string text = await Task.Run(() => File.ReadAllText(path));
+        var read = Numbering.ReadCodes(text);
+        _codes = _codes with { List = read.Codes, ListName = Path.GetFileName(path), ListDuplicates = read.Duplicates };
+        if (_mode == LayoutMode.Repeat && read.Codes.Count > 0)
+        {
+            _unit = QuantityUnit.Items;
+            _quantity = Math.Min(read.Codes.Count, 100_000);
+            foreach (var name in new[] { nameof(UnitItems), nameof(UnitSheets), nameof(CanCompleteLastSheet), nameof(Quantity) })
+                OnPropertyChanged(name);
+        }
+        Changed();
+    }
+
+    // ---- The QR code of each number or code (asked by the author with the codes) ----
+
+    public bool NumberingQr { get => _numbering.Qr; set => SetNumbering(value, n => n.Qr, (n, v) => n.Qr = v); }
+
+    /// <summary>0: the code alone; 1: an address with the code in it.</summary>
+    public int QrContentIndex
+    {
+        get => _numbering.QrAddressMode ? 1 : 0;
+        set
+        {
+            SetNumbering(value == 1, n => n.QrAddressMode, (n, v) => n.QrAddressMode = v);
+            OnPropertyChanged(nameof(QrAddressMode));
+        }
+    }
+
+    public bool QrAddressMode => _numbering.QrAddressMode;
+    public string QrAddress { get => _numbering.QrAddress; set => SetNumbering(value ?? "", n => n.QrAddress, (n, v) => n.QrAddress = v); }
+    public double QrX { get => _numbering.QrX; set => SetNumbering(Math.Clamp(value, 0, 3000), n => n.QrX, (n, v) => n.QrX = v); }
+    public double QrY { get => _numbering.QrY; set => SetNumbering(Math.Clamp(value, 0, 3000), n => n.QrY, (n, v) => n.QrY = v); }
+    public double QrSizeMm { get => _numbering.QrSizeMm; set => SetNumbering(Math.Clamp(value, 5, 500), n => n.QrSizeMm, (n, v) => n.QrSizeMm = v); }
     public int NumberingFirst { get => _numbering.First; set => SetNumbering(Math.Clamp(value, 0, 999_999_999), n => n.First, (n, v) => n.First = v); }
     public int NumberingDigits { get => _numbering.Digits; set => SetNumbering(Math.Clamp(value, 0, 9), n => n.Digits, (n, v) => n.Digits = v); }
     public string NumberingPrefix { get => _numbering.Prefix; set => SetNumbering(value ?? "", n => n.Prefix, (n, v) => n.Prefix = v); }
@@ -892,24 +1068,68 @@ public sealed class MainViewModel : ObservableObject
         if (!_numbering.Enabled || _mode == LayoutMode.Mixed || SelectedNumberFont is not { } font) return null;
         List<NumberPlace> places = [new(_numbering.X1, _numbering.Y1, _numbering.Direction1)];
         if (_numbering.Second) places.Add(new(_numbering.X2, _numbering.Y2, _numbering.Direction2));
-        return new NumberingStyle(_numbering.Prefix, _numbering.Digits, _numbering.Suffix, places, font.Name, font.File,
-            _numbering.SizeMm, _numbering.Color, _numbering.HasBackground ? _numbering.Background : null);
+        var qr = _numbering.Qr ? new QrStyle(_numbering.QrX, _numbering.QrY, _numbering.QrSizeMm, _numbering.QrAddressMode ? _numbering.QrAddress : null) : null;
+        return new NumberingStyle(_numbering.Prefix, _numbering.Suffix, places, font.Name, font.File,
+            _numbering.SizeMm, _numbering.Color, _numbering.HasBackground ? _numbering.Background : null, qr);
     }
 
-    // The numbers of every sheet laid: in a pile those of a sheet depend on all the others (a sheet shown alone, too).
-    private (NumberingStyle Style, int?[][] Numbers)? NumbersOfPlan() =>
-        NumberingStyleNow() is { } style ? (style, Numbering.Assign(Plan.Sheets, _numbering.Order, _numbering.First)) : null;
+    // The codes the visuals take, in order: those made for the settings as they are, or those of the list.
+    private IReadOnlyList<string> CodesNow() => _numbering.Content switch
+    {
+        NumberingContent.GeneratedCodes when _codes.GeneratedFormat == CodeFormat() => _codes.Generated,
+        NumberingContent.CodeList => _codes.List,
+        _ => [],
+    };
 
-    /// <summary>"From N° 001 to N° 480 · piles of 30 sheets".</summary>
+    // The rank and the number or code of each visual of every sheet laid: in a pile those of a sheet depend on all the
+    // others (a sheet shown alone, too). Codes are taken from the first one; a visual past the last code has none.
+    private (NumberingStyle Style, int?[][] Ranks, string?[][] Values)? NumbersOfPlan()
+    {
+        if (NumberingStyleNow() is not { } style) return null;
+        bool numbers = _numbering.Content == NumberingContent.Numbers;
+        var ranks = Numbering.Assign(Plan.Sheets, _numbering.Order, numbers ? _numbering.First : 0);
+        var codes = CodesNow();
+        int digits = _numbering.Digits;
+        return (style, ranks, Numbering.Values(ranks, r => numbers ? Numbering.Number(r, digits) : r < codes.Count ? codes[r] : null));
+    }
+
+    // Visuals that get no code: more of them than codes in the list.
+    private int VisualsWithoutCode() =>
+        _numbering.Enabled && _mode != LayoutMode.Mixed && _numbering.Content == NumberingContent.CodeList && _codes.List.Count > 0
+            ? Math.Max(0, NumberedVisuals() - _codes.List.Count)
+            : 0;
+
+    // "12 visuals without a code: the list has only 468."
+    private static string WithoutCode(int visuals, int codes) => Strings.Count("VisualsWithoutCode", visuals) + Strings.Format("CodeListOnly", codes);
+
+    /// <summary>"From N° 001 to N° 480 · piles of 30 sheets", "25 unique codes, from … to …".</summary>
     public string? NumberingSummary
     {
         get
         {
             if (NumberingStyleNow() is not { } style) return null;
-            int count = Plan.Sheets.Sum(s => s.Count(v => v is not null));
+            int count = NumberedVisuals();
             if (count == 0) return null;
-            string range = Strings.Format("NumberingRange", style.Text(_numbering.First), style.Text(_numbering.First + count - 1));
-            return _numbering.Order == NumberingOrder.Pile && Plan.SheetCount > 1 ? range + Strings.Format("NumberingPiles", Plan.SheetCount) : range;
+            var codes = CodesNow();
+            string? text = _numbering.Content switch
+            {
+                NumberingContent.Numbers => Strings.Format("NumberingRange", style.Text(Numbering.Number(_numbering.First, _numbering.Digits)),
+                    style.Text(Numbering.Number(_numbering.First + count - 1, _numbering.Digits))),
+                NumberingContent.GeneratedCodes when _codesTooFew => Strings.Format("CodesTooFew", _numbering.CodeLength),
+                NumberingContent.GeneratedCodes when codes.Count >= count =>
+                    Strings.Count("UniqueCodes", count) + Strings.Format("CodesFromTo", style.Text(codes[0]), style.Text(codes[count - 1])),
+                NumberingContent.CodeList when !HasCodeList || codes.Count == 0 => Strings.Get("CodeListNone"),
+                NumberingContent.CodeList when codes.Count < count => WithoutCode(count - codes.Count, codes.Count),
+                NumberingContent.CodeList => Strings.Format("CodeListRange", style.Text(codes[0]), style.Text(codes[count - 1])) +
+                                             (codes.Count > count ? Strings.Count("CodeListLeft", codes.Count - count) : ""),
+                _ => null,
+            };
+            if (text is not null && _numbering.Order == NumberingOrder.Pile && Plan.SheetCount > 1)
+                text += Strings.Format("NumberingPiles", Plan.SheetCount);
+            // An address without the code: the same QR code on every visual.
+            if (_numbering.Qr && _numbering.QrAddressMode && !_numbering.QrAddress.Contains(QrStyle.CodeField, StringComparison.Ordinal))
+                text = (text is null ? "" : text + "\n") + Strings.Get("QrAddressWithoutCode");
+            return text;
         }
     }
 
@@ -1281,11 +1501,11 @@ public sealed class MainViewModel : ObservableObject
 
     // The project of each state goes with it: Ctrl+Z after "New" or after opening a project gives the job back with its file.
     private sealed record JobState(string SettingsJson, LayoutPreset Settings, int Quantity, LineState? Repeat, LineState? SharedBack,
-        IReadOnlyList<LineState> Lines, string CaptionText, ProjectDocument Doc)
+        IReadOnlyList<LineState> Lines, string CaptionText, JobCodes Codes, ProjectDocument Doc)
     {
         public bool SameAs(JobState other) => SettingsJson == other.SettingsJson && Quantity == other.Quantity && CaptionText == other.CaptionText &&
                                               Repeat == other.Repeat && SharedBack == other.SharedBack && Lines.SequenceEqual(other.Lines) &&
-                                              ReferenceEquals(Doc, other.Doc);
+                                              Codes.SameAs(other.Codes) && ReferenceEquals(Doc, other.Doc);
     }
 
     private const int HistoryDelayMs = 600, HistoryLength = 100;
@@ -1298,7 +1518,7 @@ public sealed class MainViewModel : ObservableObject
     {
         var settings = CapturePreset("");
         return new JobState(System.Text.Json.JsonSerializer.Serialize(settings), settings, Quantity, RepeatVisual?.Capture(),
-            Verso?.Capture(), [.. Visuals.Select(v => v.Capture())], CaptionText, _document);
+            Verso?.Capture(), [.. Visuals.Select(v => v.Capture())], CaptionText, _codes, _document);
     }
 
     private void RememberLater()
@@ -1344,6 +1564,7 @@ public sealed class MainViewModel : ObservableObject
             ApplyPresetValues(state.Settings);
             _quantity = state.Quantity;
             _captionText = state.CaptionText;
+            _codes = state.Codes;
             Visuals.Clear();
             foreach (var line in state.Lines)
             {
@@ -1467,6 +1688,10 @@ public sealed class MainViewModel : ObservableObject
             SharedBack = state.SharedBack is null ? null : Line(state.SharedBack),
             Visuals = [.. state.Lines.Select(Line)],
             CaptionText = state.CaptionText,
+            Codes = [.. state.Codes.Generated],
+            CodesFormat = state.Codes.GeneratedFormat,
+            CodeList = [.. state.Codes.List],
+            CodeListName = state.Codes.ListName,
         };
     }
 
@@ -1521,7 +1746,8 @@ public sealed class MainViewModel : ObservableObject
 
         if (_historyDebounce.IsEnabled) Remember();
         document.Missing = missing;
-        RestoreState(new JobState("", job.Settings, Math.Clamp(job.Quantity, 0, 100_000), repeat, shared, lines, job.CaptionText ?? "", document));
+        var codes = new JobCodes(job.Codes ?? [], job.CodesFormat ?? "", job.CodeList ?? [], job.CodeListName ?? "");
+        RestoreState(new JobState("", job.Settings, Math.Clamp(job.Quantity, 0, 100_000), repeat, shared, lines, job.CaptionText ?? "", codes, document));
         Remember(); // one step: Ctrl+Z gives the job before it back
         if (saved) document.Saved = _current;
         DocumentChanged();
@@ -1895,8 +2121,9 @@ public sealed class MainViewModel : ObservableObject
         var sheetSize = Sheet.Size;
         int sheets = Plan.SheetCount;
         var plan = CuttingPlanFor(path);
+        var codes = CodesFor(path);
         var project = SaveProject ? ProjectWriterFor(ProjectPathNextTo(path)) : null;
-        if (!MayReplace([plan?.Path, project?.Path], path)) return false;
+        if (!MayReplace([plan?.Path, codes?.Path, project?.Path], path)) return false;
 
         Toast.ShowProgress(Strings.Get("Exporting"), Path.GetFileName(path));
         if (FlattenPdf)
@@ -1922,10 +2149,12 @@ public sealed class MainViewModel : ObservableObject
         }
 
         if (plan is not null) await plan.Write();
+        if (codes is not null) await codes.Write();
         if (project is not null) await project.Write();
         Toast.ShowDone(Strings.Get("ToastPdfSaved"),
             Strings.Format("ToastPdfDetail", Path.GetFileName(path), Strings.Count("Sheets", sheets)) +
-            (plan is null ? "" : Strings.Get("ToastWithPlan")) + (project is null ? "" : Strings.Get("ToastWithProject")),
+            (plan is null ? "" : Strings.Get("ToastWithPlan")) + (codes is null ? "" : Strings.Get("ToastWithCodes")) +
+            (project is null ? "" : Strings.Get("ToastWithProject")),
             plan is null ? [path] : [path, plan.Path]);
         _settings.LastExportFolder = Path.GetDirectoryName(path);
         SaveSettings();
@@ -2014,7 +2243,7 @@ public sealed class MainViewModel : ObservableObject
     public void NewProject()
     {
         if (_historyDebounce.IsEnabled) Remember();
-        RestoreState(_current with { Repeat = null, SharedBack = null, Lines = [], CaptionText = "", Doc = new ProjectDocument() });
+        RestoreState(_current with { Repeat = null, SharedBack = null, Lines = [], CaptionText = "", Codes = JobCodes.None, Doc = new ProjectDocument() });
         Remember();
         FilesMessage = null;
         VersoError = null;
@@ -2089,6 +2318,26 @@ public sealed class MainViewModel : ObservableObject
             SafeFile.Write(path, fs => CuttingPlanWriter.Write(plan, labels, sheet, stem, texts, fs, fit, logo))));
     }
 
+    /// <summary>
+    /// With codes on the visuals: their list next to the export ("name-codes.csv"), for the till or the website that
+    /// takes them, in the separator of the PC's lists (that of Excel); null otherwise. Taken when the export starts.
+    /// </summary>
+    private PendingFile? CodesFor(string exportPath)
+    {
+        if (_numbering.Content == NumberingContent.Numbers || NumbersOfPlan() is not { } numbering) return null;
+        if (!numbering.Values.Any(sheet => sheet.Any(v => v is not null))) return null; // no list chosen yet
+        string stem = Path.GetFileNameWithoutExtension(exportPath);
+        string path = Path.Combine(Path.GetDirectoryName(exportPath) ?? "", Strings.Format("CodesFileName", stem) + ".csv");
+        string csv = Numbering.CodesCsv(numbering.Ranks, numbering.Values,
+            [Strings.Get("CodesColumnSheet"), Strings.Get("CodesColumnCell"), Strings.Get("CodesColumnCode")],
+            System.Globalization.CultureInfo.CurrentCulture.TextInfo.ListSeparator);
+        return new PendingFile(path, () => Task.Run(() => SafeFile.Write(path, fs =>
+        {
+            using var writer = new StreamWriter(fs, new System.Text.UTF8Encoding(true), leaveOpen: true); // with its BOM, for Excel
+            writer.Write(csv);
+        })));
+    }
+
     // The icon of the app in high definition, for the foot of the cutting plan (never the .ico: its first frame is 16 px).
     private static byte[]? AppIconPng()
     {
@@ -2121,16 +2370,19 @@ public sealed class MainViewModel : ObservableObject
 
         // As for the PDF, everything taken now (see ExportAsync).
         var plan = CuttingPlanFor(path);
+        var codes = CodesFor(path);
         var project = SaveProject ? ProjectWriterFor(ProjectPathNextTo(path)) : null;
-        if (!MayReplace([.. files, plan?.Path, project?.Path], path)) return [];
+        if (!MayReplace([.. files, plan?.Path, codes?.Path, project?.Path], path)) return [];
 
         Toast.ShowProgress(Strings.Get("Exporting"), Path.GetFileName(path));
         await RenderPagesAsync(job, sheetSize, files);
         if (plan is not null) await plan.Write();
+        if (codes is not null) await codes.Write();
         if (project is not null) await project.Write();
         Toast.ShowDone(Strings.Count("JpegSaved", files.Count),
             (files.Count == 1 ? Path.GetFileName(path) : Strings.Format("ToastInFolder", Path.GetFileName(folder))) +
-            (plan is null ? "" : Strings.Get("ToastWithPlan")) + (project is null ? "" : Strings.Get("ToastWithProject")),
+            (plan is null ? "" : Strings.Get("ToastWithPlan")) + (codes is null ? "" : Strings.Get("ToastWithCodes")) +
+            (project is null ? "" : Strings.Get("ToastWithProject")),
             plan is null ? files : [.. files, plan.Path]);
         _settings.LastExportFolder = folder;
         SaveSettings();
@@ -2462,6 +2714,11 @@ public sealed class MainViewModel : ObservableObject
         else
             RecomputeGrid(sheetValid, bleed, spacing);
 
+        EnsureCodes();
+        if (VisualsWithoutCode() is > 0 and var without)
+            Notices.Add(new Notice(NoticeLevel.Warning, WithoutCode(without, _codes.List.Count), Strings.Get("NoticeKey_Codes")));
+        else if (_codesTooFew)
+            Notices.Add(new Notice(NoticeLevel.Warning, Strings.Format("CodesTooFew", _numbering.CodeLength), Strings.Get("NoticeKey_Codes")));
         PlanText = BuildPlanText();
         if (MarkHasNoRoom() && Plan.SheetCount > 0)
             Notices.Add(new Notice(NoticeLevel.Warning, Strings.Get("NoticeNoRoomForMark"), Strings.Get("NoticeKey_Mark")));
@@ -2483,7 +2740,8 @@ public sealed class MainViewModel : ObservableObject
                      nameof(PreviewSheetIndex), nameof(PreviewSheetLabel), nameof(HasSeveralSheets), nameof(CutNumbers),
                      nameof(HasAnyVisual), nameof(CanSaveProject), nameof(ShowCutLineColor), nameof(ShowCopiesForAll), nameof(CopiesForAll), nameof(ShowFoldMarks),
                      nameof(ShowFormatForAll), nameof(FormatForAll), nameof(CanApplyFormatForAll),
-                     nameof(ShowCaption), nameof(NumberingSummary), nameof(ShowNumbering),
+                     nameof(ShowCaption), nameof(NumberingSummary), nameof(ShowNumbering), nameof(CodeExample), nameof(CodeListName),
+                     nameof(HasCodeList), nameof(CodeListStatus),
                  })
             OnPropertyChanged(name);
     }
@@ -2944,7 +3202,7 @@ public sealed class MainViewModel : ObservableObject
             MirrorBleed = BleedEnabled && MirrorBleed,
             Caption = SelectedCaptionFont is { } font ? new CaptionStyle(font.Name, font.File, _captionColor) : null,
             Numbering = numbering?.Style,
-            Numbers = numbering is { } n ? [.. sheets.Select(i => n.Numbers[i])] : null,
+            Numbers = numbering is { } n ? [.. sheets.Select(i => n.Values[i])] : null,
             Fit = _fit,
             Flip = _flip,
             RotateVerso180 = RotateVerso180,

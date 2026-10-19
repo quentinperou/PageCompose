@@ -1379,4 +1379,154 @@ The file may be open in another program.</value>
   <data name="LastJobMissing" xml:space="preserve">
     <value>There is no last job to resume.</value>
   </data>
+  <data name="NumberingContentNumbers" xml:space="preserve">
+    <value>Numbers</value>
+  </data>
+  <data name="NumberingContentGenerated" xml:space="preserve">
+    <value>Generated codes</value>
+  </data>
+  <data name="NumberingContentList" xml:space="preserve">
+    <value>Code list</value>
+  </data>
+  <data name="NumberingCodePrefix" xml:space="preserve">
+    <value>Code: </value>
+  </data>
+  <data name="CodeLength" xml:space="preserve">
+    <value>Characters</value>
+  </data>
+  <data name="CodeGroup" xml:space="preserve">
+    <value>Groups of</value>
+  </data>
+  <data name="CodeAlphabetLabel" xml:space="preserve">
+    <value>With</value>
+  </data>
+  <data name="CodeAlphabet_LettersAndDigits" xml:space="preserve">
+    <value>Capitals and digits (no 0 O 1 I L)</value>
+  </data>
+  <data name="CodeAlphabet_Digits" xml:space="preserve">
+    <value>Digits (no 0 1)</value>
+  </data>
+  <data name="CodeAlphabet_Letters" xml:space="preserve">
+    <value>Capitals (no O I L)</value>
+  </data>
+  <data name="DrawNewCodes" xml:space="preserve">
+    <value>Draw new codes</value>
+  </data>
+  <data name="CodeExampleLabel" xml:space="preserve">
+    <value>E.g. </value>
+  </data>
+  <data name="CodesKeptHint" xml:space="preserve">
+    <value>Kept in the project. Their list is written next to each export: “name-codes.csv”.</value>
+  </data>
+  <data name="CodeListFile" xml:space="preserve">
+    <value>File</value>
+  </data>
+  <data name="CodeListChoose" xml:space="preserve">
+    <value>Choose…</value>
+  </data>
+  <data name="CodeListNoFile" xml:space="preserve">
+    <value>No list chosen</value>
+  </data>
+  <data name="CodeListHint" xml:space="preserve">
+    <value>CSV or text: one code a line (the first column), taken in the order of the list.</value>
+  </data>
+  <data name="CodeListEmpty" xml:space="preserve">
+    <value>No code in this file.</value>
+  </data>
+  <data name="CodesInListOne" xml:space="preserve">
+    <value>{0} code</value>
+  </data>
+  <data name="CodesInListMany" xml:space="preserve">
+    <value>{0} codes</value>
+  </data>
+  <data name="CodeDuplicatesOne" xml:space="preserve">
+    <value>{0} duplicate left out</value>
+  </data>
+  <data name="CodeDuplicatesMany" xml:space="preserve">
+    <value>{0} duplicates left out</value>
+  </data>
+  <data name="OpenCodeListTitle" xml:space="preserve">
+    <value>Choose the list of codes</value>
+  </data>
+  <data name="CodeListFilter" xml:space="preserve">
+    <value>Lists of codes (*.csv;*.txt)|*.csv;*.txt|All files (*.*)|*.*</value>
+  </data>
+  <data name="CodeListFailed" xml:space="preserve">
+    <value>The list could not be read: {0}</value>
+  </data>
+  <data name="NumberingQr" xml:space="preserve">
+    <value>QR code</value>
+  </data>
+  <data name="QrContentLabel" xml:space="preserve">
+    <value>Holds</value>
+  </data>
+  <data name="QrContentCode" xml:space="preserve">
+    <value>The code alone</value>
+  </data>
+  <data name="QrContentAddress" xml:space="preserve">
+    <value>An address with the code</value>
+  </data>
+  <data name="QrAddressLabel" xml:space="preserve">
+    <value>Address</value>
+  </data>
+  <data name="QrSize" xml:space="preserve">
+    <value>Size</value>
+  </data>
+  <data name="QrHint" xml:space="preserve">
+    <value>{code} in the address: the number or code of each visual. From the top left corner of the visual; read by a phone from about 15 mm.</value>
+  </data>
+  <data name="QrAddressWithoutCode" xml:space="preserve">
+    <value>The address has no {code}: the same QR code on every visual.</value>
+  </data>
+  <data name="UniqueCodesOne" xml:space="preserve">
+    <value>{0} unique code</value>
+  </data>
+  <data name="UniqueCodesMany" xml:space="preserve">
+    <value>{0} unique codes</value>
+  </data>
+  <data name="CodesFromTo" xml:space="preserve">
+    <value>, from {0} to {1}</value>
+  </data>
+  <data name="CodesTooFew" xml:space="preserve">
+    <value>Too few codes of {0} characters for so many visuals: make them longer.</value>
+  </data>
+  <data name="CodeListNone" xml:space="preserve">
+    <value>Choose the file of the list.</value>
+  </data>
+  <data name="VisualsWithoutCodeOne" xml:space="preserve">
+    <value>{0} visual without a code</value>
+  </data>
+  <data name="VisualsWithoutCodeMany" xml:space="preserve">
+    <value>{0} visuals without a code</value>
+  </data>
+  <data name="CodeListOnly" xml:space="preserve">
+    <value>: the list has only {0}.</value>
+  </data>
+  <data name="CodeListRange" xml:space="preserve">
+    <value>From {0} to {1}, in the order of the list</value>
+  </data>
+  <data name="CodeListLeftOne" xml:space="preserve">
+    <value> · {0} code left</value>
+  </data>
+  <data name="CodeListLeftMany" xml:space="preserve">
+    <value> · {0} codes left</value>
+  </data>
+  <data name="NoticeKey_Codes" xml:space="preserve">
+    <value>Codes</value>
+  </data>
+  <data name="ToastWithCodes" xml:space="preserve">
+    <value> + list of codes</value>
+  </data>
+  <data name="CodesFileName" xml:space="preserve">
+    <value>{0}-codes</value>
+  </data>
+  <data name="CodesColumnSheet" xml:space="preserve">
+    <value>Sheet</value>
+  </data>
+  <data name="CodesColumnCell" xml:space="preserve">
+    <value>Cell</value>
+  </data>
+  <data name="CodesColumnCode" xml:space="preserve">
+    <value>Code</value>
+  </data>
 </root>

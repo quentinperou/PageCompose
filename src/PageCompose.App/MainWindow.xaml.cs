@@ -146,6 +146,21 @@ public partial class MainWindow : Window
         if (dialog.ShowDialog(this) == true) await ViewModel.SetVersoAsync(dialog.FileName);
     }
 
+    // The list of codes of the numbering: a CSV or text file, one code a line.
+    private async void BrowseCodeList_Click(object sender, RoutedEventArgs e)
+    {
+        var dialog = new OpenFileDialog { Title = Strings.Get("OpenCodeListTitle"), Filter = Strings.Get("CodeListFilter") };
+        if (dialog.ShowDialog(this) != true) return;
+        try
+        {
+            await ViewModel.LoadCodeListAsync(dialog.FileName);
+        }
+        catch (Exception ex) when (ex is IOException or UnauthorizedAccessException)
+        {
+            MessageBox.Show(this, Strings.Format("CodeListFailed", ex.Message), Strings.Get("AppTitle"), MessageBoxButton.OK, MessageBoxImage.Warning);
+        }
+    }
+
     /// <summary>Replaces each folder by its visuals (first level, sorted by name) and drops unsupported files.</summary>
     private static List<string> ExpandPaths(IEnumerable<string> paths)
     {

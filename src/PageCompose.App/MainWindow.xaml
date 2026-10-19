@@ -818,14 +818,25 @@
                         </StackPanel>
                     </Border>
 
-                    <!-- Numbering (asked by the author: raffle tickets, numbered cards…): a number on each visual, at one or two
-                         places, each its own way; by sheet by default, or in a pile so that the sheets stacked and cut give piles in order -->
+                    <!-- Numbering (asked by the author: raffle tickets, numbered cards, unique promo codes…): a number or a code on
+                         each visual, at one or two places, each its own way, and a QR code if asked; by sheet by default, or in a
+                         pile so that the sheets stacked and cut give piles in order. What each visual gets is chosen at the top of
+                         the card (the author's mock-up) -->
                     <Border Style="{StaticResource Card}" Visibility="{Binding ShowNumbering, Converter={StaticResource BoolToVisibility}}">
                         <StackPanel>
                             <TextBlock Style="{StaticResource CardTitle}" Text="{local:Tr SectionNumbering}" />
                             <CheckBox Content="{local:Tr NumberingEnable}" IsChecked="{Binding NumberingEnabled}" />
                             <StackPanel Margin="0,8,0,0" Visibility="{Binding NumberingEnabled, Converter={StaticResource BoolToVisibility}}">
-                                <Grid>
+                                <Border Background="{DynamicResource ControlAltFillColorTertiaryBrush}" CornerRadius="6" Padding="3">
+                                    <UniformGrid Columns="3">
+                                        <RadioButton Style="{StaticResource SegmentItem}" GroupName="NumberingContent" Content="{local:Tr NumberingContentNumbers}" IsChecked="{Binding NumberingNumbers}" />
+                                        <RadioButton Style="{StaticResource SegmentItem}" GroupName="NumberingContent" Content="{local:Tr NumberingContentGenerated}" IsChecked="{Binding NumberingGeneratedCodes}" />
+                                        <RadioButton Style="{StaticResource SegmentItem}" GroupName="NumberingContent" Content="{local:Tr NumberingContentList}" IsChecked="{Binding NumberingCodeList}" />
+                                    </UniformGrid>
+                                </Border>
+
+                                <!-- Numbers: the first and its digits -->
+                                <Grid Margin="0,10,0,0" Visibility="{Binding NumberingNumbers, Converter={StaticResource BoolToVisibility}}">
                                     <Grid.ColumnDefinitions>
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
@@ -833,22 +844,72 @@
                                         <ColumnDefinition Width="Auto" />
                                         <ColumnDefinition Width="Auto" />
                                     </Grid.ColumnDefinitions>
-                                    <Grid.RowDefinitions>
-                                        <RowDefinition Height="Auto" />
-                                        <RowDefinition Height="Auto" />
-                                    </Grid.RowDefinitions>
                                     <TextBlock local:NumericInput.Scrubs="{Binding ElementName=NumberingFirstBox}" Text="{local:Tr NumberingFirst}" VerticalAlignment="Center" Margin="0,0,10,0" />
                                     <TextBox x:Name="NumberingFirstBox" Grid.Column="1" Width="80" Margin="0,2" VerticalAlignment="Center" AutomationProperties.Name="{local:Tr NumberingFirst}"
                                              Text="{Binding NumberingFirst, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                     <TextBlock local:NumericInput.Scrubs="{Binding ElementName=NumberingDigitsBox}" Grid.Column="3" Text="{local:Tr NumberingDigits}" VerticalAlignment="Center" Margin="0,0,10,0" />
                                     <TextBox x:Name="NumberingDigitsBox" Grid.Column="4" Width="56" Margin="0,2" VerticalAlignment="Center" AutomationProperties.Name="{local:Tr NumberingDigits}"
                                              Text="{Binding NumberingDigits, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
-                                    <TextBlock Grid.Row="1" Text="{local:Tr NumberingPrefix}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <TextBox Grid.Row="1" Grid.Column="1" Width="80" Margin="0,2" VerticalAlignment="Center" local:NumericInput.Step="0"
+                                </Grid>
+
+                                <!-- Codes made by the app: their length, groups and characters; kept with the job -->
+                                <StackPanel Margin="0,10,0,0" Visibility="{Binding NumberingGeneratedCodes, Converter={StaticResource BoolToVisibility}}">
+                                    <Grid>
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="20" />
+                                            <ColumnDefinition Width="Auto" />
+                                            <ColumnDefinition Width="Auto" />
+                                        </Grid.ColumnDefinitions>
+                                        <TextBlock local:NumericInput.Scrubs="{Binding ElementName=CodeLengthBox}" Text="{local:Tr CodeLength}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        <TextBox x:Name="CodeLengthBox" Grid.Column="1" Width="56" Margin="0,2" VerticalAlignment="Center" AutomationProperties.Name="{local:Tr CodeLength}"
+                                                 local:NumericInput.Minimum="3" Text="{Binding CodeLength, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                        <TextBlock local:NumericInput.Scrubs="{Binding ElementName=CodeGroupBox}" Grid.Column="3" Text="{local:Tr CodeGroup}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        <TextBox x:Name="CodeGroupBox" Grid.Column="4" Width="56" Margin="0,2" VerticalAlignment="Center" AutomationProperties.Name="{local:Tr CodeGroup}"
+                                                 Text="{Binding CodeGroup, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                    </Grid>
+                                    <DockPanel Margin="0,8,0,0">
+                                        <TextBlock Text="{local:Tr CodeAlphabetLabel}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        <ComboBox ItemsSource="{Binding CodeAlphabets}" SelectedItem="{Binding SelectedCodeAlphabet}" HorizontalAlignment="Stretch"
+                                                  AutomationProperties.Name="{local:Tr CodeAlphabetLabel}" />
+                                    </DockPanel>
+                                    <DockPanel Margin="0,10,0,0">
+                                        <Button DockPanel.Dock="Right" Content="{local:Tr DrawNewCodes}" Command="{Binding DrawNewCodesCommand}" />
+                                        <TextBlock VerticalAlignment="Center" Foreground="{DynamicResource TextFillColorSecondaryBrush}">
+                                            <Run Text="{local:Tr CodeExampleLabel}" /><Run Text="{Binding CodeExample, Mode=OneWay}" FontFamily="Consolas" />
+                                        </TextBlock>
+                                    </DockPanel>
+                                    <TextBlock Style="{StaticResource Hint}" Text="{local:Tr CodesKeptHint}" />
+                                </StackPanel>
+
+                                <!-- A list of codes read from a file -->
+                                <StackPanel Margin="0,10,0,0" Visibility="{Binding NumberingCodeList, Converter={StaticResource BoolToVisibility}}">
+                                    <DockPanel>
+                                        <TextBlock Text="{local:Tr CodeListFile}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        <Button DockPanel.Dock="Right" Content="{local:Tr CodeListChoose}" Margin="8,0,0,0" Click="BrowseCodeList_Click" />
+                                        <TextBlock Text="{Binding CodeListName}" VerticalAlignment="Center" TextTrimming="CharacterEllipsis"
+                                                   ToolTip="{Binding CodeListName}" />
+                                    </DockPanel>
+                                    <TextBlock Style="{StaticResource Hint}" Text="{Binding CodeListStatus}"
+                                               Visibility="{Binding CodeListStatus, Converter={StaticResource NullToCollapsed}}" />
+                                    <TextBlock Style="{StaticResource Hint}" Text="{local:Tr CodeListHint}" />
+                                </StackPanel>
+
+                                <Grid Margin="0,10,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="20" />
+                                        <ColumnDefinition Width="Auto" />
+                                        <ColumnDefinition Width="Auto" />
+                                    </Grid.ColumnDefinitions>
+                                    <TextBlock Text="{local:Tr NumberingPrefix}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBox Grid.Column="1" Width="80" Margin="0,2" VerticalAlignment="Center" local:NumericInput.Step="0"
                                              AutomationProperties.Name="{local:Tr NumberingPrefix}"
                                              Text="{Binding NumberingPrefix, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
-                                    <TextBlock Grid.Row="1" Grid.Column="3" Text="{local:Tr NumberingSuffix}" VerticalAlignment="Center" Margin="0,0,10,0" />
-                                    <TextBox Grid.Row="1" Grid.Column="4" Width="56" Margin="0,2" VerticalAlignment="Center" local:NumericInput.Step="0"
+                                    <TextBlock Grid.Column="3" Text="{local:Tr NumberingSuffix}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                    <TextBox Grid.Column="4" Width="56" Margin="0,2" VerticalAlignment="Center" local:NumericInput.Step="0"
                                              AutomationProperties.Name="{local:Tr NumberingSuffix}"
                                              Text="{Binding NumberingSuffix, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
                                 </Grid>
@@ -949,6 +1010,37 @@
                                               SelectedItem="{Binding SelectedNumberBackground}" AutomationProperties.Name="{local:Tr NumberingBackground}"
                                               ItemTemplate="{StaticResource NumberColorItem}" />
                                 </Grid>
+
+                                <!-- A QR code of each number or code: alone, or in an address -->
+                                <Rectangle Height="1" Fill="{DynamicResource DividerStrokeColorDefaultBrush}" Margin="0,10" />
+                                <CheckBox Content="{local:Tr NumberingQr}" IsChecked="{Binding NumberingQr}" />
+                                <StackPanel Margin="0,8,0,0" Visibility="{Binding NumberingQr, Converter={StaticResource BoolToVisibility}}">
+                                    <DockPanel>
+                                        <TextBlock Text="{local:Tr QrContentLabel}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        <ComboBox SelectedIndex="{Binding QrContentIndex}" HorizontalAlignment="Stretch" AutomationProperties.Name="{local:Tr QrContentLabel}">
+                                            <ComboBoxItem Content="{local:Tr QrContentCode}" />
+                                            <ComboBoxItem Content="{local:Tr QrContentAddress}" />
+                                        </ComboBox>
+                                    </DockPanel>
+                                    <DockPanel Margin="0,8,0,0" Visibility="{Binding QrAddressMode, Converter={StaticResource BoolToVisibility}}">
+                                        <TextBlock Text="{local:Tr QrAddressLabel}" VerticalAlignment="Center" Margin="0,0,10,0" />
+                                        <TextBox local:NumericInput.Step="0" AutomationProperties.Name="{local:Tr QrAddressLabel}"
+                                                 Text="{Binding QrAddress, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                    </DockPanel>
+                                    <StackPanel Orientation="Horizontal" Margin="0,8,0,0">
+                                        <TextBlock local:NumericInput.Scrubs="{Binding ElementName=QrXBox}" Text="X" VerticalAlignment="Center" Margin="0,0,6,0" />
+                                        <TextBox x:Name="QrXBox" Width="64" VerticalAlignment="Center" AutomationProperties.Name="{local:Tr NumberingQr}"
+                                                 Text="{Binding QrX, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                        <TextBlock local:NumericInput.Scrubs="{Binding ElementName=QrYBox}" Text="Y" VerticalAlignment="Center" Margin="12,0,6,0" />
+                                        <TextBox x:Name="QrYBox" Width="64" VerticalAlignment="Center"
+                                                 Text="{Binding QrY, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                        <TextBlock local:NumericInput.Scrubs="{Binding ElementName=QrSizeBox}" Text="{local:Tr QrSize}" VerticalAlignment="Center" Margin="12,0,6,0" />
+                                        <TextBox x:Name="QrSizeBox" Width="64" VerticalAlignment="Center" AutomationProperties.Name="{local:Tr QrSize}"
+                                                 local:NumericInput.Minimum="5" Text="{Binding QrSizeMm, UpdateSourceTrigger=PropertyChanged, Delay=250}" />
+                                        <TextBlock Text="{local:Tr Millimetres}" VerticalAlignment="Center" Margin="6,0,0,0" />
+                                    </StackPanel>
+                                    <TextBlock Style="{StaticResource Hint}" Text="{local:Tr QrHint}" />
+                                </StackPanel>
 
                                 <TextBlock Style="{StaticResource Hint}" Margin="0,10,0,0" Text="{Binding NumberingSummary}"
                                            Visibility="{Binding NumberingSummary, Converter={StaticResource NullToCollapsed}}" />
